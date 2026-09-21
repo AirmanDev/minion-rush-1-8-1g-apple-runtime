@@ -17,8 +17,8 @@ release 1.8.1g. See `docs/LEGAL.md`.
 ## Supported environment
 
 - Apple Silicon Mac running macOS 14 or later
-- Xcode 26 with the iOS 26 SDK
-- ARM64 iPhone or iPad running iOS or iPadOS 26
+- Xcode 26 or later with the matching iOS SDK
+- ARM64 iPhone or iPad running iOS or iPadOS 26 or later
 - Python 3 and the Xcode command-line tools
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
@@ -114,12 +114,13 @@ Run the isolated iOS 26 Simulator matrix:
 ```
 
 The test creates temporary iPhone SE (2nd generation) and iPad simulators,
-installs a Release build, verifies the landscape intro and Hungarian startup,
-checks the portrait menu framebuffer, and removes every generated simulator
-and build directory when it finishes. Set `MR_SIMULATOR_ARTIFACTS` to an empty
-directory path to retain the build logs and captured screenshots. Post-intro
-menu tests reuse the engine-generated macOS settings file. Override its path
-with `MR_SIMULATOR_SETTINGS` when the macOS data root is elsewhere.
+installs a Release build, verifies the same-session landscape-to-portrait intro
+transition and Hungarian startup, checks the portrait menu framebuffer, and
+removes every generated simulator and build directory when it finishes. Set
+`MR_SIMULATOR_ARTIFACTS` to an empty directory path to retain the build logs and
+captured screenshots. Post-intro menu tests reuse the engine-generated macOS
+settings file. Override its path with `MR_SIMULATOR_SETTINGS` when the macOS data
+root is elsewhere.
 
 Filter physical devices by name:
 
@@ -150,10 +151,14 @@ captured non-black startup frame. Override the deadline with
 launch only; ordinary game launches do not capture or encode a startup image.
 
 The iPhone and iPad application keeps gameplay and menus in portrait. The intro
-movie temporarily requests landscape scene geometry and always switches to a
-matching landscape render surface, then restores portrait rendering when
-playback ends. Resizable iPadOS windows may retain their current outer geometry;
-the movie remains landscape and is aspect-fitted inside the available scene.
+movie temporarily requests landscape scene geometry and switches to a landscape
+render surface, then restores the portrait policy and surface when playback
+ends. UIKit may deny programmatic orientation changes in an iPadOS windowing
+mode. In that case, the view rotates the unchanged logical surface into the
+current scene instead of displaying a portrait surface between large side bars.
+Touch and motion coordinates remain aligned with the logical game orientation.
+On iOS and iPadOS 27, the scene delegate also supplies the current orientation
+mask through the scene-level API.
 UIKit safe-area insets move top-aligned 2D interface groups and scrollable
 viewports below an obscured display region. Viewport height is reduced by the
 same inset. Named lower gameplay controls stay above the bottom safe area,

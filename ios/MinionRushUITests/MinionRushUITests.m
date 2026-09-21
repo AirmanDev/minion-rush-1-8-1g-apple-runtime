@@ -57,6 +57,11 @@
     }
     [self waitForDelay:2.0];
     [self attachScreenshotNamed:@"Landscape intro"];
+    [self waitForDelay:90.0];
+    if (UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad) {
+        [self waitForWindow:window landscape:NO timeout:30.0];
+    }
+    [self attachScreenshotNamed:@"Portrait after intro"];
     [app terminate];
 }
 

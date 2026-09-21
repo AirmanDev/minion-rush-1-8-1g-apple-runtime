@@ -182,6 +182,12 @@ static void start_engine_once(void) {
     mr_ios_scene_geometry_changed(windowScene);
 }
 
+- (UIInterfaceOrientationMask)supportedInterfaceOrientationsForWindowScene:
+    (UIWindowScene *)windowScene {
+    (void)windowScene;
+    return mr_ios_supported_orientations();
+}
+
 @end
 
 @interface MRAppDelegate : NSObject <UIApplicationDelegate>

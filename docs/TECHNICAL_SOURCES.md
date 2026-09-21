@@ -48,8 +48,12 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/uikit/uiviewcontroller/supportedinterfaceorientations
 - Updating a view controller's supported orientations:
   https://developer.apple.com/documentation/uikit/uiviewcontroller/setneedsupdateofsupportedinterfaceorientations()
+- Scene-level supported orientations on iOS and iPadOS 27:
+  https://developer.apple.com/documentation/uikit/uiwindowscenedelegate/supportedinterfaceorientations(for:)
 - Window-scene geometry updates:
   https://developer.apple.com/documentation/uikit/uiwindowscene/requestgeometryupdate(_:errorhandler:)
+- Effective window-scene geometry:
+  https://developer.apple.com/documentation/uikit/uiwindowscene/effectivegeometry
 - Migration from the deprecated `UIRequiresFullScreen` key:
   https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key
 - UIKit scene lifecycle:

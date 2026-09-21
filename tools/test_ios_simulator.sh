@@ -77,6 +77,7 @@ IFS=$'\t' read -r runtime phone_type tablet_type < <(
 
 run_test() {
   local label="$1" device_type="$2" udid data log ui_log capture attempt state settings_dir
+  local landscape_line portrait_line
   udid="$(xcrun simctl create "Minion Rush test $label" "$device_type" "$runtime")"
   CREATED_DEVICES+=("$udid")
   xcrun simctl boot "$udid"
@@ -101,10 +102,16 @@ run_test() {
   data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"
   log="$data/Library/Caches/MinionRush/Logs/minion-rush.log"
   cp "$log" "$LOGS/intro-runtime-$label.log" 2>/dev/null || true
-  grep -Fq '[Orientation] landscape surface:' "$log" || {
-    printf 'ERROR: %s Simulator intro did not use a landscape render surface\n' "$label" >&2
+  landscape_line="$(grep -nFm1 '[Orientation] landscape surface:' "$log" \
+    | cut -d: -f1 || true)"
+  portrait_line="$(grep -nF '[Orientation] portrait surface:' "$log" \
+    | tail -1 | cut -d: -f1 || true)"
+  if [[ -z "$landscape_line" || -z "$portrait_line" || \
+        "$portrait_line" -le "$landscape_line" ]]; then
+    printf 'ERROR: %s Simulator did not restore portrait rendering after the intro\n' \
+      "$label" >&2
     return 1
-  }
+  fi
 
   xcrun simctl install "$udid" "$APP"
   data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"

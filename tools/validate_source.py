@@ -837,6 +837,7 @@ def check_ios_project(tree: dict[str, str]) -> None:
     if "preferredFrameRateRange" not in window or "viewDidLayoutSubviews" not in window:
         raise SystemExit("iOS presentation does not follow display and window size")
     orientation_contract = (
+        "CGAffineTransformMakeRotation",
         "UIInterfaceOrientationMaskLandscape",
         "UIInterfaceOrientationMaskPortrait",
         "preferredInterfaceOrientationForPresentation",
@@ -847,6 +848,9 @@ def check_ios_project(tree: dict[str, str]) -> None:
     )
     if any(token not in window for token in orientation_contract):
         raise SystemExit("iPhone and iPad orientation contract is incomplete")
+    if "supportedInterfaceOrientationsForWindowScene" not in app or \
+       "mr_ios_supported_orientations" not in app:
+        raise SystemExit("iOS 27 scene orientation policy is incomplete")
 
     privacy_path = ROOT / "ios/MinionRush/PrivacyInfo.xcprivacy"
     try:

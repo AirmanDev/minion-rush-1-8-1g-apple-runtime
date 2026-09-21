@@ -11,6 +11,7 @@
 #include "shim_gl.h"
 #include "window_ios.h"
 
+#include <math.h>
 #include <os/lock.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -76,6 +77,10 @@ static UIInterfaceOrientationMask game_orientation_mask(void) {
     return atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire)
                ? UIInterfaceOrientationMaskLandscape
                : UIInterfaceOrientationMaskPortrait;
+}
+
+UIInterfaceOrientationMask mr_ios_supported_orientations(void) {
+    return game_orientation_mask();
 }
 
 static void run_on_main_sync(dispatch_block_t block) {
@@ -361,14 +366,34 @@ static void layout_game_view(void) {
     CGSize size = CONTAINER.bounds.size;
     uint32_t surface_w = atomic_load_explicit(&SURFACE_W, memory_order_relaxed);
     uint32_t surface_h = atomic_load_explicit(&SURFACE_H, memory_order_relaxed);
-    mr_win_fit fit =
-        mr_win_fit_surface(size.width, size.height, (double)surface_w, (double)surface_h);
-    CGRect frame = CGRectMake(fit.x, fit.y, fit.w, fit.h);
+    BOOL rotate = (size.width > size.height) != (surface_w > surface_h);
+    CGSize fitting_size = rotate ? CGSizeMake(size.height, size.width) : size;
+    mr_win_fit fit = mr_win_fit_surface(fitting_size.width, fitting_size.height, (double)surface_w,
+                                        (double)surface_h);
+    UIInterfaceOrientation orientation = SCENE.effectiveGeometry.interfaceOrientation;
+    CGFloat angle = 0.0;
+    if (rotate) {
+        if (surface_w > surface_h) {
+            angle = orientation == UIInterfaceOrientationPortraitUpsideDown ? -M_PI_2 : M_PI_2;
+        } else {
+            angle = orientation == UIInterfaceOrientationLandscapeRight ? -M_PI_2 : M_PI_2;
+        }
+    }
+    CGRect bounds = CGRectMake(0.0, 0.0, fit.w, fit.h);
+    CGPoint center = CGPointMake(CGRectGetMidX(CONTAINER.bounds), CGRectGetMidY(CONTAINER.bounds));
+    CGAffineTransform transform = CGAffineTransformMakeRotation(angle);
     CGFloat scale = fit.w > 0.0 ? (CGFloat)((double)surface_w / fit.w) : 1.0;
-    BOOL changed =
-        !CGRectEqualToRect(VIEW.frame, frame) || fabs(VIEW.contentScaleFactor - scale) > 0.0001;
-    VIEW.frame = frame;
-    VIEW.contentScaleFactor = scale;
+    BOOL changed = !CGRectEqualToRect(VIEW.bounds, bounds) ||
+                   !CGPointEqualToPoint(VIEW.center, center) ||
+                   !CGAffineTransformEqualToTransform(VIEW.transform, transform) ||
+                   fabs(VIEW.contentScaleFactor - scale) > 0.0001;
+    if (changed) {
+        VIEW.transform = CGAffineTransformIdentity;
+        VIEW.bounds = bounds;
+        VIEW.center = center;
+        VIEW.transform = transform;
+        VIEW.contentScaleFactor = scale;
+    }
     CGFloat view_height = VIEW.bounds.size.height;
     double safe_top = view_height > 0.0 ? VIEW.safeAreaInsets.top / view_height : 0.0;
     double safe_bottom = view_height > 0.0 ? VIEW.safeAreaInsets.bottom / view_height : 0.0;
@@ -387,11 +412,13 @@ static void layout_game_view(void) {
                (double)VIEW.safeAreaInsets.top, (double)VIEW.safeAreaInsets.bottom,
                safe_top * 100.0, safe_bottom * 100.0);
     }
-    atomic_store_explicit(&INTERFACE_ORIENTATION, (int)SCENE.effectiveGeometry.interfaceOrientation,
-                          memory_order_relaxed);
-    if (changed) {
-        atomic_store_explicit(&DRAWABLE_NEEDS_RESIZE, true, memory_order_release);
+    UIInterfaceOrientation input_orientation = orientation;
+    if (rotate) {
+        input_orientation = surface_w > surface_h ? UIInterfaceOrientationLandscapeRight
+                                                  : UIInterfaceOrientationPortrait;
     }
+    atomic_store_explicit(&INTERFACE_ORIENTATION, (int)input_orientation, memory_order_relaxed);
+    if (changed) atomic_store_explicit(&DRAWABLE_NEEDS_RESIZE, true, memory_order_release);
     update_orientation_lock();
 }
 
@@ -408,7 +435,9 @@ static void update_orientation_lock(void) {
     [WINDOW.rootViewController setNeedsUpdateOfPrefersInterfaceOrientationLocked];
 }
 
-static void request_game_orientation(UIWindowScene *scene, UIInterfaceOrientationMask mask) {
+static void request_game_orientation(UIWindowScene *scene, BOOL landscape) {
+    UIInterfaceOrientationMask mask =
+        landscape ? UIInterfaceOrientationMaskLandscape : UIInterfaceOrientationMaskPortrait;
     if (getenv("MR_DIAGNOSTICS")) {
         printf("[Orientation] requesting %s scene geometry (current %ld, locked %s)\n",
                mask == UIInterfaceOrientationMaskPortrait ? "portrait" : "landscape",
@@ -440,12 +469,19 @@ static void request_game_orientation_after_unlock(BOOL landscape, unsigned attem
         }
         return;
     }
-    request_game_orientation(SCENE, game_orientation_mask());
+    if (orientation_matches_request(SCENE.effectiveGeometry.interfaceOrientation)) {
+        update_orientation_lock();
+        return;
+    }
+    request_game_orientation(SCENE, landscape);
 }
 
 static void present_game_window(UIWindowScene *scene) {
     [WINDOW makeKeyAndVisible];
-    request_game_orientation(scene, game_orientation_mask());
+    BOOL landscape = atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire);
+    if (!orientation_matches_request(scene.effectiveGeometry.interfaceOrientation)) {
+        request_game_orientation(scene, landscape);
+    }
     layout_game_view();
 }
 
