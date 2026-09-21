@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.xcworkspacedata text eol=lf
+*.xcprivacy text eol=lf
+ios/MinionRush/Assets.xcassets/AppIcon.appiconset/AppIcon.png linguist-generated=true

@@ -1,0 +1,32 @@
+{
+  "code": "hu",
+  "display_name": "Magyar",
+  "engine_code": "hu",
+  "country": "HU",
+  "flag": {
+    "source": "resources/flags/hu.svg",
+    "layout": "horizontal",
+    "colors": ["CE2939", "FFFFFF", "477050"]
+  },
+  "font": {
+    "archive": "game/files/dlcs/dlc_font_tr_ru_android_fonts_38.jpk",
+    "member": "ptsans.ttf"
+  },
+  "format": {
+    "currency": "SPACE",
+    "quantity": "SPACE",
+    "date": "%Y. %m. %d.",
+    "time": "%H:%M",
+    "interval": "%H:%M:%S",
+    "interval_day": "%%d nap %H:%M:%S",
+    "interval_days": "%%d nap %H:%M:%S",
+    "percentage": "%s%%",
+    "crono": "%02d:%02d.%03d",
+    "capital": "DEFAULT",
+    "custom_time": "%H:%M:%S",
+    "period_seconds": "%Ss",
+    "period_minutes": "%Mm %Ss",
+    "period_hours": "%Hh %Mm %Ss",
+    "period_days": "%%d nap %Hh %Mm %Ss"
+  }
+}

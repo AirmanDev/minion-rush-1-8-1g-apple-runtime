@@ -1,0 +1,50 @@
+{
+  "host": {
+    "render_scale": 1.25,
+    "msaa_samples": 2,
+    "anisotropy": 8,
+    "pbo": true,
+    "engine_hz": 60
+  },
+  "game": {
+    "cpu": {
+      "forceHwSkinning": 0,
+      "useLessBananaSounds": 0,
+      "useLessSounds": 0
+    },
+    "gpu": {
+      "useShadows": 3,
+      "useNdis": 1,
+      "useSpecularMask": 1,
+      "sceneMgrCullingScreenPixels": 3,
+      "useUIDespicableScoreParticles": 1,
+      "usePostFX": 1,
+      "backgroundFarPlane": 1000,
+      "useLowModels": 0,
+      "defaultTextureFiltering": 2,
+      "msaa": 0,
+      "useLinearSpace": 1,
+      "useEmissiveness": 1,
+      "decoGenerationGroupAllowedDecosLerp": 1,
+      "useBarla": 1,
+      "synchronizedObjectDistance": 100,
+      "useRimLight": 1,
+      "sceneMgrCullingDistance": 90,
+      "maxOutline": -1,
+      "useSpecularLight": 1,
+      "platformPriority": 10,
+      "textureStartLOD": 0,
+      "downsamplePercent": 0.0,
+      "useCurvature": 1,
+      "hideOptionalDecos": 0,
+      "useIngameUITextEffect": 1,
+      "forceRoadShader": 1,
+      "size": 1.0,
+      "sceneMgrCullingRadius": 10,
+      "decosAnimationRadius": 200,
+      "useLowMaterials": 0,
+      "useLowParticles": 0
+    },
+    "texture_budget_mb": 512
+  }
+}

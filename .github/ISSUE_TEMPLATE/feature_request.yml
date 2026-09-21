@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a focused improvement to the preservation runtime.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the maintenance, compatibility, or preservation problem.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest coherent change and its module boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This proposal targets the historical 1.8.1g runtime, not the current Unity game.
+          required: true
+        - label: This proposal does not require distributing copyrighted game files.
+          required: true

@@ -1,0 +1,172 @@
+// Engine symbols resolved by the build-time translator.
+
+MR_GAME_SYMBOL(JNI_ON_LOAD, "JNI_OnLoad")
+MR_GAME_SYMBOL(NATIVE_INIT_METHODS, "Java_com_gameloft_android_ANMP_GloftDMHM_GameGLSurfaceView_nativeInitMethods")
+MR_GAME_SYMBOL(GAME_NATIVE_INIT, "Java_com_gameloft_android_ANMP_GloftDMHM_Game_nativeInit")
+MR_GAME_SYMBOL(RENDERER_NATIVE_INIT, "Java_com_gameloft_android_ANMP_GloftDMHM_GameRenderer_nativeInit")
+MR_GAME_SYMBOL(RENDERER_NATIVE_RESIZE, "Java_com_gameloft_android_ANMP_GloftDMHM_GameRenderer_nativeResize")
+MR_GAME_SYMBOL(SURFACE_NATIVE_RESUME, "Java_com_gameloft_android_ANMP_GloftDMHM_GameGLSurfaceView_nativeResume")
+MR_GAME_SYMBOL(NATIVE_RENDER, "Java_com_gameloft_android_ANMP_GloftDMHM_GameRenderer_nativeRender")
+MR_GAME_SYMBOL(NATIVE_TOUCH, "Java_com_gameloft_android_ANMP_GloftDMHM_GameGLSurfaceView_nativeOnTouch")
+MR_GAME_SYMBOL(NATIVE_ACCELEROMETER, "Java_com_gameloft_android_ANMP_GloftDMHM_GameSensorMgr_nativeAccelerator")
+
+// Engine localization API.
+MR_GAME_SYMBOL(BABEL_SINGLETON, "_ZN9SingletonIN5babel5BabelEE10s_instanceE")
+MR_GAME_SYMBOL(BABEL_SELECT_LOCALIZATION, "_ZN5babel5Babel18SelectLocalizationENS_12LocalizationEb")
+MR_GAME_SYMBOL(FONT_INFO_SINGLETON, "_ZN9SingletonI11FontInfoMgrE10s_instanceE")
+MR_GAME_SYMBOL(FONT_INFO_CAN_LOAD,
+               "_ZN11FontInfoMgr15CanLoadFontsForERN5babel12LocalizationE")
+MR_GAME_SYMBOL(GAME_SINGLETON, "_ZN9SingletonI4GameE10s_instanceE")
+MR_GAME_SYMBOL(GAME_LOAD_FONTS, "_ZN4Game9LoadFontsERN5babel12LocalizationE")
+MR_GAME_SYMBOL(LOCALIZATION_EN, "_ZN5babel12Localization2ENE")
+MR_GAME_SYMBOL(LOCALIZATION_FR, "_ZN5babel12Localization2FRE")
+MR_GAME_SYMBOL(LOCALIZATION_DE, "_ZN5babel12Localization2DEE")
+MR_GAME_SYMBOL(LOCALIZATION_IT, "_ZN5babel12Localization2ITE")
+MR_GAME_SYMBOL(LOCALIZATION_ES, "_ZN5babel12Localization2ESE")
+MR_GAME_SYMBOL(LOCALIZATION_PT, "_ZN5babel12Localization2PTE")
+MR_GAME_SYMBOL(LOCALIZATION_AR, "_ZN5babel12Localization2ARE")
+MR_GAME_SYMBOL(LOCALIZATION_JA, "_ZN5babel12Localization2JAE")
+MR_GAME_SYMBOL(LOCALIZATION_KO, "_ZN5babel12Localization2KOE")
+MR_GAME_SYMBOL(LOCALIZATION_ZH, "_ZN5babel12Localization2ZHE")
+MR_GAME_SYMBOL(LOCALIZATION_RU, "_ZN5babel12Localization2RUE")
+MR_GAME_SYMBOL(LOCALIZATION_TR, "_ZN5babel12Localization2TRE")
+MR_GAME_SYMBOL(LOCALIZATION_TH, "_ZN5babel12Localization2THE")
+MR_GAME_SYMBOL(LOCALIZATION_ID, "_ZN5babel12Localization2IDE")
+MR_GAME_SYMBOL(LOCALIZATION_ZH_HANT, "_ZN5babel12Localization7ZH_HANTE")
+
+// Runtime-created language controls use the engine's normal UI hierarchy.
+MR_GAME_SYMBOL(LANGUAGE_BUTTON_MAP_INDEX,
+               "_ZN5boost9unordered6detail10table_implINS1_3mapISaISt4pairIKN5babel12LocalizationEP15InterfaceButtonEES6_S9_NS_4hashIS6_EESt8equal_toIS6_EEEEixERS7_")
+MR_GAME_SYMBOL(INTERFACE_BUTTON_CTOR, "_ZN15InterfaceButtonC1Ev")
+MR_GAME_SYMBOL(INTERFACE_BUTTON_DTOR, "_ZN15InterfaceButtonD0Ev")
+MR_GAME_SYMBOL(INTERFACE_BUTTON_INIT_FROM,
+               "_ZN15InterfaceButton8InitFromEP15InterfaceObjectRKN4math4vec2IfEES6_")
+MR_GAME_SYMBOL(FILL_RECT_CTOR, "_ZN17InterfaceFillRectC1Ev")
+MR_GAME_SYMBOL(FILL_RECT_DTOR, "_ZN17InterfaceFillRectD0Ev")
+MR_GAME_SYMBOL(FILL_RECT_INIT,
+               "_ZN17InterfaceFillRect4InitEN4math4vec2IfEES2_N3jet5video5ColorE")
+MR_GAME_SYMBOL(INTERFACE_SET_PARENT, "_ZN15InterfaceObject9SetParentEPS_")
+
+// Interface types used by the safe-area adapter.
+MR_GAME_SYMBOL(INTERFACE_AREA_VTABLE, "_ZTV13InterfaceArea")
+MR_GAME_SYMBOL(INTERFACE_3D_TOUCH_VTABLE, "_ZTV24Interface3DTouchInteract")
+MR_GAME_SYMBOL(INTERFACE_3D_BODY_PART_VTABLE, "_ZTV19Interface3DBodyPart")
+MR_GAME_SYMBOL(INTERFACE_DEVICE_ANIM_VTABLE, "_ZTV27InterfaceDeviceSpecificAnim")
+MR_GAME_SYMBOL(INTERFACE_SCROLL_BAR_VTABLE, "_ZTV18InterfaceScrollBar")
+MR_GAME_SYMBOL(INTERFACE_GRID_VTABLE, "_ZTV13InterfaceGrid")
+MR_GAME_SYMBOL(INTERFACE_SLIDE_VTABLE, "_ZTV14InterfaceSlide")
+MR_GAME_SYMBOL(INTERFACE_LIST_BUTTON_SCROLL_VTABLE, "_ZTV25InterfaceListButtonScroll")
+MR_GAME_SYMBOL(INTERFACE_LIST_VTABLE, "_ZTV13InterfaceList")
+MR_GAME_SYMBOL(INTERFACE_FILL_RECT_VTABLE, "_ZTV17InterfaceFillRect")
+MR_GAME_SYMBOL(INTERFACE_BUTTON_VTABLE, "_ZTV15InterfaceButton")
+MR_GAME_SYMBOL(INTERFACE_GRAPH_VTABLE, "_ZTV14InterfaceGraph")
+MR_GAME_SYMBOL(INTERFACE_PROGRESS_BAR_VTABLE, "_ZTV13InterfacePBar")
+MR_GAME_SYMBOL(INTERFACE_TEXT_VTABLE, "_ZTV13InterfaceText")
+
+MR_GAME_HOOK_SYMBOL(FRAME_UPDATE, "_ZN4Game11FrameUpdateEj")
+
+MR_GAME_HOOK_SYMBOL(ON_UPDATE, "_ZN4Game8OnUpdateEv")
+
+// Gameplay hooks used for timing and diagnostics.
+MR_GAME_HOOK_SYMBOL(GP_CART, "_ZN12CartGameplay6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_FLUFFY, "_ZN14FluffyGameplay6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_MOON, "_ZN12MoonGameplay6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_ROCKET, "_ZN14RocketGameplay6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_BOSS, "_ZN12BossGameplay6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_LARGE_MINION, "_ZN19LargeMinionGameplay6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_POWERUP, "_ZN10PowerUpMgr6UpdateEv")
+MR_GAME_HOOK_SYMBOL(GP_BONUS, "_ZN5Bonus6UpdateEv")
+
+MR_GAME_HOOK_SYMBOL(FLUFFY_MOVEMENT, "_ZN14FluffyGameplay20UpdateFluffyMovementEv")
+
+// Settings lifecycle used to integrate optional community languages.
+MR_GAME_HOOK_SYMBOL(OPTIONS_SETTINGS_ENTER, "_ZN19OptionsSettingsPage7OnEnterEv")
+MR_GAME_HOOK_SYMBOL(OPTIONS_SETTINGS_REFRESH, "_ZN19OptionsSettingsPage7RefreshEv")
+MR_GAME_HOOK_SYMBOL(OPTIONS_SETTINGS_LEAVE, "_ZN19OptionsSettingsPage10OnMenuQuitEv")
+MR_GAME_HOOK_SYMBOL(OPTIONS_SETTINGS_DESTROY, "_ZN19OptionsSettingsPageD2Ev")
+MR_GAME_HOOK_SYMBOL(OPTIONS_SETTINGS_LANGUAGE,
+                    "_ZN19OptionsSettingsPage16HandleLangButtonEP15InterfaceButton")
+MR_GAME_HOOK_SYMBOL(INITIAL_LANGUAGE_ENTER, "_ZN20Menu_InitialLanguage7OnEnterEv")
+MR_GAME_HOOK_SYMBOL(INITIAL_LANGUAGE_REFRESH, "_ZN20Menu_InitialLanguage7RefreshEv")
+MR_GAME_HOOK_SYMBOL(INITIAL_LANGUAGE_LEAVE, "_ZN20Menu_InitialLanguageD2Ev")
+MR_GAME_HOOK_SYMBOL(INITIAL_LANGUAGE_LANGUAGE,
+                    "_ZN20Menu_InitialLanguage16HandleLangButtonEP15InterfaceButton")
+
+// Movie playback temporarily uses the engine's landscape layout.
+MR_GAME_HOOK_SYMBOL(MOVIE_MENU_ENTER, "_ZN18Menu_MoviePlayback7OnEnterEv")
+MR_GAME_HOOK_SYMBOL(MOVIE_FINISHED, "_ZN16GS_MoviePlayback15OnMovieFinishedEb")
+MR_GAME_HOOK_SYMBOL(MOVIE_MENU_LEAVE, "_ZN18Menu_MoviePlayback6OnQuitEv")
+
+// Keep top-level 2D UI groups inside the iOS safe area.
+MR_GAME_HOOK_SYMBOL(BASIC_PAGE_RENDER,
+                    "_ZN9BasicPage6RenderERKN3jet5scene6CameraERNS0_5video7PainterE")
+
+// Offline UI and service hooks.
+MR_GAME_HOOK_SYMBOL(MENU_GET_OBJECT, "_ZN9Menu_Base11GetUIObjectERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(MENU_GET_BUTTON, "_ZN9Menu_Base11GetUIButtonERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(MENU_GET_GRAPH, "_ZN9Menu_Base10GetUIGraphERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(BASIC_PAGE_GET_OBJECT, "_ZN9BasicPage11GetUIObjectERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(BASIC_PAGE_GET_BUTTON, "_ZN9BasicPage11GetUIButtonERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(BASIC_PAGE_GET_GRAPH, "_ZN9BasicPage10GetUIGraphERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(UI_SET_VISIBLE, "_ZN15InterfaceObject10SetVisibleEb")
+MR_GAME_HOOK_SYMBOL(UI_SET_ACTIVE, "_ZN15InterfaceObject9SetActiveEb")
+MR_GAME_HOOK_SYMBOL(SERVER_TIME_SECONDS, "_ZNK6social10ServerTime27GetCurrentServerTimeSecondsEv")
+MR_GAME_HOOK_SYMBOL(SERVER_TIME_STATUS, "_ZNK6social10ServerTime13GetTimeStatusEv")
+MR_GAME_HOOK_SYMBOL(HAS_INTERNET, "_ZN4Game21HasInternetConnectionEv")
+MR_GAME_HOOK_SYMBOL(CAN_LOGIN, "_ZN16OnlinePlayerData8CanLoginEv")
+MR_GAME_HOOK_SYMBOL(IS_LOGGED_IN, "_ZNK16OnlinePlayerData10IsLoggedInEv")
+
+// Local weekly-event implementation.
+MR_GAME_HOOK_SYMBOL(EVENTS_START_LOADING, "_ZN9EventsMgr18StartLoadingEventsE9safe_enumI11ETLETypeDefNS1_4typeEERKN3jet6StringE")
+MR_GAME_HOOK_SYMBOL(EVENTS_UPDATE, "_ZN9EventsMgr6UpdateEi")
+MR_GAME_HOOK_SYMBOL(EVENTS_IS_LOADING, "_ZN9EventsMgr15IsLoadingEventsEv")
+MR_GAME_SYMBOL(JSON_READER_CTOR, "_ZN4Json6ReaderC1Ev")
+MR_GAME_SYMBOL(JSON_READER_DTOR, "_ZN4Json6ReaderD1Ev")
+MR_GAME_SYMBOL(JSON_READER_PARSE, "_ZN4Json6Reader5parseEPKcS2_RNS_5ValueEb")
+MR_GAME_SYMBOL(JSON_VALUE_CTOR, "_ZN4Json5ValueC1ENS_9ValueTypeE")
+MR_GAME_SYMBOL(JSON_VALUE_DTOR, "_ZN4Json5ValueD1Ev")
+MR_GAME_SYMBOL(SOCIAL_EVENT_CTOR, "_ZN6social5EventC1ERKN4Json5ValueE")
+MR_GAME_SYMBOL(SOCIAL_EVENT_DTOR, "_ZN6social5EventD1Ev")
+MR_GAME_SYMBOL(EVENTS_ADD_EVENT, "_ZN9EventsMgr8AddEventE9safe_enumI11ETLETypeDefNS1_4typeEEPN6social5EventERKN3jet6StringE")
+MR_GAME_SYMBOL(MISSION_SINGLETON, "_ZN9SingletonI16OnlineMissionMgrE10s_instanceE")
+MR_GAME_SYMBOL(WEEKLY_CATEGORY, "_ZN9EventsMgr27k_weeklyEvents_categoryNameE")
+MR_GAME_SYMBOL(EVENT_VERSION, "_ZN9EventsMgr14k_eventVersionE")
+MR_GAME_SYMBOL(MISSION_SYNC, "_ZN16OnlineMissionMgr22SyncMissionsWithEventsE9safe_enumI11ETLETypeDefNS1_4typeEE")
+MR_GAME_SYMBOL(MISSION_FIRST_ENDING, "_ZN16OnlineMissionMgr25CalculateFirstEndingEventEv")
+MR_GAME_SYMBOL(MISSION_REMAINING, "_ZN16OnlineMissionMgr34GetFirstEndingMissionRemainingTimeERiRf")
+MR_GAME_SYMBOL(MISSION_FIND, "_ZN16OnlineMissionMgr21FindOnlineMissionDataERKSs")
+MR_GAME_HOOK_SYMBOL(CLAIM_START, "_ZN20ClaimOnlinePrizesMgr25StartCheckingOnlinePrizesEPNS_14ClaimPrizeDataE")
+MR_GAME_SYMBOL(CLAIM_PROCESS, "_ZN20ClaimOnlinePrizesMgr23ProcessPrizeCheckedJsonEPNS_14ClaimPrizeDataERKN4Json5ValueE")
+
+// Online functions blocked by the offline policy.
+MR_BLOCKED_SYMBOL("_ZN10FriendsMgr6UpdateEv")
+MR_BLOCKED_SYMBOL("_ZN5Store12InitIAPStoreEv")
+MR_BLOCKED_SYMBOL("_ZNK5Store17RefreshFromServerEbb")
+MR_BLOCKED_SYMBOL("_ZN5Store18RefreshAccessTokenEv")
+MR_BLOCKED_SYMBOL("_ZN5Store19RefreshIAPTokenListEv")
+MR_BLOCKED_SYMBOL("_ZN5Store10BuyIapItemERKN3jet6StringE")
+MR_BLOCKED_SYMBOL("_ZN13PopupCurrency14ToShopCallbackEv")
+MR_BLOCKED_SYMBOL("_ZN16PopupGiftCostume14ToShopCallbackEv")
+MR_BLOCKED_SYMBOL("_ZN8LoginMgr6UpdateEv")
+MR_BLOCKED_SYMBOL("_ZN8LoginMgr10LoginToSNSEN9sociallib13ClientSNSEnumE")
+MR_BLOCKED_SYMBOL("_ZN16OnlinePlayerData14LoginToGameAPIEv")
+MR_BLOCKED_SYMBOL("_ZN4Game24AreSocialFeaturesEnabledEv")
+MR_BLOCKED_SYMBOL("_ZN6glotv315TrackingManager6UpdateEv")
+MR_BLOCKED_SYMBOL("_ZN15GameTrackingMgr6UpdateEv")
+MR_BLOCKED_SYMBOL("_ZN16ConnectionPoller9ThreadRunEv")
+MR_BLOCKED_SYMBOL("_ZN6glotv39DNSClient15tryToResolveDNSEv")
+MR_BLOCKED_SYMBOL("_ZN9manhattan3dlc23AssetMgrConnectivityMgr8GrabGaiaEv")
+MR_BLOCKED_SYMBOL("_ZN3iap5Store10InitializeERN10glwebtools10JsonWriterE")
+MR_BLOCKED_SYMBOL("_ZN3iap5Store6UpdateEj")
+MR_BLOCKED_SYMBOL("_ZN3iap5Store12RefreshStoreEv")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia10InitializeERKSsbPFvNS_7OpCodesES2_iPvES4_")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia10InitializeERKSsS2_S2_bPFvNS_7OpCodesES2_iPvES4_")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia6UpdateEv")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia13IsInitializedEv")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia5LoginENS_18BaseServiceManager11CredentialsERKSsS4_bPFvNS_7OpCodesES4_iPvES6_")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia5LoginENS_18BaseServiceManager11CredentialsERKSsS4_S4_bPFvNS_7OpCodesES4_iPvES6_")
+MR_BLOCKED_SYMBOL("_ZN4gaia4Gaia18RefreshAccessTokenERSsRKSsS3_S3_bPFvNS_7OpCodesES3_iPvES5_")
+
+// Prefixes for generated online-service entry points.
+MR_BLOCKED_PREFIX("GameAPIAndroidGLSocialLib_")
+MR_BLOCKED_PREFIX("Java_com_gameloft_GLSocialLib_GameAPI_")

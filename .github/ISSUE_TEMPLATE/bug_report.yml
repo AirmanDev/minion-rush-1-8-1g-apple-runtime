@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible defect in the 1.8.1g preservation runtime.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach game files, APKs, DLC, signing data, or personal logs.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - iPhone or iPad
+        - Build or asset installer
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System version and hardware
+      placeholder: macOS 14, Apple M1 or iOS 26, iPhone SE 2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Provide the shortest sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics
+      description: Remove paths, device IDs, signing data, and game content before pasting.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Required checks
+      options:
+        - label: I reproduced this with the exact 1.8.1g asset set accepted by validate_assets.py.
+          required: true
+        - label: I did not attach or link copyrighted game files.
+          required: true
