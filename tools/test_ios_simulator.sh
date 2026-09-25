@@ -76,41 +76,44 @@ IFS=$'\t' read -r runtime phone_type tablet_type < <(
 )
 
 run_test() {
-  local label="$1" device_type="$2" udid data log ui_log capture attempt state settings_dir
+  local label="$1" device_type="$2" udid data log ui_log orientation_log capture attempt state
+  local settings_dir
   local landscape_line portrait_line
   udid="$(xcrun simctl create "Minion Rush test $label" "$device_type" "$runtime")"
   CREATED_DEVICES+=("$udid")
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" -b
 
-  xcodebuild \
-    -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$CONFIG" \
-    -derivedDataPath "$DERIVED" -destination "platform=iOS Simulator,id=$udid" \
-    -resultBundlePath "$LOGS/ui-$label.xcresult" \
-    -only-testing:MinionRushUITests/MinionRushUITests/testIntroUsesLandscapeGeometry \
-    test-without-building > "$LOGS/ui-$label.log" 2>&1 || {
-      data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data 2>/dev/null || true)"
-      if [[ -n "$data" ]]; then
-        cp "$data/Library/Caches/MinionRush/Logs/minion-rush.log" \
-          "$LOGS/intro-runtime-$label.log" 2>/dev/null || true
-      fi
-      printf 'ERROR: %s Simulator movie-orientation UI test failed\n' "$label" >&2
-      tail -80 "$LOGS/ui-$label.log" >&2
-      return 1
-    }
+  if [[ "${MR_SIMULATOR_SKIP_INTRO:-0}" != 1 ]]; then
+    xcodebuild \
+      -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$CONFIG" \
+      -derivedDataPath "$DERIVED" -destination "platform=iOS Simulator,id=$udid" \
+      -resultBundlePath "$LOGS/ui-$label.xcresult" \
+      -only-testing:MinionRushUITests/MinionRushUITests/testIntroUsesLandscapeGeometry \
+      test-without-building > "$LOGS/ui-$label.log" 2>&1 || {
+        data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data 2>/dev/null || true)"
+        if [[ -n "$data" ]]; then
+          cp "$data/Library/Caches/MinionRush/Logs/minion-rush.log" \
+            "$LOGS/intro-runtime-$label.log" 2>/dev/null || true
+        fi
+        printf 'ERROR: %s Simulator movie-orientation UI test failed\n' "$label" >&2
+        tail -80 "$LOGS/ui-$label.log" >&2
+        return 1
+      }
 
-  data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"
-  log="$data/Library/Caches/MinionRush/Logs/minion-rush.log"
-  cp "$log" "$LOGS/intro-runtime-$label.log" 2>/dev/null || true
-  landscape_line="$(grep -nFm1 '[Orientation] landscape surface:' "$log" \
-    | cut -d: -f1 || true)"
-  portrait_line="$(grep -nF '[Orientation] portrait surface:' "$log" \
-    | tail -1 | cut -d: -f1 || true)"
-  if [[ -z "$landscape_line" || -z "$portrait_line" || \
-        "$portrait_line" -le "$landscape_line" ]]; then
-    printf 'ERROR: %s Simulator did not restore portrait rendering after the intro\n' \
-      "$label" >&2
-    return 1
+    data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"
+    log="$data/Library/Caches/MinionRush/Logs/minion-rush.log"
+    cp "$log" "$LOGS/intro-runtime-$label.log" 2>/dev/null || true
+    landscape_line="$(grep -nFm1 '[Orientation] landscape surface:' "$log" \
+      | cut -d: -f1 || true)"
+    portrait_line="$(grep -nF '[Orientation] portrait surface:' "$log" \
+      | tail -1 | cut -d: -f1 || true)"
+    if [[ -z "$landscape_line" || -z "$portrait_line" || \
+          "$portrait_line" -le "$landscape_line" ]]; then
+      printf 'ERROR: %s Simulator did not restore portrait rendering after the intro\n' \
+        "$label" >&2
+      return 1
+    fi
   fi
 
   xcrun simctl install "$udid" "$APP"
@@ -143,6 +146,35 @@ run_test() {
         "$label" >&2
       return 1
     }
+  fi
+
+  xcodebuild \
+    -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$CONFIG" \
+    -derivedDataPath "$DERIVED" -destination "platform=iOS Simulator,id=$udid" \
+    -resultBundlePath "$LOGS/orientation-$label.xcresult" \
+    -only-testing:MinionRushUITests/MinionRushUITests/testGameplayOrientationPolicy \
+    test-without-building > "$LOGS/orientation-$label.log" 2>&1 || {
+      printf 'ERROR: %s Simulator gameplay-orientation UI test failed\n' "$label" >&2
+      tail -80 "$LOGS/orientation-$label.log" >&2
+      return 1
+    }
+  if [[ "$label" == "iPad" ]]; then
+    data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"
+    orientation_log="$data/Library/Caches/MinionRush/Logs/minion-rush.log"
+    cp "$orientation_log" "$LOGS/orientation-runtime-$label.log" 2>/dev/null || true
+    grep -Fxq '[Orientation] iPad content: portrait-upside-down' "$orientation_log" || {
+      printf 'ERROR: %s Simulator did not render upside-down portrait\n' "$label" >&2
+      return 1
+    }
+    grep -Fxq '[Orientation] iPad content: portrait' "$orientation_log" || {
+      printf 'ERROR: %s Simulator did not render upright portrait\n' "$label" >&2
+      return 1
+    }
+    if grep -Eq '\[Orientation\] scene geometry changed: landscape-(left|right)' \
+      "$orientation_log"; then
+      printf 'ERROR: %s Simulator entered a gameplay landscape orientation\n' "$label" >&2
+      return 1
+    fi
   fi
 
   SIMCTL_CHILD_MR_LANGUAGE=hu \
@@ -178,7 +210,7 @@ run_test() {
     printf 'ERROR: %s Simulator did not activate the native hu engine locale\n' "$label" >&2
     return 1
   }
-  printf '   %s: landscape intro, Hungarian startup, and portrait menu passed\n' "$label"
+  printf '   %s: Hungarian startup and portrait policy passed\n' "$label"
   xcrun simctl shutdown "$udid"
 }
 

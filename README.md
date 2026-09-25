@@ -23,8 +23,9 @@ release 1.8.1g. See `docs/LEGAL.md`.
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
-and portrait rendering. Physical hardware remains the release gate for CPU,
-GPU, memory, thermal, energy, audio, and window-management behavior.
+portrait rendering, and gameplay landscape rejection on both devices. Physical
+hardware remains the release gate for CPU, GPU, memory, thermal, energy, audio,
+and window-management behavior.
 
 The original engine uses OpenGL ES. The iOS port therefore retains one
 EAGL/GLES3 compatibility path. There is no ES2 fallback. A native Metal port
@@ -115,12 +116,16 @@ Run the isolated iOS 26 Simulator matrix:
 
 The test creates temporary iPhone SE (2nd generation) and iPad simulators,
 installs a Release build, verifies the same-session landscape-to-portrait intro
-transition and Hungarian startup, checks the portrait menu framebuffer, and
-removes every generated simulator and build directory when it finishes. Set
+transition and Hungarian startup, checks both iPad portrait directions, rejects
+gameplay landscape on iPhone and iPad, and checks the portrait menu framebuffer.
+It removes every generated simulator and build directory when it finishes. Set
 `MR_SIMULATOR_ARTIFACTS` to an empty directory path to retain the build logs and
 captured screenshots. Post-intro menu tests reuse the engine-generated macOS
 settings file. Override its path with `MR_SIMULATOR_SETTINGS` when the macOS data
 root is elsewhere.
+
+Set `MR_SIMULATOR_SKIP_INTRO=1` to run the menu and orientation checks without
+the clean-install intro test when diagnosing a slow Simulator renderer.
 
 Filter physical devices by name:
 
@@ -150,13 +155,17 @@ captured non-black startup frame. Override the deadline with
 `MR_STARTUP_TIMEOUT`. The framebuffer readback is enabled for this diagnostic
 launch only; ordinary game launches do not capture or encode a startup image.
 
-The iPhone and iPad application keeps gameplay and menus in portrait. The intro
-movie temporarily requests landscape scene geometry and switches to a landscape
-render surface, then restores the portrait policy and surface when playback
-ends. UIKit may deny programmatic orientation changes in an iPadOS windowing
+The iPhone application keeps gameplay and menus in upright portrait. The iPad
+supports upright and upside-down portrait during gameplay and menus, while both
+landscape orientations remain excluded. The intro movie temporarily requests
+landscape scene geometry and switches to a landscape render surface, then
+restores the platform-specific portrait policy and surface when playback ends.
+UIKit may deny programmatic orientation changes in an iPadOS windowing
 mode. In that case, the view rotates the unchanged logical surface into the
 current scene instead of displaying a portrait surface between large side bars.
 Touch and motion coordinates remain aligned with the logical game orientation.
+An iPadOS scene opened in landscape can remain landscape until the device is
+turned to portrait; a scene geometry request is not a guaranteed rotation.
 On iOS and iPadOS 27, the scene delegate also supplies the current orientation
 mask through the scene-level API.
 UIKit safe-area insets move top-aligned 2D interface groups and scrollable
@@ -166,9 +175,14 @@ with a small width-proportional interior clearance, while intentional decorative
 overflow remains clipped at the display edge. Composite revive controls move as
 one layout group so their button, label, progress, and decoration remain aligned.
 Scene rendering and full-screen backgrounds continue to use the complete display.
-The controller locks only an orientation already reached by the scene and does
-not use the deprecated full-screen compatibility mode. In the background, the
-display link and engine thread wait until the scene becomes active again.
+The controller locks only an orientation already reached by the scene. On iPad,
+the portrait scene stays locked against landscape while the game view turns
+180 degrees when the device reaches the opposite portrait orientation. UIKit
+applies the same view transform to touch input, and motion axes follow the
+displayed content. Device-orientation notifications run only while the iPad
+scene is active. The app does not use the deprecated full-screen compatibility
+mode. In the background, the display link and engine thread wait until the
+scene becomes active again.
 
 ## Community localizations
 
@@ -233,8 +247,9 @@ validator on every push and pull request. Contributors run builds that require
 their local copyrighted game data.
 
 A final iOS release still requires physical iPhone and iPad testing: startup,
-background and foreground transitions, portrait-content locking, Stage Manager
-resizing, touch, accelerometer, audio, saving, extended play, and thermal load.
+background and foreground transitions, both iPad portrait directions, gameplay
+landscape rejection, Stage Manager resizing, touch, accelerometer, audio,
+saving, extended play, and thermal load.
 
 ## Reinstall assets
 

@@ -44,8 +44,22 @@ and does not distribute that binary.
   https://developer.apple.com/videos/play/wwdc2025/282/
 - iPadOS 26 interface-orientation locking:
   https://developer.apple.com/documentation/uikit/uiviewcontroller/prefersinterfaceorientationlocked
+- iPadOS 26 window resizing and orientation-lock guidance:
+  https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key
+- Physical device orientation:
+  https://developer.apple.com/documentation/uikit/uidevice/orientation
+- Device-orientation notifications:
+  https://developer.apple.com/documentation/uikit/uidevice/orientationdidchangenotification
+- Starting device-orientation notifications:
+  https://developer.apple.com/documentation/uikit/uidevice/begingeneratingdeviceorientationnotifications()
+- Stopping device-orientation notifications:
+  https://developer.apple.com/documentation/uikit/uidevice/endgeneratingdeviceorientationnotifications()
 - View-controller supported orientations:
   https://developer.apple.com/documentation/uikit/uiviewcontroller/supportedinterfaceorientations
+- Interface-orientation masks:
+  https://developer.apple.com/documentation/uikit/uiinterfaceorientationmask
+- Application-level supported orientations:
+  https://developer.apple.com/documentation/bundleresources/information-property-list/uisupportedinterfaceorientations
 - Updating a view controller's supported orientations:
   https://developer.apple.com/documentation/uikit/uiviewcontroller/setneedsupdateofsupportedinterfaceorientations()
 - Scene-level supported orientations on iOS and iPadOS 27:

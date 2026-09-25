@@ -824,7 +824,8 @@ def check_ios_project(tree: dict[str, str]) -> None:
        scheme.count('BlueprintIdentifier = "A10000000000000000000006"') != 2 or \
        scheme.count('ReferencedContainer = "container:MinionRush.xcodeproj"') != 5:
         raise SystemExit("shared Xcode scheme does not target the application and UI tests")
-    for token in ("testIntroUsesLandscapeGeometry", "XCUIScreen.mainScreen.screenshot"):
+    for token in ("testIntroUsesLandscapeGeometry", "testGameplayOrientationPolicy",
+                  "XCUIScreen.mainScreen.screenshot"):
         if token not in ui_test:
             raise SystemExit("movie-orientation UI test is incomplete: " + token)
     for token in ("build-for-testing", "test-without-building", "MinionRushUITests"):
@@ -840,6 +841,11 @@ def check_ios_project(tree: dict[str, str]) -> None:
         "CGAffineTransformMakeRotation",
         "UIInterfaceOrientationMaskLandscape",
         "UIInterfaceOrientationMaskPortrait",
+        "UIInterfaceOrientationMaskPortraitUpsideDown",
+        "UIUserInterfaceIdiomPad",
+        "UIDeviceOrientationDidChangeNotification",
+        "beginGeneratingDeviceOrientationNotifications",
+        "endGeneratingDeviceOrientationNotifications",
         "preferredInterfaceOrientationForPresentation",
         "setNeedsUpdateOfSupportedInterfaceOrientations",
         "setNeedsUpdateOfPrefersInterfaceOrientationLocked",

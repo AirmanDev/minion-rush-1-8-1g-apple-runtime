@@ -177,12 +177,14 @@ create a separate window for external-display roles.
 
 The application declares portrait and landscape at the application level on
 iPhone and all orientations on iPad, as required for runtime scene geometry
-changes and resizable iPadOS scenes. The game view controller normally narrows
-that declaration to portrait. On iOS and iPadOS 27, the scene delegate returns
-the same dynamic mask through `supportedInterfaceOrientationsForWindowScene:`.
-The movie playback page temporarily changes the mask, requests landscape scene
-geometry, and resizes the engine surface through its existing renderer
-callback. Leaving the movie restores the portrait mask, request, and surface.
+changes and resizable iPadOS scenes. During gameplay and menus, the game view
+controller narrows that declaration to upright portrait on iPhone and to upright
+plus upside-down portrait on iPad. On iOS and iPadOS 27, the scene delegate
+returns the same idiom-specific dynamic mask through
+`supportedInterfaceOrientationsForWindowScene:`. The movie playback page
+temporarily changes the mask, requests landscape scene geometry, and resizes the
+engine surface through its existing renderer callback. Leaving the movie
+restores the platform-specific portrait mask, request, and surface.
 
 A scene geometry update is a request and may be denied by an iPadOS windowing
 mode. The renderer therefore treats the engine surface orientation as the
@@ -191,10 +193,18 @@ differ, the game view is rotated and aspect-fitted in the scene. This keeps the
 movie landscape and the game portrait without the large pillarbox bars caused
 by fitting an unrotated portrait view in a landscape scene. UIKit converts touch
 locations through the same view transform, and motion axes follow the logical
-content orientation. The controller locks only an orientation already reached
-by the scene and does not use the deprecated full-screen compatibility mode.
-`viewDidLayoutSubviews` and the scene geometry delegate recalculate the transform
-after each window-size change.
+content orientation. A landscape scene may persist until the physical iPad
+returns to portrait because iPadOS does not guarantee geometry requests. The
+controller locks only an orientation already reached
+by the scene. During normal iPad gameplay the portrait scene stays locked
+against landscape. Physical-device orientation notifications turn the game view
+180 degrees when the device reaches the opposite portrait direction. This
+keeps the game upright even when the iPadOS windowing mode denies a scene
+geometry request. Notification generation is paired with the active scene
+lifecycle. The supported-orientation mask excludes both gameplay landscape
+orientations. The app does not use the deprecated full-screen compatibility
+mode. `viewDidLayoutSubviews` and the scene geometry delegate recalculate the
+transform after each window-size change.
 
 Touch coordinates use the inverse of the same aspect-fit and rotation transform.
 The guest receives one active touch. Moving to the background completes any
@@ -272,7 +282,7 @@ by the application.
 | macOS build | `./build.sh` | Strict compilation and block generation |
 | macOS smoke | `./test.sh` | Headless and windowed startup |
 | iOS package | `./tools/package_ios.sh` | Device build, opaque white app-icon rendering, private staging, assets, and signing |
-| iOS Simulator | `./tools/test_ios_simulator.sh` | Clean iPhone SE and iPad intro transition, language-menu UI, Hungarian startup, and portrait framebuffer |
+| iOS Simulator | `./tools/test_ios_simulator.sh` | Clean iPhone SE and iPad intro transition, language-menu UI, Hungarian startup, portrait framebuffer, and gameplay orientation policy on both devices |
 | iOS device | `./tools/deploy_ios.sh` | Installation on paired physical devices |
 
 Physical iPhone and iPad regression testing remains a release gate. Static and

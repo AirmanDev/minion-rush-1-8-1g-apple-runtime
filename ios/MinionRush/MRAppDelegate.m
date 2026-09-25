@@ -184,8 +184,7 @@ static void start_engine_once(void) {
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientationsForWindowScene:
     (UIWindowScene *)windowScene {
-    (void)windowScene;
-    return mr_ios_supported_orientations();
+    return mr_ios_supported_orientations(windowScene);
 }
 
 @end

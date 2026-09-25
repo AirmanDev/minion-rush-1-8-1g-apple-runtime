@@ -98,4 +98,50 @@
     [app terminate];
 }
 
+- (void)testGameplayOrientationPolicy {
+    BOOL tablet = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    XCUIDevice *device = XCUIDevice.sharedDevice;
+    device.orientation = UIDeviceOrientationPortrait;
+
+    XCUIApplication *app = [[XCUIApplication alloc] init];
+    app.launchEnvironment = @{
+        @"MR_LANGUAGE" : @"hu",
+        @"MR_DIAGNOSTICS" : @"1",
+    };
+    [app launch];
+
+    XCUIElement *window = app.windows.firstMatch;
+    XCTAssertTrue([window waitForExistenceWithTimeout:30.0]);
+    [self waitForWindow:window landscape:NO timeout:30.0];
+    [self waitForDelay:3.0];
+
+    if (tablet) {
+        device.orientation = UIDeviceOrientationPortraitUpsideDown;
+        [self waitForWindow:window landscape:NO timeout:15.0];
+        [self waitForDelay:3.0];
+        [self attachScreenshotNamed:@"iPad portrait upside down"];
+    } else {
+        device.orientation = UIDeviceOrientationPortraitUpsideDown;
+        [self waitForDelay:3.0];
+        XCTAssertGreaterThan(window.frame.size.height, window.frame.size.width);
+        [self attachScreenshotNamed:@"iPhone upside down rejected"];
+    }
+
+    device.orientation = UIDeviceOrientationLandscapeLeft;
+    [self waitForDelay:3.0];
+    XCTAssertGreaterThan(window.frame.size.height, window.frame.size.width);
+    [self attachScreenshotNamed:@"Gameplay landscape left rejected"];
+
+    device.orientation = UIDeviceOrientationLandscapeRight;
+    [self waitForDelay:3.0];
+    XCTAssertGreaterThan(window.frame.size.height, window.frame.size.width);
+    [self attachScreenshotNamed:@"Gameplay landscape right rejected"];
+
+    device.orientation = UIDeviceOrientationPortrait;
+    [self waitForWindow:window landscape:NO timeout:15.0];
+    [self waitForDelay:3.0];
+    [self attachScreenshotNamed:@"Gameplay portrait"];
+    [app terminate];
+}
+
 @end
