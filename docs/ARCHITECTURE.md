@@ -36,7 +36,9 @@ Xcode target and the native build script. Newer UIKit calls must pass the
 compiler's availability checks; the SDK version is not the deployment minimum.
 The Simulator matrix selects one installed minor release per OS family and
 checks device support before creating temporary phones and tablets. Explicit
-family arguments fail when any requested runtime is missing.
+family arguments fail when any requested runtime is missing. Exact version
+arguments select the version advertised by `simctl`; result labels include that
+version so two releases in one family cannot overwrite each other's artifacts.
 
 ## Module ownership
 
@@ -236,10 +238,15 @@ The gameplay mask excludes landscape. Scene-size changes also resize the guest
 render surface through `Renderer.nativeResize`, keeping the original short-side
 resolution and debouncing intermediate window sizes. Differences of at most eight rendered
 pixels are filled consistently in the view, framebuffer copy, and touch map;
-larger differences keep aspect-fit to avoid cropping controls. The app does not
-use the deprecated full-screen compatibility mode. `viewDidLayoutSubviews` and
-the scene geometry delegate recalculate the transform after each window-size
-change.
+larger differences keep aspect-fit to avoid cropping controls.
+On iPadOS 17 and 18, `UIRequiresFullScreen` is required for UIKit to enforce the
+controller's orientation mask. The information property list also sets
+`UIRequiresFullScreenIgnoredStartingWithVersion` to `26.0`, as described in
+Apple's TN3192. That key is available from 26.2, so 26.0 and 26.1 retain the
+older full-screen behavior. Later systems ignore that behavior and use the
+same dynamically sized scene and orientation-lock policy.
+`viewDidLayoutSubviews` and the scene geometry delegate recalculate the
+transform after each window-size change.
 
 Touch coordinates use the inverse of the same aspect-fit and rotation transform.
 The guest receives one active touch. Moving to the background completes any
@@ -321,8 +328,35 @@ by the application.
 | macOS build | `./build.sh` | Strict compilation and block generation |
 | macOS smoke | `./test.sh` | Headless and windowed startup |
 | iOS package | `./tools/package_ios.sh` | Device build, opaque white app-icon rendering, private staging, assets, and signing |
-| iOS Simulator | `./tools/test_ios_simulator.sh` | Clean iPhone SE and iPad intro transition, language-menu UI, Hungarian startup, portrait framebuffer, and gameplay orientation policy on both devices |
+| iOS Simulator | `./tools/test_ios_simulator.sh` | Clean iPhone SE and iPad landscape intro entry, language-menu UI, Hungarian startup, portrait framebuffer, and gameplay orientation policy on both devices |
 | iOS device | `./tools/deploy_ios.sh` | Installation on paired physical devices |
+
+### Simulator compatibility
+
+The Release matrix passed on September 26, 2026, using Apple Silicon, macOS 27.0,
+and Xcode 27.0 (27A266a). Each runtime ran on an iPhone SE (2nd generation) and
+an iPad (10th generation):
+
+| Runtime version | Runtime build |
+|---|---|
+| 17.0.1 | 21A342 |
+| 18.6 | 22G86 |
+| 26.5 | 23F77 |
+| 27.0 | 24A434 |
+
+The run completed 24 UI tests and eight portrait-startup/PCM checks. Coverage
+includes landscape intro entry, the engine language settings page, Hungarian
+startup, gameplay rotation policy, and foreground orientation and audio recovery.
+The unsigned device build also passed with a 17.0 deployment minimum. This does
+not establish runtime coverage for every patch release, including 17.0, 26.0,
+and 26.1, or replace the physical-device checks below.
+
+The 17.5 Simulator crashed in Apple's OpenGL ES compiler at
+`cvmsServerElementBuild`. A standalone GLES3 triangle app reproduced the same
+crash without the game engine. Apple describes this failure as a
+[Simulator-only issue](https://developer.apple.com/forums/thread/756598).
+That runtime is not part of the passing matrix; pin `17.0.1` when reproducing
+the iOS 17 tests on this toolchain. No private driver workaround is used.
 
 Physical iPhone and iPad regression testing remains a release gate. Static and
 desktop checks do not replace code signing or real GPU, memory, audio, thermal,

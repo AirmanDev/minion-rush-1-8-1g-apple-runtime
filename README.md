@@ -32,6 +32,8 @@ by the app, UI tests, and native engine build. The compatibility target includes
 iOS/iPadOS 17, 18, 26, and 27. API availability is a build error. An installed
 Simulator runtime is required to claim runtime validation for that OS family;
 compiling for iOS 17 alone does not validate its runtime behavior.
+See the [executed compatibility matrix](docs/ARCHITECTURE.md#simulator-compatibility)
+for tested releases and Simulator limitations.
 
 The original engine uses OpenGL ES. The iOS port therefore retains one
 EAGL/GLES3 compatibility path. There is no ES2 fallback. A native Metal port
@@ -121,14 +123,18 @@ the deployment minimum:
 ./tools/test_ios_simulator.sh
 # Require specific installed families; fail if any are missing.
 ./tools/test_ios_simulator.sh 17 18 26 27
+# Pin an exact version reported by simctl instead of the newest in its family.
+./tools/test_ios_simulator.sh 17.0.1 18.6
 ```
 
 The test selects the newest installed minor release in each family and creates
-temporary iPhone and iPad simulators supported by that runtime. It installs a
-Release build, verifies landscape intro entry (rotating the simulated iPad when
-iPadOS denies a programmatic turn) and Hungarian startup, rejects upside-down
-gameplay on iPhone and landscape gameplay on both devices, checks foreground
-orientation and audio-session recovery, and checks the portrait menu framebuffer.
+temporary iPhone and iPad simulators supported by that runtime. Exact version
+arguments select only that runtime; missing versions fail rather than being
+skipped. It installs a Release build, verifies landscape intro entry (rotating
+the simulated iPad when iPadOS denies a programmatic turn) and Hungarian startup.
+It rejects upside-down gameplay on iPhone and landscape gameplay on both devices,
+and checks foreground orientation, audio-session recovery, and the portrait menu
+framebuffer.
 Full intro completion is not automated because the 3D movie
 advances too slowly under Simulator translation; the post-intro checks use an
 engine-generated settings file. The test removes every generated simulator and
@@ -199,9 +205,13 @@ all supported versions. On iOS/iPadOS 26 and later it also requests the system's
 explicit orientation lock. Geometry callbacks from the older and newer scene
 APIs feed the same layout handler, without processing both on the same version.
 While iPad gameplay holds the scene in portrait, active device-orientation
-notifications rotate the game view between the two portrait directions. The app
-does not use the deprecated full-screen compatibility mode. In the background,
-the display link and engine thread wait until the scene becomes active again.
+notifications rotate the game view between the two portrait directions.
+On iPadOS 17 and 18, `UIRequiresFullScreen` lets UIKit enforce the controller's
+orientation mask. `UIRequiresFullScreenIgnoredStartingWithVersion` is set to
+`26.0`, so systems that support that key use the resizable scene policy instead.
+The ignore key is available from iPadOS 26.2; 26.0 and 26.1 retain full-screen mode.
+In the background, the display link and engine thread wait until the scene
+becomes active again.
 Foreground activation reapplies the same layout and orientation policy.
 
 ## Community localizations

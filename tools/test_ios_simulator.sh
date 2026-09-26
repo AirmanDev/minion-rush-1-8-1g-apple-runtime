@@ -3,10 +3,6 @@
 set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
 
-for major in "$@"; do
-  project_validate_positive_int "$major"
-done
-
 CONFIG="Release"
 DERIVED="$(mktemp -d "${TMPDIR:-/tmp}/minion-rush-simulator-build.XXXXXX")"
 LOGS="$(mktemp -d "${TMPDIR:-/tmp}/minion-rush-simulator-test.XXXXXX")"

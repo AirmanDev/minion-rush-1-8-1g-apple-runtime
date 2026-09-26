@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import plistlib
 import re
 import stat
 import subprocess
@@ -294,6 +295,11 @@ class LocalizationTests(unittest.TestCase):
 
 
 class DeviceTests(unittest.TestCase):
+    def test_ipad_full_screen_policy_has_a_version_boundary(self) -> None:
+        info = plistlib.loads((TOOLS.parent / "ios/Info.plist").read_bytes())
+        self.assertIs(info["UIRequiresFullScreen"], True)
+        self.assertEqual(info["UIRequiresFullScreenIgnoredStartingWithVersion"], "26.0")
+
     PAYLOAD = {
         "result": {
             "devices": [
@@ -361,7 +367,7 @@ class DeviceTests(unittest.TestCase):
         }
         self.assertEqual(
             select(runtimes, device_types, "17.0", set()),
-            [("iOS-26", prefix + "iOS-26-5", "phone-se-2", "tablet-a16")],
+            [("iOS-26.5", prefix + "iOS-26-5", "phone-se-2", "tablet-a16")],
         )
 
     def test_simulator_matrix_covers_each_installed_supported_family(self) -> None:
@@ -380,10 +386,19 @@ class DeviceTests(unittest.TestCase):
         matrix = select(runtimes, devices, "17.0", set())
         self.assertEqual([row[1] for row in matrix],
                          [prefix + version for version in ("17-5", "18-5", "26-5", "27-0")])
-        self.assertEqual([row[1] for row in select(runtimes, devices, "17.0", {18, 27})],
+        self.assertEqual([row[1] for row in select(runtimes, devices, "17.0", {"18", "27"})],
                          [prefix + version for version in ("18-5", "27-0")])
+        self.assertEqual([row[1] for row in select(runtimes, devices, "17.0", {"17.4", "18"})],
+                         [prefix + version for version in ("17-4", "18-5")])
+        self.assertEqual([row[0] for row in select(runtimes, devices, "17.0", {"17", "17.5"})],
+                         ["iOS-17.5"])
+        with self.assertRaisesRegex(ValueError, "unavailable: 17.2"):
+            select(runtimes, devices, "17.0", {"17.2"})
+        for invalid in ("0", "-17", "17.", "17.0.1.2", "17.01", "latest"):
+            with self.subTest(selector=invalid), self.assertRaisesRegex(ValueError, "invalid"):
+                select(runtimes, devices, "17.0", {invalid})
         with self.assertRaisesRegex(ValueError, "unavailable: 19"):
-            select(runtimes, devices, "17.0", {19})
+            select(runtimes, devices, "17.0", {"19"})
 
     def test_simulator_devices_must_be_supported_by_the_runtime(self) -> None:
         identifier = "com.apple.CoreSimulator.SimRuntime.iOS-17-5"
@@ -398,7 +413,7 @@ class DeviceTests(unittest.TestCase):
             {"name": "iPad (10th generation)", "identifier": "tablet-10"},
         ]}
         self.assertEqual(select(runtime, devices, "17.0", set()),
-                         [("iOS-17", identifier, "phone-11", "tablet-10")])
+                         [("iOS-17.5", identifier, "phone-11", "tablet-10")])
         with self.assertRaisesRegex(ValueError, "runtime is required"):
             select(runtime, devices, "18.0", set())
 

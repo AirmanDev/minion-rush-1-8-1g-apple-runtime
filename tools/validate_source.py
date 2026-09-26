@@ -811,8 +811,9 @@ def check_ios_project(tree: dict[str, str]) -> None:
         "UIInterfaceOrientationLandscapeLeft",
         "UIInterfaceOrientationLandscapeRight",
     ]
-    if info.get("UIRequiresFullScreen") is not None:
-        raise SystemExit("deprecated iPad full-screen compatibility mode remains enabled")
+    if info.get("UIRequiresFullScreen") is not True or \
+       info.get("UIRequiresFullScreenIgnoredStartingWithVersion") != "26.0":
+        raise SystemExit("iPad full-screen policy must preserve older orientation masks and use the versioned opt-out")
     if info.get("UISupportedInterfaceOrientations") != phone_orientations or \
        info.get("UISupportedInterfaceOrientations~ipad") != tablet_orientations:
         raise SystemExit("iOS application-level orientation declarations are incomplete")

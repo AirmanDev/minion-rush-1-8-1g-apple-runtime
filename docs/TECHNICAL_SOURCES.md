@@ -46,6 +46,10 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/uikit/uiviewcontroller/prefersinterfaceorientationlocked
 - iPadOS 26 window resizing and orientation-lock guidance:
   https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key
+- Version-limited iPad full-screen behavior:
+  https://developer.apple.com/documentation/bundleresources/information-property-list/uirequiresfullscreenignoredstartingwithversion
+- Apple-confirmed OpenGL ES crash in Apple Silicon Simulator runtimes:
+  https://developer.apple.com/forums/thread/756598
 - View-controller supported orientations:
   https://developer.apple.com/documentation/uikit/uiviewcontroller/supportedinterfaceorientations
 - Interface-orientation masks:
