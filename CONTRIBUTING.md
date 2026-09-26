@@ -26,6 +26,8 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
   tools use Swift, Python 3, or Bash.
 - Use English for source identifiers, comments, user-facing tool output, and
   documentation.
+- Keep maintained text files ASCII. Use Unicode escapes in tests and code when
+  validating Unicode behavior; game translations remain separate private data.
 - Comments should explain only non-obvious invariants, formats, or design
   constraints.
 - Follow `.clang-format`, `.editorconfig`, and the conventions of the module.
@@ -51,6 +53,19 @@ Complete local validation with your own 1.8.1g assets:
 ./build.sh
 ./test.sh
 ```
+
+Native installer changes also require an asset-free macOS build and process/
+model tests:
+
+```bash
+./tools/build_installer.sh
+./tools/test_installer.sh
+```
+
+Keep installer labels, ordering, and signing-input rules in
+`config/installer_ui.json`. Do not duplicate import or device-installation logic
+in a native client. See `docs/INSTALLER.md` for the Windows UI contract and
+the separate platform backend work it still requires.
 
 iOS platform changes require `tools/test_ios_simulator.sh` and physical-device
 testing before release. Keep the deployment minimum in `ios/Deployment.xcconfig`

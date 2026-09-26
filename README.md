@@ -17,7 +17,7 @@ release 1.8.1g. See `docs/LEGAL.md`.
 ## Supported environment
 
 - Apple Silicon Mac running macOS 14 or later
-- Xcode 27 or later with the matching iOS SDK
+- Xcode 27 or later with the matching iOS SDK (local builds require macOS 26.6+)
 - ARM64 iPhone or iPad running iOS or iPadOS 17 or later
 - Python 3 and the Xcode command-line tools
 
@@ -54,6 +54,8 @@ game data. The complete smoke test fails if a final network guard is reached.
 | `src/native` | ARM32 to ARM64 translator, runtime, and platform layers |
 | `ios/MinionRush.xcodeproj` | iPhone and iPad application project |
 | `ios/MinionRush` | UIKit entry point and public asset catalog metadata |
+| `installer` | Native macOS ZIP importer and iPhone/iPad installer |
+| `config/installer_ui.json` | Shared installer labels, layout order, and signing rules |
 | `assets/lib` | Validated 1.8.1g ARM32 engine, stored locally only |
 | `assets/game` | Original game data, stored locally only |
 | `config/graphics.json` | Single graphics configuration |
@@ -65,7 +67,20 @@ game data. The complete smoke test fails if a final network guard is reached.
 
 ## Initial setup
 
-Create the ignored `assets` directory from your own 1.8.1g release:
+For a native macOS interface, build and open the installer:
+
+```bash
+./tools/build_installer.sh
+open "build/installer/Minion Rush Installer.app"
+```
+
+It accepts the original release ZIP, validates and arranges its private assets,
+and installs on one selected, paired iPhone or iPad. The installer requires
+Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
+It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
+for signing, free-account limits, test coverage, and the future Windows UI contract.
+
+For the command-line workflow, create the ignored `assets` directory:
 
 ```bash
 python3 tools/install_assets.py /path/to/your-1.8.1g-release --root .
@@ -75,6 +90,8 @@ python3 tools/install_assets.py /path/to/your-1.8.1g-release --root .
 
 The installer accepts only the pinned engine fingerprint and a complete,
 uncorrupted game data set. Other Minion Rush versions are unsupported.
+Imports are staged and validated before replacing existing assets; they do not
+merge a new release into an older asset tree.
 
 ## Build and run on macOS
 

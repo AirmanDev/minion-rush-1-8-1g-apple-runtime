@@ -15,6 +15,7 @@ project_require_command xcrun
 project_require_command python3
 project_require_command security
 project_require_command plutil
+project_require_command tee
 project_require_assets
 project_configure_ios_signing
 INSTALL_TRIES="${MR_INSTALL_TRIES:-3}"
@@ -39,6 +40,8 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 export MR_BUILD_LOCK_HELD=1
 
 fail_with_log() {
@@ -49,8 +52,9 @@ fail_with_log() {
 }
 
 printf '== devices ==\n'
-xcrun devicectl list devices --json-output "$LOGS/devices.json" >/dev/null 2>&1 \
-  || fail_with_log 'cannot query the device list' "$LOGS/devices.json"
+project_run_logged "$LOGS/device-query.log" xcrun devicectl list devices \
+  --omit-deprecated-fields-in-json --json-output "$LOGS/devices.json" \
+  || fail_with_log 'cannot query the device list' "$LOGS/device-query.log"
 
 python3 tools/list_ios_devices.py "$LOGS/devices.json" "$@" \
   > "$LOGS/devices.txt"
@@ -65,24 +69,24 @@ while IFS=$'\t' read -r udid ident name; do
 done < "$LOGS/devices.txt"
 
 printf '== translated block code ==\n'
-"$PROJECT_ROOT/build.sh" > "$LOGS/build.log" 2>&1 \
+project_run_logged "$LOGS/build.log" "$PROJECT_ROOT/build.sh" \
   || fail_with_log 'block-code build failed' "$LOGS/build.log"
 
 printf '== engine library ==\n'
-"$PROJECT_ROOT/tools/build_ios.sh" > "$LOGS/engine.log" 2>&1 \
+project_run_logged "$LOGS/engine.log" "$PROJECT_ROOT/tools/build_ios.sh" \
   || fail_with_log 'engine-library build failed' "$LOGS/engine.log"
 
 printf '== refresh signing ==\n'
 project_prepare_ios_app_icon
 sign_failed=0
 while IFS=$'\t' read -r udid ident name; do
-  printf '   %s ... ' "$name"
-  if xcodebuild -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" \
+  printf '   %s\n' "$name"
+  if project_run_logged "$LOGS/sign-$udid.log" xcodebuild -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" \
        -configuration "$CONFIG" -derivedDataPath "$DERIVED" \
        -destination "platform=iOS,id=$udid" \
        -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
        "${IOS_SIGNING_ARGS[@]}" \
-       build > "$LOGS/sign-$udid.log" 2>&1 < /dev/null; then
+       build < /dev/null; then
     printf 'ok\n'
   else
     printf 'failed\n'
@@ -99,7 +103,7 @@ if (( sign_failed )); then
 fi
 
 printf '== packaging ==\n'
-"$PROJECT_ROOT/tools/package_ios.sh" > "$LOGS/package.log" 2>&1 \
+project_run_logged "$LOGS/package.log" "$PROJECT_ROOT/tools/package_ios.sh" \
   || fail_with_log 'packaging failed' "$LOGS/package.log"
 printf '   %s\n' "$(du -sh "$APP" | cut -f1)"
 BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP/Info.plist")"
@@ -111,9 +115,15 @@ BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP/Info.plist")"
 install_app() {
   local ident="$1" log="$2"
   for (( try = 1; try <= INSTALL_TRIES; try++ )); do
-    if xcrun devicectl device install app --device "$ident" "$APP" \
-         > "$log" 2>&1 < /dev/null; then
+    printf 'Install attempt %d of %d\n' "$try" "$INSTALL_TRIES"
+    if project_run_logged "$log" xcrun devicectl device install app --device "$ident" "$APP" \
+         < /dev/null; then
       return 0
+    fi
+    if grep -Fq 'maximum number of installed apps using a free developer profile' "$log"; then
+      printf 'ERROR: free developer profiles allow at most 3 installed apps per device.\n' >&2
+      printf 'Remove another free-signed app, or update using its existing bundle identifier.\n' >&2
+      return 1
     fi
     if (( try < INSTALL_TRIES )); then
       printf 'retry(%d) ' "$try"
@@ -126,13 +136,12 @@ install_app() {
 printf '== update installation (preserving application data) ==\n'
 failed=0
 while IFS=$'\t' read -r udid ident name; do
-  printf '   %s ... ' "$name"
+  printf '   %s\n' "$name"
   if install_app "$ident" "$LOGS/install-$udid.log"; then
     printf 'ok\n'
   else
-    printf 'ERROR after %d attempts\n' "$INSTALL_TRIES"
+    printf 'ERROR: installation failed\n'
     tail -6 "$LOGS/install-$udid.log" | sed 's/^/      /'
-    printf '      (wake and unlock the device, then run this command again)\n'
     failed=1
   fi
 done < "$LOGS/devices.txt"
@@ -145,20 +154,18 @@ fi
 copy_app_file() {
   local ident="$1" source="$2" destination="$3" log="$4"
   rm -f -- "$destination"
-  xcrun devicectl device copy from --device "$ident" \
+  project_run_logged "$log" xcrun devicectl device copy from --device "$ident" \
     --domain-type appDataContainer --domain-identifier "$BUNDLE_ID" \
-    --source "$source" --destination "$destination" \
-    > "$log" 2>&1 < /dev/null
+    --source "$source" --destination "$destination" < /dev/null
 }
 
 printf '== startup verification ==\n'
 startup_failed=0
 while IFS=$'\t' read -r udid ident name; do
-  printf '   %s ... ' "$name"
-  if ! xcrun devicectl device process launch --device "$ident" \
+  printf '   %s\n' "$name"
+  if ! project_run_logged "$LOGS/launch-$udid.log" xcrun devicectl device process launch --device "$ident" \
        --terminate-existing --environment-variables '{"MR_DIAGNOSTICS":"1"}' \
-       "$BUNDLE_ID" \
-       > "$LOGS/launch-$udid.log" 2>&1 < /dev/null; then
+       "$BUNDLE_ID" < /dev/null; then
     printf 'launch failed\n'
     tail -6 "$LOGS/launch-$udid.log" | sed 's/^/      /'
     startup_failed=1

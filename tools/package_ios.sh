@@ -30,13 +30,13 @@ project_prepare_localizations
 python3 tools/validate_assets.py . --assets-root "$ASSETS_ROOT"
 
 printf '== iOS engine library ==\n'
-"$PROJECT_ROOT/tools/build_ios.sh" >/dev/null
+"$PROJECT_ROOT/tools/build_ios.sh"
 
 printf '== iOS application ==\n'
 project_prepare_ios_app_icon
 xcodebuild -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" \
   -destination 'generic/platform=iOS' -configuration "$CONFIG" \
-  -derivedDataPath "$DERIVED" -allowProvisioningUpdates -quiet \
+  -derivedDataPath "$DERIVED" -allowProvisioningUpdates \
   "${IOS_SIGNING_ARGS[@]}" \
   build
 project_remove_ios_app_icon

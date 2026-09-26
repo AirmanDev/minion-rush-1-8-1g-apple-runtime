@@ -10,6 +10,7 @@ import sqlite3
 import struct
 import sys
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -23,7 +24,7 @@ from common import (  # noqa: E402
     walk_files,
 )
 from configure_graphics import validate as validate_graphics
-from install_assets import OFFICIAL_APP_ICON_SHA256, OFFICIAL_ENGINE_SHA256
+from asset_contract import OFFICIAL_APP_ICON_SHA256, OFFICIAL_ENGINE_SHA256
 
 ENGINE = "lib/libdespicablemefree.so"
 APP_ICON = "app-icon.png"
@@ -166,14 +167,20 @@ def record(errors: list[str], check: Callable[..., object], *arguments: object) 
         errors.append(str(exc))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("root", nargs="?", default=".")
-    parser.add_argument("--assets-root", default="assets")
-    args = parser.parse_args()
-    root = Path(args.root).resolve()
-    assets = Path(args.assets_root)
-    assets = assets.resolve() if assets.is_absolute() else (root / assets).resolve()
+@dataclass(frozen=True)
+class AssetReport:
+    files: int
+    bytes: int
+    json_files: int
+
+    def summary(self) -> str:
+        return (
+            f"asset validation: passed ({self.files} files, {self.bytes} bytes, "
+            f"{self.json_files} JSON files, SQLite ok)"
+        )
+
+
+def inspect_assets(root: Path, assets: Path) -> AssetReport:
 
     disposable = [
         path.relative_to(assets)
@@ -205,16 +212,26 @@ def main() -> int:
     record(errors, validate_offline_event_catalog, root, assets)
 
     if errors:
-        print("asset validation: FAILED", file=sys.stderr)
-        for error in errors:
-            print(f"  - {error}", file=sys.stderr)
-        return 1
+        raise ValueError("\n".join(errors))
 
     byte_count = sum(path.stat().st_size for path in files)
-    print(
-        f"asset validation: passed ({len(files)} files, {byte_count} bytes, "
-        f"{len(json_files)} JSON files, SQLite ok)"
-    )
+    return AssetReport(len(files), byte_count, len(json_files))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", nargs="?", default=".")
+    parser.add_argument("--assets-root", default="assets")
+    args = parser.parse_args()
+    root = Path(args.root).resolve()
+    assets = Path(args.assets_root)
+    assets = assets.resolve() if assets.is_absolute() else (root / assets).resolve()
+    try:
+        report = inspect_assets(root, assets)
+    except ValueError as exc:
+        print(f"asset validation: FAILED\n{exc}", file=sys.stderr)
+        return 1
+    print(report.summary())
     return 0
 
 

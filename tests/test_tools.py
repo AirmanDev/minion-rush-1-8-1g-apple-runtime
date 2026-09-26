@@ -197,6 +197,10 @@ class ArchiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsafe ZIP entry"):
             self.extract([("Data/File", b"a"), ("data/file", b"b")])
 
+    def test_rejects_unicode_equivalent_paths(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unsafe ZIP entry"):
+            self.extract([("caf\u00e9/file", b"a"), ("cafe\u0301/file", b"b")])
+
     def test_validates_complete_jpk(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "content.jpk"
@@ -305,30 +309,33 @@ class DeviceTests(unittest.TestCase):
             "devices": [
                 {
                     "identifier": "device-2",
-                    "hardwareProperties": {
-                        "reality": "physical",
-                        "udid": "udid-2",
+                    "properties": {
+                        "hardware": {"reality": "physical", "udid": "udid-2",
+                                     "deviceType": "iPad"},
+                        "connection": {"pairingState": "paired"},
+                        "state": {"name": "Zita iPad"},
+                        "software": {"osVersionNumber": {"stringValue": "17.0"}},
                     },
-                    "connectionProperties": {"pairingState": "paired"},
-                    "deviceProperties": {"name": "Zita iPad"},
                 },
                 {
                     "identifier": "device-1",
-                    "hardwareProperties": {
-                        "reality": "physical",
-                        "udid": "udid-1",
+                    "properties": {
+                        "hardware": {"reality": "physical", "udid": "udid-1",
+                                     "deviceType": "iPhone"},
+                        "connection": {"pairingState": "paired"},
+                        "state": {"name": "Anna iPhone"},
+                        "software": {"osVersionNumber": {"stringValue": "27.0"}},
                     },
-                    "connectionProperties": {"pairingState": "paired"},
-                    "deviceProperties": {"name": "Anna iPhone"},
                 },
                 {
                     "identifier": "virtual-device",
-                    "hardwareProperties": {
-                        "reality": "virtual",
-                        "udid": "sim-1",
+                    "properties": {
+                        "hardware": {"reality": "virtual", "udid": "sim-1",
+                                     "deviceType": "iPhone"},
+                        "connection": {"pairingState": "paired"},
+                        "state": {"name": "Virtual Device"},
+                        "software": {"osVersionNumber": {"stringValue": "27.0"}},
                     },
-                    "connectionProperties": {"pairingState": "paired"},
-                    "deviceProperties": {"name": "Virtual Device"},
                 },
             ]
         }
@@ -339,14 +346,14 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(
             devices,
             [
-                ("udid-1", "device-1", "Anna iPhone"),
-                ("udid-2", "device-2", "Zita iPad"),
+                {"udid": "udid-1", "id": "device-1", "name": "Anna iPhone", "os": "27.0"},
+                {"udid": "udid-2", "id": "device-2", "name": "Zita iPad", "os": "17.0"},
             ],
         )
 
     def test_filters_by_case_insensitive_name(self) -> None:
         devices = paired_physical_devices(self.PAYLOAD, ["IPAD"])
-        self.assertEqual(devices, [("udid-2", "device-2", "Zita iPad")])
+        self.assertEqual([item["id"] for item in devices], ["device-2"])
 
     def test_selects_latest_ios_26_and_low_end_phone(self) -> None:
         prefix = "com.apple.CoreSimulator.SimRuntime."

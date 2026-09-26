@@ -75,15 +75,18 @@ printf '== iOS %s engine library (%s) ==\n' "$platform" "$target"
 objects=()
 for source in "${PORTABLE_NATIVE_SOURCES[@]}"; do
   name="${source%.*}"
+  printf 'Compile: %s\n' "$source"
   "$CC" -c "${FLAGS[@]}" -o "$OUT_DIR/$name.o" "$SRC/$source"
   objects+=("$OUT_DIR/$name.o")
 done
 for source in "${IOS_NATIVE_SOURCES[@]}"; do
   name="${source%.*}"
+  printf 'Compile: %s\n' "$source"
   "$CC" -c -fobjc-arc "${FLAGS[@]}" -o "$OUT_DIR/$name.o" "$SRC/$source"
   objects+=("$OUT_DIR/$name.o")
 done
 
+printf 'Compile: game_code.S\n'
 "$CC" -c -std=c11 -isysroot "$SDK" -target "$target" \
   "-I$PROJECT_ROOT" -o "$OUT_DIR/game_code.o" "$SRC/game_code.S"
 objects+=("$OUT_DIR/game_code.o")

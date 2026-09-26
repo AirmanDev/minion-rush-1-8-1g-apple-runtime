@@ -184,6 +184,30 @@ and does not distribute that binary.
 - JsonCpp:
   https://github.com/open-source-parsers/jsoncpp
 
+## Native installer
+
+- Xcode host operating systems, SDKs, and deployment ranges:
+  https://developer.apple.com/xcode/system-requirements
+- Standard controls and Liquid Glass adoption:
+  https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass
+- Device pairing, first-launch platform setup, and signing:
+  https://developer.apple.com/documentation/xcode/running-your-app-on-simulated-or-physical-devices
+- Personal Team profile expiration and account limits:
+  https://developer.apple.com/help/account/basics/about-your-developer-account
+- Foundation pipe-reading behavior:
+  https://developer.apple.com/documentation/foundation/filehandle/availabledata
+- POSIX pipe reads, short reads, and interrupted reads:
+  https://pubs.opengroup.org/onlinepubs/9799919799/functions/read.html
+- Developer ID, Hardened Runtime, timestamps, and notarization:
+  https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution
+- Versioned JSON and the current device properties dictionary:
+  `xcrun devicectl --help` and `xcrun devicectl list devices --help`
+
+The installer reuses the asset and deployment tools. Its macOS minimum follows
+the Xcode 27 host requirement, not the game's older deployment minimum. Standard
+SwiftUI controls supply native accessibility and material appearance rather
+than a custom cross-platform rendering layer.
+
 ## Game data
 
 Weekly-mission identifiers, localization keys, and reward types come from the

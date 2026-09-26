@@ -107,6 +107,12 @@ project_require_command() {
   }
 }
 
+project_run_logged() {
+  local log="$1"
+  shift
+  "$@" 2>&1 | tee "$log"
+}
+
 project_bundle_assets() {
   local app="$1"
   [[ -d "$app" && "$app" == *.app ]] || {
@@ -145,16 +151,12 @@ project_use_full_xcode() {
 }
 
 project_configure_ios_signing() {
-  [[ "$IOS_BUNDLE_ID" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || {
-    printf 'ERROR: invalid iOS bundle identifier: %s\n' "$IOS_BUNDLE_ID" >&2
-    exit 2
-  }
+  local python="${PYTHON:-python3}"
+  project_require_command "$python"
+  "$python" "$PROJECT_ROOT/tools/signing.py" \
+    --team "${MR_DEVELOPMENT_TEAM:-}" --bundle "$IOS_BUNDLE_ID" || return $?
   IOS_SIGNING_ARGS=("APP_BUNDLE_IDENTIFIER=$IOS_BUNDLE_ID")
   if [[ -n "${MR_DEVELOPMENT_TEAM:-}" ]]; then
-    [[ "$MR_DEVELOPMENT_TEAM" =~ ^[A-Z0-9]{10}$ ]] || {
-      printf 'ERROR: MR_DEVELOPMENT_TEAM must contain 10 uppercase letters or digits.\n' >&2
-      exit 2
-    }
     IOS_SIGNING_ARGS+=("DEVELOPMENT_TEAM=$MR_DEVELOPMENT_TEAM")
   fi
 }

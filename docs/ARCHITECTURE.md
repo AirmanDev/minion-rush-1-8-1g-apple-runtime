@@ -42,6 +42,14 @@ version so two releases in one family cannot overwrite each other's artifacts.
 
 ## Module ownership
 
+The native macOS installer is a client of the build and asset tools, not another
+runtime layer. Its UI state and bounded process bridge live in `installer`;
+`tools/installer_backend.py` handles local workspace orchestration. Import and
+validation share `asset_contract.py` fingerprints and the same validation API.
+Signing-input validation shares `tools/signing.py` and the UI contract's rules.
+The public UI contract and Windows backend boundary are documented in
+`docs/INSTALLER.md`.
+
 | Module | Responsibility |
 |---|---|
 | `a64_compiler.c` | Static A32 and Thumb block translation |

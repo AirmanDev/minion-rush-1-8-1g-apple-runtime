@@ -37,7 +37,7 @@ resolve_formatter() {
 clang_formatter="$(resolve_formatter "${CLANG_FORMAT:-}" clang-format)"
 swift_formatter="$(resolve_formatter "${SWIFT_FORMAT:-}" swift-format)"
 native_sources=(src/native/*.[ch] src/native/*.m ios/MinionRush/*.m)
-swift_sources=(tools/*.swift)
+swift_sources=(tools/*.swift installer/*.swift tests/*.swift)
 if [[ "$mode" == "--write" ]]; then
   "$clang_formatter" -i "${native_sources[@]}"
   "$swift_formatter" format -i "${swift_sources[@]}"
