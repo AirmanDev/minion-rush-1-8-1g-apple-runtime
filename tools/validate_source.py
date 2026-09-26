@@ -842,15 +842,14 @@ def check_ios_project(tree: dict[str, str]) -> None:
         "UIInterfaceOrientationMaskLandscape",
         "UIInterfaceOrientationMaskPortrait",
         "UIInterfaceOrientationMaskPortraitUpsideDown",
-        "UIUserInterfaceIdiomPad",
-        "UIDeviceOrientationDidChangeNotification",
-        "beginGeneratingDeviceOrientationNotifications",
-        "endGeneratingDeviceOrientationNotifications",
         "preferredInterfaceOrientationForPresentation",
         "setNeedsUpdateOfSupportedInterfaceOrientations",
         "setNeedsUpdateOfPrefersInterfaceOrientationLocked",
         "requestGeometryUpdateWithPreferences",
         "mr_ios_scene_geometry_changed",
+        "UIDeviceOrientationDidChangeNotification",
+        "beginGeneratingDeviceOrientationNotifications",
+        "endGeneratingDeviceOrientationNotifications",
     )
     if any(token not in window for token in orientation_contract):
         raise SystemExit("iPhone and iPad orientation contract is incomplete")

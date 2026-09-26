@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -102,6 +103,35 @@ class CommonTests(unittest.TestCase):
     def test_foreground_timeout_runner(self) -> None:
         self.assertEqual(run_with_timeout(["/usr/bin/true"], 1.0), 0)
         self.assertEqual(run_with_timeout(["/bin/sleep", "1"], 0.01), 124)
+
+    def test_window_geometry_for_full_and_narrow_ipad_scenes(self) -> None:
+        source = """
+        #include "src/native/platform_window.h"
+        int main(void) {
+            if (mr_win_surface_long_side(820, 1180, 800) != 1152) return 1;
+            if (mr_win_surface_long_side(280, 612, 800) != 1752) return 2;
+            mr_win_fit fit = mr_win_fit_surface_near_fill(820, 1180, 800, 1152, 8);
+            if (fit.w < 819.99 || fit.h < 1179.99) return 3;
+            fit = mr_win_fit_surface_near_fill(280, 612, 800, 1152, 8);
+            if (fit.h >= 612) return 4;
+            fit = mr_win_fit_surface_near_fill(280, 612, 800, 1752, 8);
+            return fit.w >= 279.99 && fit.h >= 611.99 ? 0 : 5;
+        }
+        """
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            executable = Path(temporary) / "geometry"
+            subprocess.run(
+                [
+                    "cc", "-std=c11", "-Werror", "-I", str(root),
+                    "-x", "c", "-", "-lm", "-o", str(executable),
+                ],
+                input=source,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run([str(executable)], check=True)
 
 
 class ArchiveTests(unittest.TestCase):

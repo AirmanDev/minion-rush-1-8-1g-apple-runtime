@@ -176,35 +176,40 @@ The application creates one application-role `UIWindowScene`. It does not
 create a separate window for external-display roles.
 
 The application declares portrait and landscape at the application level on
-iPhone and all orientations on iPad, as required for runtime scene geometry
-changes and resizable iPadOS scenes. During gameplay and menus, the game view
-controller narrows that declaration to upright portrait on iPhone and to upright
-plus upside-down portrait on iPad. On iOS and iPadOS 27, the scene delegate
-returns the same idiom-specific dynamic mask through
+iPhone and all orientations on iPad so the intro can request landscape geometry
+and iPadOS can resize its scene. During gameplay and menus, the game view
+controller narrows that declaration to upright portrait on iPhone and both
+portrait orientations on iPad. On iOS and iPadOS 27, the scene delegate returns
+the same dynamic mask through
 `supportedInterfaceOrientationsForWindowScene:`. The movie playback page
 temporarily changes the mask, requests landscape scene geometry, and resizes the
 engine surface through its existing renderer callback. Leaving the movie
-restores the platform-specific portrait mask, request, and surface.
+restores the portrait mask, request, and surface.
 
 A scene geometry update is a request and may be denied by an iPadOS windowing
-mode. The renderer therefore treats the engine surface orientation as the
-content contract, independent of the scene geometry. When the two orientations
-differ, the game view is rotated and aspect-fitted in the scene. This keeps the
-movie landscape and the game portrait without the large pillarbox bars caused
-by fitting an unrotated portrait view in a landscape scene. UIKit converts touch
-locations through the same view transform, and motion axes follow the logical
-content orientation. A landscape scene may persist until the physical iPad
-returns to portrait because iPadOS does not guarantee geometry requests. The
-controller locks only an orientation already reached
-by the scene. During normal iPad gameplay the portrait scene stays locked
-against landscape. Physical-device orientation notifications turn the game view
-180 degrees when the device reaches the opposite portrait direction. This
-keeps the game upright even when the iPadOS windowing mode denies a scene
-geometry request. Notification generation is paired with the active scene
-lifecycle. The supported-orientation mask excludes both gameplay landscape
-orientations. The app does not use the deprecated full-screen compatibility
-mode. `viewDidLayoutSubviews` and the scene geometry delegate recalculate the
-transform after each window-size change.
+mode. In that mode, the intro can need a physical device rotation before its
+scene becomes landscape. The renderer therefore treats the engine surface
+orientation as the content contract, independent of the scene geometry. When
+the two orientations differ, the game view is rotated and aspect-fitted in the
+scene. This keeps the movie landscape and the game portrait without the large
+pillarbox bars caused by fitting an unrotated portrait view in a landscape
+scene. UIKit converts touch locations through the same view transform, and
+motion axes follow the logical content orientation. A landscape scene may
+persist until the physical iPad returns to portrait because iPadOS does not
+guarantee geometry requests. The
+controller locks the scene only after it reaches an allowed orientation. During
+iPad gameplay the portrait scene stays locked against landscape. Device
+orientation notifications run only while the scene is active; when the iPad
+reaches the opposite portrait direction, the game view rotates 180 degrees.
+The logical top and bottom safe-area insets swap with that rotation.
+The gameplay mask excludes landscape. Scene-size changes also resize the guest
+render surface through `Renderer.nativeResize`, keeping the original short-side
+resolution and debouncing intermediate window sizes. Differences of at most eight rendered
+pixels are filled consistently in the view, framebuffer copy, and touch map;
+larger differences keep aspect-fit to avoid cropping controls. The app does not
+use the deprecated full-screen compatibility mode. `viewDidLayoutSubviews` and
+the scene geometry delegate recalculate the transform after each window-size
+change.
 
 Touch coordinates use the inverse of the same aspect-fit and rotation transform.
 The guest receives one active touch. Moving to the background completes any

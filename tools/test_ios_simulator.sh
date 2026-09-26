@@ -13,6 +13,7 @@ DERIVED="$(mktemp -d "${TMPDIR:-/tmp}/minion-rush-simulator-build.XXXXXX")"
 LOGS="$(mktemp -d "${TMPDIR:-/tmp}/minion-rush-simulator-test.XXXXXX")"
 ARTIFACTS="${MR_SIMULATOR_ARTIFACTS:-}"
 SIMULATOR_SETTINGS="${MR_SIMULATOR_SETTINGS:-${HOME:?}/Library/Application Support/MinionRush/settings}"
+SIMULATOR_SAVE_FILE="${MR_SIMULATOR_SAVE_FILE:-}"
 APP="$DERIVED/Build/Products/$CONFIG-iphonesimulator/$IOS_SCHEME.app"
 CREATED_DEVICES=()
 
@@ -51,6 +52,10 @@ project_require_assets
   printf 'Complete the intro once on macOS or set MR_SIMULATOR_SETTINGS.\n' >&2
   exit 1
 }
+if [[ -n "$SIMULATOR_SAVE_FILE" && ! -f "$SIMULATOR_SAVE_FILE" ]]; then
+  printf 'ERROR: Simulator save file not found: %s\n' "$SIMULATOR_SAVE_FILE" >&2
+  exit 1
+fi
 
 printf '== translated block code ==\n'
 "$PROJECT_ROOT/build.sh" > "$LOGS/build.log" 2>&1
@@ -78,7 +83,7 @@ IFS=$'\t' read -r runtime phone_type tablet_type < <(
 run_test() {
   local label="$1" device_type="$2" udid data log ui_log orientation_log capture attempt state
   local settings_dir
-  local landscape_line portrait_line
+  local landscape_line
   udid="$(xcrun simctl create "Minion Rush test $label" "$device_type" "$runtime")"
   CREATED_DEVICES+=("$udid")
   xcrun simctl boot "$udid"
@@ -106,12 +111,13 @@ run_test() {
     cp "$log" "$LOGS/intro-runtime-$label.log" 2>/dev/null || true
     landscape_line="$(grep -nFm1 '[Orientation] landscape surface:' "$log" \
       | cut -d: -f1 || true)"
-    portrait_line="$(grep -nF '[Orientation] portrait surface:' "$log" \
-      | tail -1 | cut -d: -f1 || true)"
-    if [[ -z "$landscape_line" || -z "$portrait_line" || \
-          "$portrait_line" -le "$landscape_line" ]]; then
-      printf 'ERROR: %s Simulator did not restore portrait rendering after the intro\n' \
-        "$label" >&2
+    if [[ -z "$landscape_line" ]]; then
+      printf 'ERROR: %s Simulator did not enter landscape intro rendering\n' "$label" >&2
+      return 1
+    fi
+    if [[ "$label" == "iPad" ]] && \
+       ! grep -Eq '\[Orientation\] scene geometry changed: landscape-(left|right)' "$log"; then
+      printf 'ERROR: iPad Simulator did not rotate the intro scene to landscape\n' >&2
       return 1
     fi
   fi
@@ -121,6 +127,9 @@ run_test() {
   settings_dir="$data/Library/Application Support/MinionRush"
   mkdir -p -- "$settings_dir"
   cp "$SIMULATOR_SETTINGS" "$settings_dir/settings"
+  if [[ "$label" == "iPad" && -n "$SIMULATOR_SAVE_FILE" ]]; then
+    cp "$SIMULATOR_SAVE_FILE" "$settings_dir/savegame"
+  fi
 
   xcodebuild \
     -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$CONFIG" \
@@ -162,18 +171,34 @@ run_test() {
     data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"
     orientation_log="$data/Library/Caches/MinionRush/Logs/minion-rush.log"
     cp "$orientation_log" "$LOGS/orientation-runtime-$label.log" 2>/dev/null || true
-    grep -Fxq '[Orientation] iPad content: portrait-upside-down' "$orientation_log" || {
-      printf 'ERROR: %s Simulator did not render upside-down portrait\n' "$label" >&2
+    grep -Fxq '[Orientation] content: portrait' "$orientation_log" || {
+      printf 'ERROR: %s Simulator did not render upright portrait\n' "$label" >&2
       return 1
     }
-    grep -Fxq '[Orientation] iPad content: portrait' "$orientation_log" || {
-      printf 'ERROR: %s Simulator did not render upright portrait\n' "$label" >&2
+    grep -Fq '[Orientation] content: portrait-upside-down' \
+      "$orientation_log" || {
+      printf 'ERROR: %s Simulator did not render upside-down portrait\n' "$label" >&2
       return 1
     }
     if grep -Eq '\[Orientation\] scene geometry changed: landscape-(left|right)' \
       "$orientation_log"; then
       printf 'ERROR: %s Simulator entered a gameplay landscape orientation\n' "$label" >&2
       return 1
+    fi
+    if [[ -n "$SIMULATOR_SAVE_FILE" ]]; then
+      xcodebuild \
+        -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$CONFIG" \
+        -derivedDataPath "$DERIVED" -destination "platform=iOS Simulator,id=$udid" \
+        -resultBundlePath "$LOGS/result-$label.xcresult" \
+        -only-testing:MinionRushUITests/MinionRushUITests/testResultScreenRemainsResponsive \
+        test-without-building > "$LOGS/result-$label.log" 2>&1 || {
+          printf 'ERROR: %s Simulator result-screen UI test failed\n' "$label" >&2
+          tail -80 "$LOGS/result-$label.log" >&2
+          return 1
+        }
+      data="$(xcrun simctl get_app_container "$udid" "$BUNDLE_ID" data)"
+      cp "$data/Library/Caches/MinionRush/Logs/minion-rush.log" \
+        "$LOGS/result-runtime-$label.log" 2>/dev/null || true
     fi
   fi
 

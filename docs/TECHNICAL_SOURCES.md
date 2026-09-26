@@ -46,18 +46,12 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/uikit/uiviewcontroller/prefersinterfaceorientationlocked
 - iPadOS 26 window resizing and orientation-lock guidance:
   https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key
-- Physical device orientation:
-  https://developer.apple.com/documentation/uikit/uidevice/orientation
-- Device-orientation notifications:
-  https://developer.apple.com/documentation/uikit/uidevice/orientationdidchangenotification
-- Starting device-orientation notifications:
-  https://developer.apple.com/documentation/uikit/uidevice/begingeneratingdeviceorientationnotifications()
-- Stopping device-orientation notifications:
-  https://developer.apple.com/documentation/uikit/uidevice/endgeneratingdeviceorientationnotifications()
 - View-controller supported orientations:
   https://developer.apple.com/documentation/uikit/uiviewcontroller/supportedinterfaceorientations
 - Interface-orientation masks:
   https://developer.apple.com/documentation/uikit/uiinterfaceorientationmask
+- Physical device orientation and notification lifecycle:
+  https://developer.apple.com/documentation/uikit/uidevice
 - Application-level supported orientations:
   https://developer.apple.com/documentation/bundleresources/information-property-list/uisupportedinterfaceorientations
 - Updating a view controller's supported orientations:
@@ -68,8 +62,6 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/uikit/uiwindowscene/requestgeometryupdate(_:errorhandler:)
 - Effective window-scene geometry:
   https://developer.apple.com/documentation/uikit/uiwindowscene/effectivegeometry
-- Migration from the deprecated `UIRequiresFullScreen` key:
-  https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key
 - UIKit scene lifecycle:
   https://developer.apple.com/documentation/uikit/app_and_environment/scenes
 - UIKit safe-area insets:

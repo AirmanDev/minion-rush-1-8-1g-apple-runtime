@@ -9,13 +9,15 @@
     self.continueAfterFailure = NO;
 }
 
-- (void)waitForWindow:(XCUIElement *)window landscape:(BOOL)landscape timeout:(NSTimeInterval)timeout {
-    NSPredicate *geometry = [NSPredicate predicateWithBlock:^BOOL(XCUIElement *element,
-                                                                   NSDictionary *bindings) {
-      (void)bindings;
-      CGSize size = element.frame.size;
-      return landscape ? size.width > size.height : size.height > size.width;
-    }];
+- (void)waitForWindow:(XCUIElement *)window
+            landscape:(BOOL)landscape
+              timeout:(NSTimeInterval)timeout {
+    NSPredicate *geometry =
+        [NSPredicate predicateWithBlock:^BOOL(XCUIElement *element, NSDictionary *bindings) {
+          (void)bindings;
+          CGSize size = element.frame.size;
+          return landscape ? size.width > size.height : size.height > size.width;
+        }];
     XCTNSPredicateExpectation *expectation =
         [[XCTNSPredicateExpectation alloc] initWithPredicate:geometry object:window];
     XCTAssertEqual([XCTWaiter waitForExpectations:@[ expectation ] timeout:timeout],
@@ -41,6 +43,8 @@
 }
 
 - (void)testIntroUsesLandscapeGeometry {
+    XCUIDevice *device = XCUIDevice.sharedDevice;
+    device.orientation = UIDeviceOrientationPortrait;
     XCUIApplication *app = [[XCUIApplication alloc] init];
     app.launchEnvironment = @{
         @"MR_LANGUAGE" : @"hu",
@@ -52,17 +56,13 @@
     XCTAssertTrue([window waitForExistenceWithTimeout:30.0]);
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         [self waitForDelay:12.0];
-    } else {
-        [self waitForWindow:window landscape:YES timeout:45.0];
+        device.orientation = UIDeviceOrientationLandscapeRight;
     }
+    [self waitForWindow:window landscape:YES timeout:45.0];
     [self waitForDelay:2.0];
     [self attachScreenshotNamed:@"Landscape intro"];
-    [self waitForDelay:90.0];
-    if (UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad) {
-        [self waitForWindow:window landscape:NO timeout:30.0];
-    }
-    [self attachScreenshotNamed:@"Portrait after intro"];
     [app terminate];
+    device.orientation = UIDeviceOrientationPortrait;
 }
 
 - (void)testHungarianButtonUsesEngineSettingsPage {
@@ -81,8 +81,7 @@
     [self waitForDelay:15.0];
     [self attachScreenshotNamed:@"Hungarian main menu"];
 
-    XCUICoordinate *settings =
-        [window coordinateWithNormalizedOffset:CGVectorMake(0.84, 0.04)];
+    XCUICoordinate *settings = [window coordinateWithNormalizedOffset:CGVectorMake(0.84, 0.04)];
     [settings tap];
     [self waitForDelay:4.0];
     XCTAssertEqual(app.state, XCUIApplicationStateRunningForeground);
@@ -99,7 +98,6 @@
 }
 
 - (void)testGameplayOrientationPolicy {
-    BOOL tablet = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
     XCUIDevice *device = XCUIDevice.sharedDevice;
     device.orientation = UIDeviceOrientationPortrait;
 
@@ -115,17 +113,12 @@
     [self waitForWindow:window landscape:NO timeout:30.0];
     [self waitForDelay:3.0];
 
-    if (tablet) {
-        device.orientation = UIDeviceOrientationPortraitUpsideDown;
-        [self waitForWindow:window landscape:NO timeout:15.0];
-        [self waitForDelay:3.0];
-        [self attachScreenshotNamed:@"iPad portrait upside down"];
-    } else {
-        device.orientation = UIDeviceOrientationPortraitUpsideDown;
-        [self waitForDelay:3.0];
-        XCTAssertGreaterThan(window.frame.size.height, window.frame.size.width);
-        [self attachScreenshotNamed:@"iPhone upside down rejected"];
-    }
+    device.orientation = UIDeviceOrientationPortraitUpsideDown;
+    [self waitForDelay:3.0];
+    XCTAssertGreaterThan(window.frame.size.height, window.frame.size.width);
+    [self attachScreenshotNamed:UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+                                    ? @"Gameplay upside down"
+                                    : @"Gameplay upside down rejected"];
 
     device.orientation = UIDeviceOrientationLandscapeLeft;
     [self waitForDelay:3.0];
@@ -141,6 +134,34 @@
     [self waitForWindow:window landscape:NO timeout:15.0];
     [self waitForDelay:3.0];
     [self attachScreenshotNamed:@"Gameplay portrait"];
+    [app terminate];
+}
+
+- (void)testResultScreenRemainsResponsive {
+    XCUIDevice.sharedDevice.orientation = UIDeviceOrientationPortrait;
+    XCUIApplication *app = [[XCUIApplication alloc] init];
+    app.launchEnvironment = @{
+        @"MR_LANGUAGE" : @"hu",
+        @"MR_DIAGNOSTICS" : @"1",
+        @"MR_OFFLINE_LOG" : @"1",
+    };
+    [app launch];
+
+    XCUIElement *window = app.windows.firstMatch;
+    XCTAssertTrue([window waitForExistenceWithTimeout:30.0]);
+    [self waitForWindow:window landscape:NO timeout:30.0];
+    [self waitForDelay:18.0];
+    [[window coordinateWithNormalizedOffset:CGVectorMake(0.80, 0.16)] tap];
+    [self waitForDelay:12.0];
+    [self attachScreenshotNamed:@"Run start"];
+    [self waitForDelay:65.0];
+    [self attachScreenshotNamed:@"Run end"];
+    [[window coordinateWithNormalizedOffset:CGVectorMake(0.82, 0.94)] tap];
+    [self waitForDelay:6.0];
+    [self attachScreenshotNamed:@"After result continue"];
+    [self waitForDelay:10.0];
+    [self attachScreenshotNamed:@"After result transition"];
+    XCTAssertEqual(app.state, XCUIApplicationStateRunningForeground);
     [app terminate];
 }
 

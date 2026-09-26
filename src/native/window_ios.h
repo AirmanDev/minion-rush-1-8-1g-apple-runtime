@@ -6,6 +6,6 @@
 void mr_ios_attach_scene(UIWindowScene *scene);
 void mr_ios_set_scene_active(BOOL active);
 void mr_ios_scene_geometry_changed(UIWindowScene *scene);
-UIInterfaceOrientationMask mr_ios_supported_orientations(UIWindowScene *scene);
+UIInterfaceOrientationMask mr_ios_supported_orientations(void);
 
 #endif

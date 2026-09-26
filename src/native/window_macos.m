@@ -678,6 +678,10 @@ int mr_win_take_surface_orientation(void) {
     return -1;
 }
 
+uint32_t mr_win_take_surface_long_side(void) {
+    return 0;
+}
+
 void mr_win_set_surface_size(uint32_t width, uint32_t height) {
     SURFACE_W = width ? width : 1u;
     SURFACE_H = height ? height : 1u;

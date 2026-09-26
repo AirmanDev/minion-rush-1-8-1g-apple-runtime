@@ -538,7 +538,8 @@ void mr_gl_blit_to_window(uint32_t w, uint32_t h) {
 
     const GLuint window_fbo = mr_gl_context_window_framebuffer();
 
-    mr_win_fit fit = mr_win_fit_surface((double)w, (double)h, (double)DEF_W, (double)DEF_H);
+    mr_win_fit fit =
+        mr_win_fit_surface_near_fill((double)w, (double)h, (double)DEF_W, (double)DEF_H, 8.0);
     GLint dst_x = (GLint)lround(fit.x), dst_y = (GLint)lround(fit.y);
     GLint dst_w = (GLint)lround(fit.w), dst_h = (GLint)lround(fit.h);
 

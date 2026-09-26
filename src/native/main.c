@@ -264,12 +264,16 @@ static int start_engine(uint32_t env, uint32_t version_str, uint32_t render_w, u
     return 0;
 }
 
-static int apply_surface_orientation(uint32_t env, uint32_t *width, uint32_t *height) {
+static int apply_surface_geometry(uint32_t env, uint32_t *width, uint32_t *height) {
     int landscape = mr_win_take_surface_orientation();
-    if (landscape < 0) return 0;
+    uint32_t requested_long_side = mr_win_take_surface_long_side();
+    if (landscape < 0 && !requested_long_side) return 0;
 
     uint32_t short_side = *width < *height ? *width : *height;
-    uint32_t long_side = *width < *height ? *height : *width;
+    uint32_t long_side =
+        requested_long_side ? requested_long_side : (*width < *height ? *height : *width);
+    if (long_side < short_side) long_side = short_side;
+    if (landscape < 0) landscape = *width > *height;
     uint32_t wanted_width = landscape ? long_side : short_side;
     uint32_t wanted_height = landscape ? short_side : long_side;
     if (*width == wanted_width && *height == wanted_height) return 0;
@@ -695,7 +699,7 @@ static int run_frames(uint32_t env, int frames, int windowed, uint32_t render_w,
                 printf("  (window closed)\n");
                 break;
             }
-            if (apply_surface_orientation(env, &render_w, &render_h) != 0) return -1;
+            if (apply_surface_geometry(env, &render_w, &render_h) != 0) return -1;
         }
 
         double frame_ms = windowed ? timing.frame_ms : 0.0;

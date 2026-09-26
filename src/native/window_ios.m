@@ -53,6 +53,8 @@ static GLint DRAWABLE_W;
 static GLint DRAWABLE_H;
 static atomic_uint SURFACE_W = 1;
 static atomic_uint SURFACE_H = 1;
+static atomic_uint SURFACE_SHORT_SIDE;
+static atomic_uint SURFACE_LONG_REQUEST;
 static atomic_bool DRAWABLE_NEEDS_RESIZE;
 static atomic_bool MOVIE_LANDSCAPE;
 static atomic_bool ORIENTATION_LOCK;
@@ -73,12 +75,10 @@ static id DEVICE_ORIENTATION_OBSERVER;
 static BOOL DEVICE_ORIENTATION_NOTIFICATIONS;
 static atomic_int INTERFACE_ORIENTATION;
 static UIInterfaceOrientation LAST_PORTRAIT_ORIENTATION;
+static uint32_t SCHEDULED_LONG_SIDE;
+static uint64_t RESIZE_GENERATION;
 static void layout_game_view(void);
 static void update_orientation_lock(void);
-
-static BOOL is_ipad_scene(UIWindowScene *scene) {
-    return scene.traitCollection.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-}
 
 static const char *orientation_name(UIInterfaceOrientation orientation) {
     switch (orientation) {
@@ -95,20 +95,20 @@ static const char *orientation_name(UIInterfaceOrientation orientation) {
     }
 }
 
-static UIInterfaceOrientationMask portrait_orientation_mask(UIWindowScene *scene) {
-    UIInterfaceOrientationMask mask = UIInterfaceOrientationMaskPortrait;
-    if (is_ipad_scene(scene)) mask |= UIInterfaceOrientationMaskPortraitUpsideDown;
-    return mask;
+static BOOL is_ipad(void) {
+    return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
 }
 
-static UIInterfaceOrientationMask game_orientation_mask(UIWindowScene *scene) {
-    return atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire)
-               ? UIInterfaceOrientationMaskLandscape
-               : portrait_orientation_mask(scene);
+static UIInterfaceOrientationMask game_orientation_mask(void) {
+    if (atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire))
+        return UIInterfaceOrientationMaskLandscape;
+    return is_ipad()
+               ? UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown
+               : UIInterfaceOrientationMaskPortrait;
 }
 
-UIInterfaceOrientationMask mr_ios_supported_orientations(UIWindowScene *scene) {
-    return game_orientation_mask(scene);
+UIInterfaceOrientationMask mr_ios_supported_orientations(void) {
+    return game_orientation_mask();
 }
 
 static void run_on_main_sync(dispatch_block_t block) {
@@ -229,8 +229,8 @@ int mr_win_accel(mr_accel *out) {
     }
     uint32_t surface_w = atomic_load_explicit(&SURFACE_W, memory_order_relaxed);
     uint32_t surface_h = atomic_load_explicit(&SURFACE_H, memory_order_relaxed);
-    mr_win_fit fit = mr_win_fit_surface(self.bounds.size.width, self.bounds.size.height,
-                                        (double)surface_w, (double)surface_h);
+    mr_win_fit fit = mr_win_fit_surface_near_fill(self.bounds.size.width, self.bounds.size.height,
+                                                  (double)surface_w, (double)surface_h, 8.0);
     double horizontal = (point.x - fit.x) / fit.w;
     double vertical = (point.y - fit.y) / fit.h;
     horizontal = fmax(0.0, fmin(1.0, horizontal));
@@ -307,7 +307,7 @@ int mr_win_accel(mr_accel *out) {
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    return game_orientation_mask(SCENE);
+    return game_orientation_mask();
 }
 
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
@@ -385,31 +385,54 @@ uint64_t mr_win_cadence_recoveries(void) {
     return 0;
 }
 
+static void schedule_surface_resize(CGSize scene_size, uint32_t surface_w, uint32_t surface_h) {
+    uint32_t short_side = atomic_load_explicit(&SURFACE_SHORT_SIDE, memory_order_acquire);
+    uint32_t wanted = mr_win_surface_long_side(scene_size.width, scene_size.height, short_side);
+    if (!wanted) return;
+    uint32_t current = surface_w > surface_h ? surface_w : surface_h;
+    if (wanted == current) {
+        SCHEDULED_LONG_SIDE = 0;
+        ++RESIZE_GENERATION;
+        atomic_store_explicit(&SURFACE_LONG_REQUEST, 0u, memory_order_release);
+        return;
+    }
+    if (wanted == SCHEDULED_LONG_SIDE ||
+        wanted == atomic_load_explicit(&SURFACE_LONG_REQUEST, memory_order_acquire))
+        return;
+    SCHEDULED_LONG_SIDE = wanted;
+    uint64_t generation = ++RESIZE_GENERATION;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(),
+                   ^{
+                     if (generation != RESIZE_GENERATION || !VIEW) return;
+                     SCHEDULED_LONG_SIDE = 0;
+                     atomic_store_explicit(&SURFACE_LONG_REQUEST, wanted, memory_order_release);
+                   });
+}
+
 static void layout_game_view(void) {
     if (!CONTAINER || !VIEW) return;
     CGSize size = CONTAINER.bounds.size;
     uint32_t surface_w = atomic_load_explicit(&SURFACE_W, memory_order_relaxed);
     uint32_t surface_h = atomic_load_explicit(&SURFACE_H, memory_order_relaxed);
+    schedule_surface_resize(size, surface_w, surface_h);
     BOOL rotate = (size.width > size.height) != (surface_w > surface_h);
     CGSize fitting_size = rotate ? CGSizeMake(size.height, size.width) : size;
-    mr_win_fit fit = mr_win_fit_surface(fitting_size.width, fitting_size.height, (double)surface_w,
-                                        (double)surface_h);
+    mr_win_fit fit = mr_win_fit_surface_near_fill(fitting_size.width, fitting_size.height,
+                                                  (double)surface_w, (double)surface_h, 8.0);
     UIInterfaceOrientation orientation = SCENE.effectiveGeometry.interfaceOrientation;
-    UIDeviceOrientation device_orientation = UIDevice.currentDevice.orientation;
-    BOOL ipad_portrait =
-        is_ipad_scene(SCENE) && !atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire);
-    if (ipad_portrait && UIDeviceOrientationIsPortrait(device_orientation)) {
-        LAST_PORTRAIT_ORIENTATION = device_orientation == UIDeviceOrientationPortraitUpsideDown
+    BOOL ipad_game = is_ipad() && !atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire);
+    UIDeviceOrientation physical_orientation = UIDevice.currentDevice.orientation;
+    if (ipad_game && UIDeviceOrientationIsPortrait(physical_orientation)) {
+        LAST_PORTRAIT_ORIENTATION = physical_orientation == UIDeviceOrientationPortraitUpsideDown
                                         ? UIInterfaceOrientationPortraitUpsideDown
                                         : UIInterfaceOrientationPortrait;
-    } else if (ipad_portrait && !LAST_PORTRAIT_ORIENTATION &&
+    } else if (ipad_game && !LAST_PORTRAIT_ORIENTATION &&
                UIInterfaceOrientationIsPortrait(orientation)) {
         LAST_PORTRAIT_ORIENTATION = orientation;
     }
     UIInterfaceOrientation content_portrait =
         LAST_PORTRAIT_ORIENTATION ? LAST_PORTRAIT_ORIENTATION : UIInterfaceOrientationPortrait;
-    BOOL flipped_portrait = ipad_portrait && !rotate &&
-                            UIInterfaceOrientationIsPortrait(orientation) &&
+    BOOL flipped_portrait = ipad_game && !rotate && UIInterfaceOrientationIsPortrait(orientation) &&
                             orientation != content_portrait;
     CGFloat angle = 0.0;
     if (rotate) {
@@ -417,9 +440,8 @@ static void layout_game_view(void) {
             angle = orientation == UIInterfaceOrientationPortraitUpsideDown ? -M_PI_2 : M_PI_2;
         } else {
             angle = orientation == UIInterfaceOrientationLandscapeRight ? -M_PI_2 : M_PI_2;
-            if (ipad_portrait && content_portrait == UIInterfaceOrientationPortraitUpsideDown) {
+            if (ipad_game && content_portrait == UIInterfaceOrientationPortraitUpsideDown)
                 angle = -angle;
-            }
         }
     } else if (flipped_portrait) {
         angle = M_PI;
@@ -442,6 +464,11 @@ static void layout_game_view(void) {
     CGFloat view_height = VIEW.bounds.size.height;
     double safe_top = view_height > 0.0 ? VIEW.safeAreaInsets.top / view_height : 0.0;
     double safe_bottom = view_height > 0.0 ? VIEW.safeAreaInsets.bottom / view_height : 0.0;
+    if (flipped_portrait) {
+        double original_top = safe_top;
+        safe_top = safe_bottom;
+        safe_bottom = original_top;
+    }
     safe_top = fmax(0.0, fmin(1.0, safe_top));
     safe_bottom = fmax(0.0, fmin(1.0, safe_bottom));
     unsigned safe_top_ppm = (unsigned)llround(safe_top * 1000000.0);
@@ -454,23 +481,21 @@ static void layout_game_view(void) {
         getenv("MR_DIAGNOSTICS")) {
         printf("[UIKit] safe-area insets: top %.1f pt, bottom %.1f pt (%.2f%%, %.2f%% of game "
                "view)\n",
-               (double)VIEW.safeAreaInsets.top, (double)VIEW.safeAreaInsets.bottom,
-               safe_top * 100.0, safe_bottom * 100.0);
+               safe_top * view_height, safe_bottom * view_height, safe_top * 100.0,
+               safe_bottom * 100.0);
     }
     UIInterfaceOrientation input_orientation = orientation;
     if (rotate) {
-        input_orientation =
-            surface_w > surface_h
-                ? UIInterfaceOrientationLandscapeRight
-                : (ipad_portrait ? content_portrait : UIInterfaceOrientationPortrait);
+        input_orientation = surface_w > surface_h
+                                ? UIInterfaceOrientationLandscapeRight
+                                : (ipad_game ? content_portrait : UIInterfaceOrientationPortrait);
     } else if (flipped_portrait) {
         input_orientation = content_portrait;
     }
     int previous_orientation = atomic_exchange_explicit(
         &INTERFACE_ORIENTATION, (int)input_orientation, memory_order_relaxed);
-    if ((changed || previous_orientation != (int)input_orientation) && is_ipad_scene(SCENE) &&
-        getenv("MR_DIAGNOSTICS")) {
-        printf("[Orientation] iPad content: %s\n", orientation_name(input_orientation));
+    if ((changed || previous_orientation != (int)input_orientation) && getenv("MR_DIAGNOSTICS")) {
+        printf("[Orientation] content: %s\n", orientation_name(input_orientation));
     }
     if (changed) atomic_store_explicit(&DRAWABLE_NEEDS_RESIZE, true, memory_order_release);
     update_orientation_lock();
@@ -479,7 +504,9 @@ static void layout_game_view(void) {
 static BOOL orientation_matches_request(UIInterfaceOrientation orientation) {
     BOOL landscape = UIInterfaceOrientationIsLandscape(orientation);
     BOOL movie = atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire);
-    return movie ? landscape : UIInterfaceOrientationIsPortrait(orientation);
+    return movie ? landscape
+                 : orientation == UIInterfaceOrientationPortrait ||
+                       (is_ipad() && orientation == UIInterfaceOrientationPortraitUpsideDown);
 }
 
 static void update_orientation_lock(void) {
@@ -491,8 +518,7 @@ static void update_orientation_lock(void) {
 }
 
 static void request_game_orientation(UIWindowScene *scene, BOOL landscape) {
-    UIInterfaceOrientationMask mask =
-        landscape ? UIInterfaceOrientationMaskLandscape : portrait_orientation_mask(scene);
+    UIInterfaceOrientationMask mask = game_orientation_mask();
     if (getenv("MR_DIAGNOSTICS")) {
         printf("[Orientation] requesting %s scene geometry (current %ld, locked %s)\n",
                landscape ? "landscape" : "portrait",
@@ -511,7 +537,7 @@ static void request_game_orientation(UIWindowScene *scene, BOOL landscape) {
 }
 
 static void set_device_orientation_tracking(BOOL active) {
-    if (!SCENE || !is_ipad_scene(SCENE)) return;
+    if (!SCENE || !is_ipad()) return;
     UIDevice *device = UIDevice.currentDevice;
     if (active) {
         if (DEVICE_ORIENTATION_NOTIFICATIONS) return;
@@ -594,6 +620,7 @@ void mr_ios_attach_scene(UIWindowScene *scene) {
 
     CONTAINER = [[UIView alloc] initWithFrame:WINDOW.bounds];
     CONTAINER.backgroundColor = UIColor.blackColor;
+    CONTAINER.clipsToBounds = YES;
     CONTAINER.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
     VIEW = [[MRGameView alloc] initWithFrame:CONTAINER.bounds];
@@ -655,6 +682,9 @@ void mr_ios_scene_geometry_changed(UIWindowScene *scene) {
                scene.effectiveGeometry.interfaceOrientationLocked ? "yes" : "no");
     }
     layout_game_view();
+    BOOL landscape = atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire);
+    if (!orientation_matches_request(orientation))
+        request_game_orientation_after_unlock(landscape, 0u);
 }
 
 static void destroy_drawable(void) {
@@ -720,6 +750,8 @@ int mr_win_open(uint32_t window_w, uint32_t window_h, uint32_t surface_w, uint32
     (void)title;
     atomic_store_explicit(&SURFACE_W, surface_w ? surface_w : 1u, memory_order_relaxed);
     atomic_store_explicit(&SURFACE_H, surface_h ? surface_h : 1u, memory_order_relaxed);
+    atomic_store_explicit(&SURFACE_SHORT_SIDE, surface_w < surface_h ? surface_w : surface_h,
+                          memory_order_release);
     if (!VIEW) return -1;
 
     run_on_main_sync(^{
@@ -821,6 +853,10 @@ void mr_win_close(void) {
 
     run_on_main_sync(^{
       set_device_orientation_tracking(NO);
+      RESIZE_GENERATION++;
+      SCHEDULED_LONG_SIDE = 0;
+      atomic_store_explicit(&SURFACE_SHORT_SIDE, 0u, memory_order_release);
+      atomic_store_explicit(&SURFACE_LONG_REQUEST, 0u, memory_order_release);
       set_accelerometer_active(NO);
       MOTION = nil;
       [DISPLAY_LINK invalidate];
@@ -885,6 +921,10 @@ void mr_win_set_movie_orientation(int landscape) {
 
 int mr_win_take_surface_orientation(void) {
     return atomic_exchange_explicit(&SURFACE_ORIENTATION_REQUEST, -1, memory_order_acq_rel);
+}
+
+uint32_t mr_win_take_surface_long_side(void) {
+    return atomic_exchange_explicit(&SURFACE_LONG_REQUEST, 0u, memory_order_acq_rel);
 }
 
 void mr_win_set_surface_size(uint32_t width, uint32_t height) {

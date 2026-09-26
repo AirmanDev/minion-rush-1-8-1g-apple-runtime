@@ -73,6 +73,32 @@ static inline mr_win_fit mr_win_fit_surface(double target_w, double target_h, do
     return fit;
 }
 
+static inline mr_win_fit mr_win_fit_surface_near_fill(double target_w, double target_h,
+                                                      double surface_w, double surface_h,
+                                                      double max_crop_pixels) {
+    mr_win_fit fit = mr_win_fit_surface(target_w, target_h, surface_w, surface_h);
+    if (!(target_w > 0.0) || !(target_h > 0.0) || !(surface_w > 0.0) || !(surface_h > 0.0) ||
+        !(max_crop_pixels >= 0.0))
+        return fit;
+    double scale = fmax(target_w / surface_w, target_h / surface_h);
+    double crop_w = surface_w - target_w / scale;
+    double crop_h = surface_h - target_h / scale;
+    if (crop_w > max_crop_pixels || crop_h > max_crop_pixels) return fit;
+    fit.w = surface_w * scale;
+    fit.h = surface_h * scale;
+    fit.x = (target_w - fit.w) * 0.5;
+    fit.y = (target_h - fit.h) * 0.5;
+    return fit;
+}
+
+static inline uint32_t mr_win_surface_long_side(double target_w, double target_h,
+                                                uint32_t short_side) {
+    if (!(target_w > 0.0) || !(target_h > 0.0) || !short_side) return 0;
+    double aspect = fmin(target_w, target_h) / fmax(target_w, target_h);
+    double exact = fmin((double)short_side / aspect, (double)short_side * 4.0);
+    return ((uint32_t)lround(exact) + 7u) & ~7u;
+}
+
 enum { MR_TOUCH_RELEASE = 0, MR_TOUCH_PRESS = 1, MR_TOUCH_MOVE = 2 };
 
 typedef struct {
@@ -104,7 +130,8 @@ void mr_win_surface_size(uint32_t *width, uint32_t *height);
 
 // Movie playback is landscape on iOS and leaves other screens portrait.
 void mr_win_set_movie_orientation(int landscape);
-int mr_win_take_surface_orientation(void); // -1 unchanged, 0 portrait, 1 landscape.
+int mr_win_take_surface_orientation(void);    // -1 unchanged, 0 portrait, 1 landscape.
+uint32_t mr_win_take_surface_long_side(void); // Zero when the scene aspect is unchanged.
 void mr_win_set_surface_size(uint32_t width, uint32_t height);
 
 #endif
