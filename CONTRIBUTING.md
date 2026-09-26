@@ -53,8 +53,11 @@ Complete local validation with your own 1.8.1g assets:
 ```
 
 iOS platform changes require `tools/test_ios_simulator.sh` and physical-device
-testing before release. State the commands, device class, and result in the
-pull request without disclosing device IDs or signing data.
+testing before release. Keep the deployment minimum in `ios/Deployment.xcconfig`
+and guard newer Apple APIs by availability. Use explicit Simulator family
+arguments for required coverage; report missing runtimes as untested, not passed.
+State the commands, OS versions, device class, and result in the pull request
+without disclosing device IDs or signing data.
 
 ## Contribution license
 

@@ -51,6 +51,7 @@ OUT_DIR="${1:-$default_output}"
 FLAGS=(
   -std=c11 -O2 -gline-tables-only
   -Wall -Wextra -Wpedantic -Werror
+  -Werror=unguarded-availability
   -Wno-unused-parameter
   -fvisibility=hidden -ffunction-sections -fdata-sections
   -D_DARWIN_C_SOURCE -DGL_SILENCE_DEPRECATION -DGLES_SILENCE_DEPRECATION

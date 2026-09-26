@@ -31,6 +31,13 @@ The system has four layers:
 `config/source_manifest.txt` lists maintained public text files. macOS and iOS
 use the same portable sources and cannot diverge into separate runtime variants.
 
+`ios/Deployment.xcconfig` owns the iOS/iPadOS 17 deployment minimum for every
+Xcode target and the native build script. Newer UIKit calls must pass the
+compiler's availability checks; the SDK version is not the deployment minimum.
+The Simulator matrix selects one installed minor release per OS family and
+checks device support before creating temporary phones and tablets. Explicit
+family arguments fail when any requested runtime is missing.
+
 ## Module ownership
 
 | Module | Responsibility |
@@ -207,9 +214,21 @@ pillarbox bars caused by fitting an unrotated portrait view in a landscape
 scene. UIKit converts touch locations through the same view transform, and
 motion axes follow the logical content orientation. A landscape scene may
 persist until the physical iPad returns to portrait because iPadOS does not
-guarantee geometry requests. The
-controller locks the scene only after it reaches an allowed orientation. During
-iPad gameplay the portrait scene stays locked against landscape. Device
+guarantee geometry requests. The controller narrows its supported orientation
+mask to the current scene only
+after it reaches an allowed orientation. This is the shared locking policy on
+iOS/iPadOS 17 and later. On 26 and later the same state also drives UIKit's
+explicit orientation-lock preference, with availability-checked notification
+and state queries. A movie transition first releases the lock and refreshes the
+mask before requesting geometry. On 17 and 18 the scene delegate's coordinate-
+space callback drives layout; on 26 and later the effective-geometry callback
+does so instead. Both call the same handler, and the older callback is ignored
+on newer systems to avoid duplicate updates. Foreground activation also invokes
+that handler, so geometry changes made while the app was inactive receive the
+same layout and orientation request. The foreground test checks portrait content
+when windowing denies a turn, then checks portrait window geometry after the
+simulated device returns upright. During iPad gameplay the portrait scene
+stays locked against landscape. Device
 orientation notifications run only while the scene is active; when the iPad
 reaches the opposite portrait direction, the game view rotates 180 degrees.
 The logical top and bottom safe-area insets swap with that rotation.
@@ -234,7 +253,11 @@ Audio Unit render callback reads from that ring. The cooperative scheduler
 executes callbacks for guest buffers after their samples are consumed.
 
 The iOS audio session belongs to the platform layer. Shared audio-shim code has
-no UIKit or AVFoundation branch.
+no UIKit or AVFoundation branch. Session deactivation cancels pending activation
+retries. Resumption follows the system recommendation: iOS/iPadOS 27 and later
+use the activation-lifecycle notifications, while 17 through 26 use interruption
+notifications and their resumption option. Both paths share activation and retry
+handling; foreground, route-change, and media-reset recovery remain common.
 
 ## File system
 

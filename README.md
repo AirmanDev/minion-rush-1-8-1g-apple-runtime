@@ -17,16 +17,21 @@ release 1.8.1g. See `docs/LEGAL.md`.
 ## Supported environment
 
 - Apple Silicon Mac running macOS 14 or later
-- Xcode 26 or later with the matching iOS SDK
-- ARM64 iPhone or iPad running iOS or iPadOS 26 or later
+- Xcode 27 or later with the matching iOS SDK
+- ARM64 iPhone or iPad running iOS or iPadOS 17 or later
 - Python 3 and the Xcode command-line tools
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
-portrait rendering, iPad upside-down portrait, and gameplay landscape rejection
-on both devices. Physical
-hardware remains the release gate for CPU, GPU, memory, thermal, energy, audio,
-and window-management behavior.
+portrait rendering, iPad upside-down portrait, gameplay landscape rejection,
+and foreground recovery on both devices. Physical hardware remains the release
+gate for CPU, GPU, memory, thermal, energy, audio, and window-management behavior.
+
+The deployment minimum is defined once in `ios/Deployment.xcconfig` and shared
+by the app, UI tests, and native engine build. The compatibility target includes
+iOS/iPadOS 17, 18, 26, and 27. API availability is a build error. An installed
+Simulator runtime is required to claim runtime validation for that OS family;
+compiling for iOS 17 alone does not validate its runtime behavior.
 
 The original engine uses OpenGL ES. The iOS port therefore retains one
 EAGL/GLES3 compatibility path. There is no ES2 fallback. A native Metal port
@@ -109,17 +114,22 @@ library and signed Release application, then installs it. Local Xcode
 The scripts select the complete `/Applications/Xcode.app` toolchain even when
 the active `xcode-select` path points to the standalone Command Line Tools.
 
-Run the isolated iOS 26 Simulator matrix:
+Run the isolated matrix for all installed iOS Simulator families at or above
+the deployment minimum:
 
 ```bash
 ./tools/test_ios_simulator.sh
+# Require specific installed families; fail if any are missing.
+./tools/test_ios_simulator.sh 17 18 26 27
 ```
 
-The test creates temporary iPhone SE (2nd generation) and iPad simulators,
-installs a Release build, verifies landscape intro entry (rotating the simulated
-iPad when iPadOS denies a programmatic turn) and Hungarian startup, rejects
-upside-down gameplay on iPhone and landscape gameplay on both devices, and checks the portrait
-menu framebuffer. Full intro completion is not automated because the 3D movie
+The test selects the newest installed minor release in each family and creates
+temporary iPhone and iPad simulators supported by that runtime. It installs a
+Release build, verifies landscape intro entry (rotating the simulated iPad when
+iPadOS denies a programmatic turn) and Hungarian startup, rejects upside-down
+gameplay on iPhone and landscape gameplay on both devices, checks foreground
+orientation and audio-session recovery, and checks the portrait menu framebuffer.
+Full intro completion is not automated because the 3D movie
 advances too slowly under Simulator translation; the post-intro checks use an
 engine-generated settings file. The test removes every generated simulator and
 build directory when it finishes. Set `MR_SIMULATOR_ARTIFACTS` to an empty
@@ -129,7 +139,7 @@ with `MR_SIMULATOR_SETTINGS` when the macOS data root is elsewhere.
 
 Set `MR_SIMULATOR_SKIP_INTRO=1` to run the menu and orientation checks without
 the clean-install intro test when diagnosing a slow Simulator renderer.
-Set `MR_SIMULATOR_SAVE_FILE` to a local savegame path for the optional iPad
+Set `MR_SIMULATOR_SAVE_FILE` to a local savegame path for the optional iPhone/iPad
 gameplay screenshot test. The file is copied only into the temporary Simulator
 data container and is not added to the repository or test artifacts.
 
@@ -184,11 +194,15 @@ one layout group so their button, label, progress, and decoration remain aligned
 The result statistics also remain one layout group: their labels and values
 cannot receive different offsets when the group crosses the top-anchor boundary.
 Scene rendering and full-screen backgrounds continue to use the complete display.
-The controller locks the reached scene orientation; while iPad gameplay holds
-the scene in portrait, active device-orientation notifications rotate the game
-view between the two portrait directions. The app does not use the deprecated
-full-screen compatibility mode. In the background,
+The controller narrows its supported mask to the reached scene orientation on
+all supported versions. On iOS/iPadOS 26 and later it also requests the system's
+explicit orientation lock. Geometry callbacks from the older and newer scene
+APIs feed the same layout handler, without processing both on the same version.
+While iPad gameplay holds the scene in portrait, active device-orientation
+notifications rotate the game view between the two portrait directions. The app
+does not use the deprecated full-screen compatibility mode. In the background,
 the display link and engine thread wait until the scene becomes active again.
+Foreground activation reapplies the same layout and orientation policy.
 
 ## Community localizations
 

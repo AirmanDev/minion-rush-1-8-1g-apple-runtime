@@ -134,6 +134,18 @@
     [self waitForWindow:window landscape:NO timeout:15.0];
     [self waitForDelay:3.0];
     [self attachScreenshotNamed:@"Gameplay portrait"];
+
+    [device pressButton:XCUIDeviceButtonHome];
+    XCTAssertTrue([app waitForState:XCUIApplicationStateRunningBackground timeout:10.0]);
+    device.orientation = UIDeviceOrientationLandscapeLeft;
+    [app activate];
+    [self waitForDelay:3.0];
+    [self attachScreenshotNamed:@"Gameplay foreground recovery"];
+    XCTAssertEqual(app.state, XCUIApplicationStateRunningForeground);
+    device.orientation = UIDeviceOrientationPortrait;
+    [self waitForWindow:window landscape:NO timeout:15.0];
+    [self waitForDelay:3.0];
+    [self attachScreenshotNamed:@"Gameplay foreground portrait"];
     [app terminate];
 }
 

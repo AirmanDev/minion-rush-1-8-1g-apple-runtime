@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select the production iOS runtime and representative simulator devices."""
+"""Select one installed runtime per supported iOS family and matching devices."""
 
 from __future__ import annotations
 
@@ -20,8 +20,10 @@ TABLET_PREFERENCES = (
 )
 
 
-def available_ios_26_runtime(payload: dict[str, object]) -> str:
-    candidates: list[tuple[tuple[int, ...], str]] = []
+def available_runtimes(payload: dict[str, object], minimum: str,
+                       requested: set[int]) -> list[dict[str, object]]:
+    minimum_parts = tuple(int(part) for part in minimum.split("."))
+    candidates: dict[int, tuple[tuple[int, ...], dict[str, object]]] = {}
     for runtime in payload.get("runtimes", []):
         if not isinstance(runtime, dict) or not runtime.get("isAvailable", False):
             continue
@@ -29,13 +31,24 @@ def available_ios_26_runtime(payload: dict[str, object]) -> str:
         version = runtime.get("version")
         if not isinstance(identifier, str) or not isinstance(version, str):
             continue
-        parts = version.split(".")
-        if not parts or parts[0] != "26" or not all(part.isdigit() for part in parts):
+        if not identifier.startswith("com.apple.CoreSimulator.SimRuntime.iOS-"):
             continue
-        candidates.append((tuple(int(part) for part in parts), identifier))
+        parts = version.split(".")
+        if not parts or not all(part.isdigit() for part in parts):
+            continue
+        numeric = tuple(int(part) for part in parts)
+        major = numeric[0]
+        if numeric < minimum_parts or (requested and major not in requested):
+            continue
+        if major not in candidates or numeric > candidates[major][0]:
+            candidates[major] = (numeric, runtime)
+    missing = requested - candidates.keys()
+    if missing:
+        raise ValueError("requested Simulator runtimes are unavailable: " +
+                         ", ".join(str(major) for major in sorted(missing)))
     if not candidates:
-        raise ValueError("an available iOS 26 Simulator runtime is required")
-    return max(candidates)[1]
+        raise ValueError(f"an available iOS {minimum} or later Simulator runtime is required")
+    return [candidates[major][1] for major in sorted(candidates)]
 
 
 def preferred_device_type(payload: dict[str, object], names: tuple[str, ...]) -> str:
@@ -52,22 +65,35 @@ def preferred_device_type(payload: dict[str, object], names: tuple[str, ...]) ->
     raise ValueError("required Simulator device type is unavailable: " + ", ".join(names))
 
 
-def select(runtime_payload: dict[str, object], device_payload: dict[str, object]) -> tuple[str, str, str]:
-    return (
-        available_ios_26_runtime(runtime_payload),
-        preferred_device_type(device_payload, PHONE_PREFERENCES),
-        preferred_device_type(device_payload, TABLET_PREFERENCES),
-    )
+def select(runtime_payload: dict[str, object], device_payload: dict[str, object],
+           minimum: str, requested: set[int]) -> list[tuple[str, str, str, str]]:
+    matrix = []
+    for runtime in available_runtimes(runtime_payload, minimum, requested):
+        devices = device_payload
+        if "supportedDeviceTypes" in runtime:
+            supported = {device["identifier"] for device in runtime["supportedDeviceTypes"]}
+            devices = {"devicetypes": [device for device in device_payload.get("devicetypes", [])
+                                        if device.get("identifier") in supported]}
+        matrix.append((
+            "iOS-" + str(runtime["version"]).split(".")[0],
+            str(runtime["identifier"]),
+            preferred_device_type(devices, PHONE_PREFERENCES),
+            preferred_device_type(devices, TABLET_PREFERENCES),
+        ))
+    return matrix
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <runtimes.json> <device-types.json>", file=sys.stderr)
+    if len(sys.argv) < 4:
+        print(f"Usage: {sys.argv[0]} <runtimes.json> <device-types.json> <minimum> [major ...]",
+              file=sys.stderr)
         return 2
     try:
         runtime_payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
         device_payload = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-        print("\t".join(select(runtime_payload, device_payload)))
+        requested = {int(value) for value in sys.argv[4:]}
+        for row in select(runtime_payload, device_payload, sys.argv[3], requested):
+            print("\t".join(row))
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

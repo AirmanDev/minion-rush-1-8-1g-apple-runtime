@@ -746,7 +746,7 @@ def check_ios_project(tree: dict[str, str]) -> None:
     simulator_test = tree["tools/test_ios_simulator.sh"]
     window = tree["src/native/window_ios.m"]
     required = (
-        "IPHONEOS_DEPLOYMENT_TARGET = 26.0;",
+        "Deployment.xcconfig",
         'SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";',
         "SDKROOT = iphoneos;",
         "CODE_SIGN_STYLE = Automatic;",
@@ -767,6 +767,15 @@ def check_ios_project(tree: dict[str, str]) -> None:
     if "DEVELOPMENT_TEAM = " in project:
         raise SystemExit("personal Apple development team remains in the project")
     common = tree["tools/project_common.sh"]
+    deployment = tree["ios/Deployment.xcconfig"]
+    if "IPHONEOS_DEPLOYMENT_TARGET = 17.0" not in deployment or \
+       "IPHONEOS_DEPLOYMENT_TARGET =" in project or \
+       project.count("baseConfigurationReference =") != 2 or \
+       "ios/Deployment.xcconfig" not in common:
+        raise SystemExit("iOS deployment target must come from the shared configuration")
+    if "-Werror=unguarded-availability" not in deployment or \
+       "-Werror=unguarded-availability" not in tree["tools/build_ios.sh"]:
+        raise SystemExit("iOS API availability must be enforced in every build")
     for token in ("MR_DEVELOPMENT_TEAM", "MR_BUNDLE_ID", "APP_BUNDLE_IDENTIFIER",
                   "IOS_SIGNING_ARGS"):
         if token not in common:
@@ -857,6 +866,17 @@ def check_ios_project(tree: dict[str, str]) -> None:
     if "supportedInterfaceOrientationsForWindowScene" not in app or \
        "mr_ios_supported_orientations" not in app:
         raise SystemExit("iOS 27 scene orientation policy is incomplete")
+    if "didUpdateCoordinateSpace" not in app or "didUpdateEffectiveGeometry" not in app or \
+       "@available(iOS 26.0, *)" not in app or \
+       "@available(iOS 26.0, *)" not in window or \
+       "refresh_orientation_policy" not in window:
+        raise SystemExit("iOS 17 and later must share an availability-aware orientation policy")
+    audio_session = tree["src/native/audio_session_ios.m"]
+    for token in ("@available(iOS 27.0, *)", "AVAudioSessionDidBecomeInactiveNotification",
+                  "AVAudioSessionResumptionRecommendationNotification",
+                  "AVAudioSessionInterruptionOptionShouldResume", "update_resumption"):
+        if token not in audio_session:
+            raise SystemExit("iOS 17 and later audio resumption policy is incomplete: " + token)
 
     privacy_path = ROOT / "ios/MinionRush/PrivacyInfo.xcprivacy"
     try:

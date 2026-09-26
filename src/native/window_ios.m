@@ -108,7 +108,25 @@ static UIInterfaceOrientationMask game_orientation_mask(void) {
 }
 
 UIInterfaceOrientationMask mr_ios_supported_orientations(void) {
-    return game_orientation_mask();
+    UIInterfaceOrientationMask mask = game_orientation_mask();
+    UIInterfaceOrientation orientation = SCENE.effectiveGeometry.interfaceOrientation;
+    if (orientation != UIInterfaceOrientationUnknown &&
+        atomic_load_explicit(&ORIENTATION_LOCK, memory_order_acquire)) {
+        UIInterfaceOrientationMask current = (UIInterfaceOrientationMask)(1u << orientation);
+        if (mask & current) return current;
+    }
+    return mask;
+}
+
+static BOOL scene_orientation_locked(UIWindowScene *scene) {
+    if (@available(iOS 26.0, *)) return scene.effectiveGeometry.interfaceOrientationLocked;
+    return atomic_load_explicit(&ORIENTATION_LOCK, memory_order_acquire);
+}
+
+static void refresh_orientation_policy(void) {
+    UIViewController *controller = WINDOW.rootViewController;
+    if (@available(iOS 26.0, *)) [controller setNeedsUpdateOfPrefersInterfaceOrientationLocked];
+    [controller setNeedsUpdateOfSupportedInterfaceOrientations];
 }
 
 static void run_on_main_sync(dispatch_block_t block) {
@@ -307,7 +325,7 @@ int mr_win_accel(mr_accel *out) {
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    return game_orientation_mask();
+    return mr_ios_supported_orientations();
 }
 
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
@@ -514,7 +532,7 @@ static void update_orientation_lock(void) {
     BOOL should_lock = orientation_matches_request(SCENE.effectiveGeometry.interfaceOrientation);
     bool previous = atomic_exchange_explicit(&ORIENTATION_LOCK, should_lock, memory_order_acq_rel);
     if (previous == should_lock) return;
-    [WINDOW.rootViewController setNeedsUpdateOfPrefersInterfaceOrientationLocked];
+    refresh_orientation_policy();
 }
 
 static void request_game_orientation(UIWindowScene *scene, BOOL landscape) {
@@ -523,7 +541,7 @@ static void request_game_orientation(UIWindowScene *scene, BOOL landscape) {
         printf("[Orientation] requesting %s scene geometry (current %ld, locked %s)\n",
                landscape ? "landscape" : "portrait",
                (long)scene.effectiveGeometry.interfaceOrientation,
-               scene.effectiveGeometry.interfaceOrientationLocked ? "yes" : "no");
+               scene_orientation_locked(scene) ? "yes" : "no");
     }
     UIWindowSceneGeometryPreferencesIOS *preferences =
         [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask];
@@ -551,7 +569,6 @@ static void set_device_orientation_tracking(BOOL active) {
                     }];
         [device beginGeneratingDeviceOrientationNotifications];
         DEVICE_ORIENTATION_NOTIFICATIONS = YES;
-        layout_game_view();
         return;
     }
     if (!DEVICE_ORIENTATION_NOTIFICATIONS) return;
@@ -565,7 +582,7 @@ static void request_game_orientation_after_unlock(BOOL landscape, unsigned attem
     if (!SCENE || landscape != atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire)) {
         return;
     }
-    if (SCENE.effectiveGeometry.interfaceOrientationLocked) {
+    if (scene_orientation_locked(SCENE)) {
         if (attempt < 60u) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 16000000), dispatch_get_main_queue(), ^{
               request_game_orientation_after_unlock(landscape, attempt + 1u);
@@ -666,6 +683,7 @@ void mr_ios_set_scene_active(BOOL active) {
     DISPLAY_LINK.paused = !active;
     set_device_orientation_tracking(active);
     set_accelerometer_active(active);
+    if (active && SCENE) mr_ios_scene_geometry_changed(SCENE);
     if (!active && ACTIVE_TOUCH && VIEW) {
         [(MRGameView *)VIEW deliverTouch:ACTIVE_TOUCH action:MR_TOUCH_RELEASE];
         ACTIVE_TOUCH = nil;
@@ -678,8 +696,7 @@ void mr_ios_scene_geometry_changed(UIWindowScene *scene) {
     UIInterfaceOrientation orientation = scene.effectiveGeometry.interfaceOrientation;
     if (getenv("MR_DIAGNOSTICS")) {
         printf("[Orientation] scene geometry changed: %s, locked %s\n",
-               orientation_name(orientation),
-               scene.effectiveGeometry.interfaceOrientationLocked ? "yes" : "no");
+               orientation_name(orientation), scene_orientation_locked(scene) ? "yes" : "no");
     }
     layout_game_view();
     BOOL landscape = atomic_load_explicit(&MOVIE_LANDSCAPE, memory_order_acquire);
@@ -912,9 +929,7 @@ void mr_win_set_movie_orientation(int landscape) {
     atomic_store_explicit(&SURFACE_ORIENTATION_REQUEST, wanted ? 1 : 0, memory_order_release);
     atomic_store_explicit(&ORIENTATION_LOCK, false, memory_order_release);
     dispatch_async(dispatch_get_main_queue(), ^{
-      UIViewController *controller = WINDOW.rootViewController;
-      [controller setNeedsUpdateOfPrefersInterfaceOrientationLocked];
-      [controller setNeedsUpdateOfSupportedInterfaceOrientations];
+      refresh_orientation_policy();
       request_game_orientation_after_unlock(wanted, 0u);
     });
 }

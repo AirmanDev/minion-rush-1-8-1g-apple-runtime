@@ -29,7 +29,7 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/xcode/configuring-your-app-icon
 - App icon layout and appearance specifications:
   https://developer.apple.com/design/human-interface-guidelines/app-icons
-- iPhone models compatible with iOS 26:
+- iPhone models compatible with the current iOS release:
   https://support.apple.com/en-ie/guide/iphone/iphe3fa5df43/ios
 - Running on simulated and physical devices:
   https://developer.apple.com/documentation/xcode/running-your-app-on-simulated-or-physical-devices
@@ -62,6 +62,12 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/uikit/uiwindowscene/requestgeometryupdate(_:errorhandler:)
 - Effective window-scene geometry:
   https://developer.apple.com/documentation/uikit/uiwindowscene/effectivegeometry
+- Scene geometry callbacks on iOS/iPadOS 17 and 18:
+  https://developer.apple.com/documentation/uikit/uiwindowscenedelegate/windowscene(_:didupdate:interfaceorientation:traitcollection:)
+- Scene geometry callbacks on iOS/iPadOS 26 and later:
+  https://developer.apple.com/documentation/uikit/uiwindowscenedelegate/windowscene(_:didupdateeffectivegeometry:)
+- Shared Xcode configuration files:
+  https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project
 - UIKit scene lifecycle:
   https://developer.apple.com/documentation/uikit/app_and_environment/scenes
 - UIKit safe-area insets:
@@ -135,6 +141,12 @@ and does not distribute that binary.
   https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/TheAudioUnit/TheAudioUnit.html
 - `AVAudioSession` media-services reset:
   https://developer.apple.com/documentation/avfaudio/avaudiosession/mediaserviceswereresetnotification
+- Audio resumption recommendations on iOS/iPadOS 27 and later:
+  https://developer.apple.com/documentation/avfaudio/avaudiosession/resumptionrecommendationnotification
+- Audio-session deactivation notifications on iOS/iPadOS 27 and later:
+  https://developer.apple.com/documentation/avfaudio/avaudiosession/didbecomeinactivenotification
+- Interruption resumption on iOS/iPadOS 17 through 26:
+  https://developer.apple.com/documentation/avfaudio/avaudiosession/interruptionoptions/shouldresume
 - Apple QA1749, rebuilding audio objects after a reset:
   https://developer.apple.com/library/archive/qa/qa1749/
 - OpenSL ES registry:

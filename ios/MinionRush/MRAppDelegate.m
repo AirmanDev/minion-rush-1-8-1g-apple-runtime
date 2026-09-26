@@ -177,6 +177,17 @@ static void start_engine_once(void) {
 }
 
 - (void)windowScene:(UIWindowScene *)windowScene
+    didUpdateCoordinateSpace:(id<UICoordinateSpace>)previousCoordinateSpace
+        interfaceOrientation:(UIInterfaceOrientation)previousInterfaceOrientation
+             traitCollection:(UITraitCollection *)previousTraitCollection {
+    (void)previousCoordinateSpace;
+    (void)previousInterfaceOrientation;
+    (void)previousTraitCollection;
+    if (@available(iOS 26.0, *)) return;
+    mr_ios_scene_geometry_changed(windowScene);
+}
+
+- (void)windowScene:(UIWindowScene *)windowScene
     didUpdateEffectiveGeometry:(UIWindowSceneGeometry *)previousGeometry {
     (void)previousGeometry;
     mr_ios_scene_geometry_changed(windowScene);

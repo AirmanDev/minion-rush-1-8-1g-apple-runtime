@@ -22,6 +22,13 @@ static void request_activation(const char *reason) {
     atomic_store_explicit(&NEEDS_ACTIVATION, 1, memory_order_release);
 }
 
+static void update_resumption(BOOL should_resume) {
+    if (should_resume)
+        request_activation("system recommended resumption");
+    else
+        atomic_store_explicit(&NEEDS_ACTIVATION, 0, memory_order_release);
+}
+
 static void observe(NSNotificationName name, void (^block)(NSNotification *)) {
     id token = [NSNotificationCenter.defaultCenter addObserverForName:name
                                                                object:nil
@@ -52,11 +59,25 @@ int mr_audio_session_begin(void) {
 
     OBSERVERS = [NSMutableArray array];
 
-    observe(AVAudioSessionInterruptionNotification, ^(NSNotification *note) {
-      NSNumber *type = note.userInfo[AVAudioSessionInterruptionTypeKey];
-      if (type.unsignedIntegerValue == AVAudioSessionInterruptionTypeEnded)
-          request_activation("interruption ended");
-    });
+    if (@available(iOS 27.0, *)) {
+        observe(AVAudioSessionDidBecomeInactiveNotification, ^(NSNotification *note) {
+          update_resumption(NO);
+        });
+        observe(AVAudioSessionResumptionRecommendationNotification, ^(NSNotification *note) {
+          AVAudioSessionResumptionContext *context =
+              note.userInfo[AVAudioSessionResumptionContextKey];
+          update_resumption(context.recommendation ==
+                            AVAudioSessionResumptionRecommendationShouldResume);
+        });
+    } else {
+        observe(AVAudioSessionInterruptionNotification, ^(NSNotification *note) {
+          NSNumber *type = note.userInfo[AVAudioSessionInterruptionTypeKey];
+          NSNumber *options = note.userInfo[AVAudioSessionInterruptionOptionKey];
+          update_resumption(
+              type.unsignedIntegerValue == AVAudioSessionInterruptionTypeEnded &&
+              (options.unsignedIntegerValue & AVAudioSessionInterruptionOptionShouldResume));
+        });
+    }
 
     observe(AVAudioSessionRouteChangeNotification, ^(NSNotification *note) {
       request_activation("route changed");

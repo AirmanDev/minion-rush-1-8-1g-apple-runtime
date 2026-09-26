@@ -24,7 +24,12 @@ GAME_BINARY="$OUT/minion-rush"
 GAME=("$GAME_BINARY" "$ENGINE" "$GAME_FILES")
 IOS_PROJECT="$PROJECT_ROOT/ios/MinionRush.xcodeproj"
 IOS_SCHEME="MinionRush"
-IOS_DEPLOYMENT_TARGET="26.0"
+IOS_DEPLOYMENT_TARGET="$(awk '$1 == "IPHONEOS_DEPLOYMENT_TARGET" && $2 == "=" {print $3}' \
+  "$PROJECT_ROOT/ios/Deployment.xcconfig")"
+[[ "$IOS_DEPLOYMENT_TARGET" =~ ^[0-9]+\.[0-9]+$ ]] || {
+  printf 'ERROR: invalid iOS deployment target in ios/Deployment.xcconfig\n' >&2
+  exit 1
+}
 IOS_BUNDLE_ID="${MR_BUNDLE_ID:-org.example.minionrush181}"
 IOS_APP_ICON="$PROJECT_ROOT/ios/MinionRush/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
 IOS_SIGNING_ARGS=()

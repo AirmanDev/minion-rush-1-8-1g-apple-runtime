@@ -21,6 +21,7 @@ docs/ARCHITECTURE.md
 docs/LEGAL.md
 docs/LOCALIZATION.md
 docs/TECHNICAL_SOURCES.md
+ios/Deployment.xcconfig
 ios/Info.plist
 ios/MinionRush.xcodeproj/project.pbxproj
 ios/MinionRush.xcodeproj/project.xcworkspace/contents.xcworkspacedata

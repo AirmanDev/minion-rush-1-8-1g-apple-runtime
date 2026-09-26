@@ -343,11 +343,13 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(devices, [("udid-2", "device-2", "Zita iPad")])
 
     def test_selects_latest_ios_26_and_low_end_phone(self) -> None:
+        prefix = "com.apple.CoreSimulator.SimRuntime."
         runtimes = {
             "runtimes": [
-                {"identifier": "ios-25", "version": "25.4", "isAvailable": True},
-                {"identifier": "ios-26-4", "version": "26.4", "isAvailable": True},
-                {"identifier": "ios-26-5", "version": "26.5", "isAvailable": True},
+                {"identifier": prefix + "iOS-16-6", "version": "16.6", "isAvailable": True},
+                {"identifier": prefix + "iOS-26-4", "version": "26.4", "isAvailable": True},
+                {"identifier": prefix + "iOS-26-5", "version": "26.5", "isAvailable": True},
+                {"identifier": prefix + "tvOS-27-0", "version": "27.0", "isAvailable": True},
             ]
         }
         device_types = {
@@ -357,7 +359,48 @@ class DeviceTests(unittest.TestCase):
                 {"name": "iPad (A16)", "identifier": "tablet-a16"},
             ]
         }
-        self.assertEqual(select(runtimes, device_types), ("ios-26-5", "phone-se-2", "tablet-a16"))
+        self.assertEqual(
+            select(runtimes, device_types, "17.0", set()),
+            [("iOS-26", prefix + "iOS-26-5", "phone-se-2", "tablet-a16")],
+        )
+
+    def test_simulator_matrix_covers_each_installed_supported_family(self) -> None:
+        prefix = "com.apple.CoreSimulator.SimRuntime.iOS-"
+        runtimes = {"runtimes": [
+            {"identifier": prefix + version.replace(".", "-"),
+             "version": version, "isAvailable": available}
+            for version, available in (("16.6", True), ("17.4", True), ("17.5", True),
+                                       ("18.5", True), ("26.5", True), ("27.0", True),
+                                       ("27.1", False))
+        ]}
+        devices = {"devicetypes": [
+            {"name": "iPhone SE (2nd generation)", "identifier": "phone"},
+            {"name": "iPad (10th generation)", "identifier": "tablet"},
+        ]}
+        matrix = select(runtimes, devices, "17.0", set())
+        self.assertEqual([row[1] for row in matrix],
+                         [prefix + version for version in ("17-5", "18-5", "26-5", "27-0")])
+        self.assertEqual([row[1] for row in select(runtimes, devices, "17.0", {18, 27})],
+                         [prefix + version for version in ("18-5", "27-0")])
+        with self.assertRaisesRegex(ValueError, "unavailable: 19"):
+            select(runtimes, devices, "17.0", {19})
+
+    def test_simulator_devices_must_be_supported_by_the_runtime(self) -> None:
+        identifier = "com.apple.CoreSimulator.SimRuntime.iOS-17-5"
+        runtime = {"runtimes": [{
+            "identifier": identifier, "version": "17.5", "isAvailable": True,
+            "supportedDeviceTypes": [{"identifier": "phone-11"}, {"identifier": "tablet-10"}],
+        }]}
+        devices = {"devicetypes": [
+            {"name": "iPhone SE (2nd generation)", "identifier": "phone-se"},
+            {"name": "iPhone 11", "identifier": "phone-11"},
+            {"name": "iPad (A16)", "identifier": "tablet-a16"},
+            {"name": "iPad (10th generation)", "identifier": "tablet-10"},
+        ]}
+        self.assertEqual(select(runtime, devices, "17.0", set()),
+                         [("iOS-17", identifier, "phone-11", "tablet-10")])
+        with self.assertRaisesRegex(ValueError, "runtime is required"):
+            select(runtime, devices, "18.0", set())
 
     def test_rejects_missing_device_list(self) -> None:
         with self.assertRaises(ValueError):
