@@ -181,6 +181,8 @@ same inset. Named lower gameplay controls stay above the bottom safe area,
 with a small width-proportional interior clearance, while intentional decorative
 overflow remains clipped at the display edge. Composite revive controls move as
 one layout group so their button, label, progress, and decoration remain aligned.
+The result statistics also remain one layout group: their labels and values
+cannot receive different offsets when the group crosses the top-anchor boundary.
 Scene rendering and full-screen backgrounds continue to use the complete display.
 The controller locks the reached scene orientation; while iPad gameplay holds
 the scene in portrait, active device-orientation notifications rotate the game

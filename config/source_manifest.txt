@@ -81,6 +81,7 @@ src/native/window_ios.h
 src/native/window_ios.m
 src/native/window_macos.m
 test.sh
+tests/safe_area_test.c
 tests/test_tools.py
 tools/build_ios.sh
 tools/common.py

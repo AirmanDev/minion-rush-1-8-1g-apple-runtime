@@ -67,12 +67,23 @@ bottom anchor and the revive anchors that intentionally overflow the display.
 Lower controls retain a width-proportional interior clearance. Direct siblings
 at or below the revive anchor band move as one group, including passive text and
 artwork that the engine does not retrieve through its named lookup API.
+The result score lookup identifies its containing statistics group. The adapter
+treats that group as indivisible: a top-aligned group moves together, while a
+centered group retains its layout even when some labels fall inside the upper
+anchor band. It never shifts the group's labels or values independently.
 The existing UI lookup hook records those objects without adding another lookup
 path. Hierarchical transforms remain intact, and projected 3D menu containers
 receive matching compensation so their embedded 2D labels stay aligned. Menu,
 shop, event, achievement, and gameplay UI therefore share one layout policy
 while full-screen backgrounds, the 3D render surface, and centered UI retain
 their original geometry.
+
+The asset-independent safe-area test covers groups that cross the upper anchor
+boundary, compact upper groups, changing insets, and repeated frames. The
+`testResultScreenRemainsResponsive` UI test provides screenshot attachments for
+visual inspection on a notched iPhone as well as an iPad; it requires a save with
+the gameplay tutorial completed. Screenshots and personal saves are not source
+artifacts and must not be committed.
 
 ## Static block translation
 

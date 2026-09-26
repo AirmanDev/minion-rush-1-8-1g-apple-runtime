@@ -7,6 +7,7 @@ typedef enum {
     MR_SAFE_AREA_DEFAULT,
     MR_SAFE_AREA_BOTTOM_CONTROL,
     MR_SAFE_AREA_BOTTOM_OVERFLOW,
+    MR_SAFE_AREA_LAYOUT_GROUP,
 } mr_safe_area_role;
 
 mr_safe_area_role mr_safe_area_classify_ui_object(const char *name);

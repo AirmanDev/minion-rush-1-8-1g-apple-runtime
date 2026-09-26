@@ -602,6 +602,7 @@ def check_architecture(tree: dict[str, str]) -> None:
     if "MR_GAME_MENU_GET_GRAPH" not in offline or "MR_GAME_BASIC_PAGE_GET_GRAPH" not in offline:
         raise SystemExit("offline UI policy does not cover both engine page hierarchies")
     for token in ("MR_SAFE_AREA_BOTTOM_CONTROL", "MR_SAFE_AREA_BOTTOM_OVERFLOW",
+                  "MR_SAFE_AREA_LAYOUT_GROUP", "Common_Score_Value",
                   "mr_win_safe_area()", "bottom_inset",
                   "BOTTOM_CONTROL_CLEARANCE_WIDTH_RATIO", "update_overflow_groups"):
         if token not in safe_area:

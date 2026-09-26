@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import stat
 import subprocess
 import sys
@@ -35,6 +36,30 @@ from verify_ios_startup import startup_state, valid_png  # noqa: E402
 
 
 class CommonTests(unittest.TestCase):
+    def test_safe_area_preserves_result_group_spacing(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        adapter = root / "src/native/safe_area.c"
+        symbols = sorted(set(re.findall(r"\bMR_GAME_[A-Z0-9_]+\b", adapter.read_text())))
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "game_bindings.h").write_text(
+                "\n".join(
+                    f"#define {name} {0x100000 + index * 16}u"
+                    for index, name in enumerate(symbols)
+                ) + "\n", encoding="utf-8",
+            )
+            executable = directory / "safe-area"
+            subprocess.run(
+                [
+                    "cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                    "-I", str(root / "src/native"), "-I", str(directory),
+                    str(root / "tests/safe_area_test.c"), str(adapter),
+                    "-lm", "-o", str(executable),
+                ],
+                text=True, check=True,
+            )
+            subprocess.run([str(executable)], check=True)
+
     def test_disposable_names(self) -> None:
         for name in (".DS_Store", "._icon", "cache-wal", "cache-shm", "x.updated"):
             self.assertTrue(is_disposable(name))

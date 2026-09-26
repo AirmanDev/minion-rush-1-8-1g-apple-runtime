@@ -109,7 +109,21 @@ mr_safe_area_role mr_safe_area_classify_ui_object(const char *name) {
         return MR_SAFE_AREA_BOTTOM_CONTROL;
     if (name_in_list(name, BOTTOM_OVERFLOW, sizeof BOTTOM_OVERFLOW / sizeof BOTTOM_OVERFLOW[0]))
         return MR_SAFE_AREA_BOTTOM_OVERFLOW;
+    if (name && strcmp(name, "Common_Score_Value") == 0) return MR_SAFE_AREA_LAYOUT_GROUP;
     return MR_SAFE_AREA_DEFAULT;
+}
+
+static const char *role_name(mr_safe_area_role role) {
+    switch (role) {
+    case MR_SAFE_AREA_BOTTOM_CONTROL:
+        return "bottom control";
+    case MR_SAFE_AREA_BOTTOM_OVERFLOW:
+        return "bottom overflow";
+    case MR_SAFE_AREA_LAYOUT_GROUP:
+        return "layout group";
+    default:
+        return "default";
+    }
 }
 
 static void extend_bounds(vertical_bounds *bounds, float first, float second) {
@@ -170,6 +184,10 @@ void mr_safe_area_register_ui_object(mr_cpu *cpu, uint32_t page, uint32_t object
     if (!cpu || !page || !object || role == MR_SAFE_AREA_DEFAULT ||
         !mr_mem_ok(cpu, object, INTERFACE_READ_SIZE))
         return;
+    if (role == MR_SAFE_AREA_LAYOUT_GROUP) {
+        object = mr_ld32(cpu, object + INTERFACE_PARENT_OFFSET);
+        if (!object || object == page || !mr_mem_ok(cpu, object, INTERFACE_READ_SIZE)) return;
+    }
     registered_object *available = NULL;
     for (unsigned index = 0; index < REGISTERED_OBJECT_CAPACITY; index++) {
         registered_object *entry = &REGISTERED_OBJECTS[index];
@@ -196,8 +214,7 @@ void mr_safe_area_register_ui_object(mr_cpu *cpu, uint32_t page, uint32_t object
         .applied = applied,
     };
     if (changed && getenv("MR_DIAGNOSTICS"))
-        printf("[Safe area] registered %s object %08x on owner %08x\n",
-               role == MR_SAFE_AREA_BOTTOM_CONTROL ? "bottom control" : "bottom overflow", object,
+        printf("[Safe area] registered %s object %08x on owner %08x\n", role_name(role), object,
                page);
 }
 
@@ -301,7 +318,9 @@ static unsigned update_registered_objects(mr_cpu *cpu, float bottom_inset) {
     float control_adjustment = bottom_inset > 0.05f ? -(bottom_inset + control_clearance) : 0.0f;
     for (unsigned index = 0; index < REGISTERED_OBJECT_CAPACITY; index++) {
         registered_object *entry = &REGISTERED_OBJECTS[index];
-        if (!entry->object || !registered_object_is_valid(cpu, entry)) continue;
+        if (!entry->object || !registered_object_is_valid(cpu, entry) ||
+            entry->role == MR_SAFE_AREA_LAYOUT_GROUP)
+            continue;
         if (entry->role == MR_SAFE_AREA_BOTTOM_OVERFLOW &&
             overflow_group_contains(groups, group_count, entry)) {
             entry->applied = 1;
@@ -325,9 +344,7 @@ static unsigned update_registered_objects(mr_cpu *cpu, float bottom_inset) {
                                          : 0;
             printf("[Safe area] applied %s object %08x by %.1f UI units (parent %08x, %u "
                    "children)\n",
-                   entry->role == MR_SAFE_AREA_BOTTOM_CONTROL ? "bottom control"
-                                                              : "bottom overflow",
-                   entry->object, adjustment, entry->parent, sibling_count);
+                   role_name(entry->role), entry->object, adjustment, entry->parent, sibling_count);
             entry->applied = 1;
         }
     }
@@ -497,7 +514,18 @@ static unsigned update_ui_subtree(mr_cpu *cpu, uint32_t page, uint32_t object,
         state->initialized = 1;
     }
 
-    if (registered_ui_object(cpu, object)) return 0;
+    registered_object *registered = registered_ui_object(cpu, object);
+    if (registered) {
+        if (registered->role != MR_SAFE_AREA_LAYOUT_GROUP) return 0;
+        float adjustment = state->moves_with_safe_area ? top_inset : 0.0f;
+        if (!registered->applied && getenv("MR_DIAGNOSTICS")) {
+            printf("[Safe area] layout group %08x: y %.1f, height %.1f, adjustment %.1f\n", object,
+                   mr_ldf32(cpu, object + INTERFACE_POSITION_Y_OFFSET),
+                   mr_ldf32(cpu, object + INTERFACE_HEIGHT_OFFSET), adjustment);
+            registered->applied = 1;
+        }
+        return (unsigned)apply_offset(cpu, state, object, adjustment);
+    }
 
     if (state->moves_with_safe_area) {
         unsigned moved = (unsigned)apply_offset(cpu, state, object, top_inset);
