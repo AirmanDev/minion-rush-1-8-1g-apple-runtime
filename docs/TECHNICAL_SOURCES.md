@@ -200,6 +200,10 @@ and does not distribute that binary.
   https://pubs.opengroup.org/onlinepubs/9799919799/functions/read.html
 - Developer ID, Hardened Runtime, timestamps, and notarization:
   https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution
+- Manual approval for an app from an unknown developer:
+  https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac
+- macOS ZIP metadata and extraction options:
+  `man ditto` (`--keepParent`, `--norsrc`, and `-x -k`)
 - Versioned JSON and the current device properties dictionary:
   `xcrun devicectl --help` and `xcrun devicectl list devices --help`
 

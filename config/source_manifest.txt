@@ -20,6 +20,7 @@ config/localizations/hu.json
 config/source_manifest.txt
 docs/ARCHITECTURE.md
 docs/INSTALLER.md
+docs/INSTALLER_DOWNLOAD.md
 docs/LEGAL.md
 docs/LOCALIZATION.md
 docs/TECHNICAL_SOURCES.md
@@ -103,6 +104,7 @@ tools/install_assets.py
 tools/installer_backend.py
 tools/list_ios_devices.py
 tools/localize.py
+tools/package_installer.sh
 tools/package_ios.sh
 tools/prepare_app_icon.swift
 tools/prepare_installer_icon.swift
@@ -113,5 +115,6 @@ tools/signing.py
 tools/test_installer.sh
 tools/test_ios_simulator.sh
 tools/validate_assets.py
+tools/validate_installer.py
 tools/validate_source.py
 tools/verify_ios_startup.py

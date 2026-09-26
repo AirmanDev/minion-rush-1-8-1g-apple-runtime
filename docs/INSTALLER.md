@@ -158,26 +158,41 @@ The three-app free-signing limit was reproduced before that successful attempt.
 Runtime testing on macOS 26.6 and physical iPad installation through this GUI
 remain release checks.
 
-The source repository is independently publishable: it contains no private
-assets or signing material. A downloadable installer binary has additional
-distribution requirements; a successful local installation is not a
-notarization or clean-Mac distribution test.
-
-The default build is ad-hoc signed for local use, not notarized for public
-downloads. For distribution, build with your Developer ID Application identity:
+The source repository contains no private assets or signing material. The
+download package also excludes these files. Paid developer membership is not
+required for this project's ad-hoc distribution workflow:
 
 ```bash
-./tools/build_installer.sh --identity "Developer ID Application: Your Name (TEAMID)"
-ditto -c -k --keepParent "build/installer/Minion Rush Installer.app" /tmp/installer.zip
-xcrun notarytool submit /tmp/installer.zip --keychain-profile YOUR_PROFILE --wait
-xcrun stapler staple "build/installer/Minion Rush Installer.app"
+./tools/package_installer.sh
 ```
 
-Create the final download archive after stapling. Use your own credentials,
-verify the notary result and Gatekeeper assessment, and test the downloaded app
-on a clean Mac before publishing. The build enables Hardened Runtime and adds
-a secure timestamp when a distribution identity is provided. It does not
-disable Gatekeeper or the device's signing/trust protections.
+This builds the native app, runs its process/model tests, and creates a ZIP and
+matching SHA-256 file in `build/releases`. The ZIP contains only the installer,
+the [download guide](INSTALLER_DOWNLOAD.md), and the source license. The package
+validator requires an exact public-file allowlist, byte-identical source,
+ARM64 executable permissions, and matching archive content. The script extracts
+the archive and verifies the app's signature again before producing the final
+files. Generated archives and checksums are not committed to Git.
+
+The default app is ad-hoc signed with Hardened Runtime. It is not Developer ID
+signed, notarized, or reviewed by Apple. A downloaded copy may require the user
+to open System Settings > Privacy & Security > Open Anyway after trying to
+launch it. Publish the ZIP together with its checksum and guide. A checksum
+detects changes relative to that file; it does not authenticate the publisher.
+Never ask users to disable Gatekeeper, remove quarantine, or override a malware
+or invalid-signature alert.
+
+Before publishing a binary release, test the browser-downloaded ZIP on a clean
+Mac: checksum, extraction, first-launch warning, manual approval, import, and
+installation. Local build and archive verification do not cover that Gatekeeper
+workflow. A clean-Mac download test remains a release check.
+
+Developer ID signing and notarization are optional for a contributor with paid
+membership who wants Apple's standard verified distribution path. The builder
+accepts `--identity "Developer ID Application: Your Name (TEAMID)"` and adds a
+secure timestamp for that identity. Such a release needs notarization, stapling,
+and a fresh final archive; the ad-hoc packaging command does not perform those
+steps. Neither workflow changes macOS or device signing/trust protections.
 
 Apple references are listed in `TECHNICAL_SOURCES.md`. Asset ownership and the
 project's legal scope are described in `LEGAL.md`.

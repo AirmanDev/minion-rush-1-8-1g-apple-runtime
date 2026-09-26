@@ -6,7 +6,9 @@ import io
 import json
 import plistlib
 import signal
+import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
@@ -23,7 +25,124 @@ import installer_backend as backend
 import install_assets
 from list_ios_devices import paired_physical_devices
 import test_tools
+import validate_installer
 from validate_assets import AssetReport
+
+
+class InstallerPackageTests(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        self.root = self.directory / "source"
+        names = ["README.md", "config/installer_ui.json", "config/source_manifest.txt",
+                 "installer/Info.plist"]
+        for name in names + ["docs/INSTALLER_DOWNLOAD.md", "LICENSE"]:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(TOOLS.parent / name, path)
+        (self.root / "config/source_manifest.txt").write_text("\n".join(names) + "\n")
+        self.app = self.directory / "Minion Rush Installer.app"
+        files = {"Contents/Info.plist": self.root / "installer/Info.plist",
+                 "Contents/Resources/installer_ui.json": self.root / "config/installer_ui.json"}
+        files.update({"Contents/Resources/Runtime/" + name: self.root / name for name in names})
+        for name, source in files.items():
+            path = self.app / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, path)
+        for name, data in {"Contents/MacOS/MinionRushInstaller":
+                           struct.pack("<II", 0xFEEDFACF, 0x0100000C),
+                           "Contents/Resources/Installer.icns": b"icns",
+                           "Contents/_CodeSignature/CodeResources": b"fixture"}.items():
+            path = self.app / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        self.executable = self.app / "Contents/MacOS/MinionRushInstaller"
+        self.executable.chmod(0o755)
+
+    def archive(self, *, changed: str = "", omitted: str = "", executable_mode: int = 0o755) -> Path:
+        archive = self.directory / "download.zip"
+        files = {f"{self.app.stem}/{self.app.name}/{name}": path
+                 for name, path in validate_installer.bundle_files(self.root, self.app).items()}
+        files.update({f"{self.app.stem}/README.md": self.root / "docs/INSTALLER_DOWNLOAD.md",
+                      f"{self.app.stem}/LICENSE": self.root / "LICENSE"})
+        with zipfile.ZipFile(archive, "w") as output:
+            for name, path in files.items():
+                if name == omitted:
+                    continue
+                entry = zipfile.ZipInfo(name)
+                entry.create_system = 3
+                mode = executable_mode if path == self.executable else 0o644
+                entry.external_attr = (stat.S_IFREG | mode) << 16
+                output.writestr(entry, b"changed" if name == changed else path.read_bytes())
+        return archive
+
+    def test_public_bundle_and_archive_match(self) -> None:
+        self.assertEqual(len(validate_installer.bundle_files(self.root, self.app)), 9)
+        validate_installer.validate_archive(self.root, self.app, self.archive())
+
+    def test_private_bundle_files_and_empty_directories_are_rejected(self) -> None:
+        path = self.app / "Contents/Resources/assets"
+        path.mkdir()
+        with self.assertRaisesRegex(ValueError, "directories"):
+            validate_installer.bundle_files(self.root, self.app)
+        (path / "private.bin").write_bytes(b"private")
+        with self.assertRaisesRegex(ValueError, "files"):
+            validate_installer.bundle_files(self.root, self.app)
+
+    def test_changed_public_source_is_rejected(self) -> None:
+        (self.app / "Contents/Resources/Runtime/README.md").write_text("changed")
+        with self.assertRaisesRegex(ValueError, "source differs"):
+            validate_installer.bundle_files(self.root, self.app)
+
+    def test_bundle_links_are_rejected(self) -> None:
+        (self.app / "Contents/Resources/linked").symlink_to(self.root, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "Links"):
+            validate_installer.bundle_files(self.root, self.app)
+
+    def test_missing_bundle_file_is_rejected(self) -> None:
+        self.executable.unlink()
+        with self.assertRaisesRegex(ValueError, "files"):
+            validate_installer.bundle_files(self.root, self.app)
+
+    def test_executable_architecture_and_permissions_are_required(self) -> None:
+        self.executable.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, "permissions"):
+            validate_installer.bundle_files(self.root, self.app)
+        self.executable.chmod(0o755)
+        self.executable.write_bytes(struct.pack("<II", 0xFEEDFACF, 0x01000007))
+        with self.assertRaisesRegex(ValueError, "ARM"):
+            validate_installer.bundle_files(self.root, self.app)
+
+    def test_changed_and_missing_archive_content_is_rejected(self) -> None:
+        name = f"{self.app.stem}/README.md"
+        with self.assertRaisesRegex(ValueError, "content differs"):
+            validate_installer.validate_archive(self.root, self.app, self.archive(changed=name))
+        with self.assertRaisesRegex(ValueError, "missing"):
+            validate_installer.validate_archive(self.root, self.app, self.archive(omitted=name))
+
+    def test_archive_rejects_private_linked_and_duplicate_entries(self) -> None:
+        for name, mode in (("assets/private.bin", stat.S_IFREG),
+                           ("linked", stat.S_IFLNK),
+                           (f"{self.app.stem}/LICENSE", stat.S_IFREG)):
+            with self.subTest(name=name):
+                archive = self.archive()
+                with zipfile.ZipFile(archive, "a") as output, mock.patch("warnings.warn"):
+                    entry = zipfile.ZipInfo(name)
+                    entry.external_attr = mode << 16
+                    output.writestr(entry, b"private")
+                with self.assertRaises(ValueError):
+                    validate_installer.validate_archive(self.root, self.app, archive)
+
+    def test_archive_requires_executable_permissions(self) -> None:
+        with self.assertRaisesRegex(ValueError, "permissions"):
+            validate_installer.validate_archive(self.root, self.app, self.archive(executable_mode=0o644))
+
+    def test_truncated_archive_is_rejected(self) -> None:
+        archive = self.archive()
+        archive.write_bytes(archive.read_bytes()[:-30])
+        with self.assertRaises(zipfile.BadZipFile):
+            validate_installer.validate_archive(self.root, self.app, archive)
 
 
 class AssetTransactionTests(unittest.TestCase):

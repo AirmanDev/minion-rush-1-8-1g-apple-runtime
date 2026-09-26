@@ -28,6 +28,7 @@ from typing import Iterator
 sys.dont_write_bytecode = True
 
 from install_assets import install_release
+from common import public_files
 from list_ios_devices import paired_physical_devices
 from signing import signing_settings
 from validate_assets import inspect_assets
@@ -89,20 +90,6 @@ def workspace_lock(workspace: Path) -> Iterator[None]:
         except BlockingIOError as exc:
             raise ValueError("Another installer operation is running.") from exc
         yield
-
-
-def public_files(source: Path) -> list[Path]:
-    names = (source / "config/source_manifest.txt").read_text().splitlines()
-    files: list[Path] = []
-    for name in names:
-        relative = Path(name)
-        if not name or relative.is_absolute() or ".." in relative.parts:
-            raise ValueError("Invalid public source manifest.")
-        path = source / relative
-        if path.is_symlink() or not path.is_file() or source not in path.resolve().parents:
-            raise ValueError(f"Missing or unsafe public source file: {name}")
-        files.append(path)
-    return files
 
 
 def prepare_runtime(source: Path, workspace: Path) -> Path:

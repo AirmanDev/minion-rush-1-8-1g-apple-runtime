@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Shared primitives for the project tools.
-
-Two rules used to live in three or four copies each: what counts as
-disposable metadata rather than content, and how the game's JSON files
-decode.  Both are defined once here, so the installer, the two validators
-and the graphics generator cannot drift apart.
-"""
+"""Shared file, source-manifest, and JSON primitives for project tools."""
 
 from __future__ import annotations
 
@@ -15,6 +9,22 @@ from pathlib import Path
 from typing import Any, Iterator
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def public_files(source: Path) -> list[Path]:
+    source = source.resolve()
+    names = (source / "config/source_manifest.txt").read_text().splitlines()
+    files: list[Path] = []
+    for name in names:
+        relative = Path(name)
+        if not name or relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("Invalid public source manifest.")
+        path = source / relative
+        if path.is_symlink() or not path.is_file() or source not in path.resolve().parents:
+            raise ValueError(f"Missing or unsafe public source file: {name}")
+        files.append(path)
+    return files
+
 
 # Metadata that Finder, Android and SQLite may recreate. Validators report it
 # but never modify the inspected tree.

@@ -79,6 +79,10 @@ and installs on one selected, paired iPhone or iPad. The installer requires
 Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
 It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
 for signing, free-account limits, test coverage, and the future Windows UI contract.
+Downloaded installer copies are ad-hoc signed, not notarized, and can require
+manual approval in macOS Privacy & Security. See the
+[download and opening guide](docs/INSTALLER_DOWNLOAD.md). To build the asset-free
+ZIP and its SHA-256 checksum locally, run `./tools/package_installer.sh`.
 
 For the command-line workflow, create the ignored `assets` directory:
 

@@ -62,6 +62,11 @@ model tests:
 ./tools/test_installer.sh
 ```
 
+Download-package changes also require `./tools/package_installer.sh`. It checks
+the exact public-file allowlist and verifies the signed app after ZIP extraction.
+Do not describe local packaging checks as a clean-Mac Gatekeeper test; record
+that separate first-launch check before publishing a downloadable binary.
+
 Keep installer labels, ordering, and signing-input rules in
 `config/installer_ui.json`. Do not duplicate import or device-installation logic
 in a native client. See `docs/INSTALLER.md` for the Windows UI contract and

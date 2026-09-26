@@ -44,6 +44,7 @@ signing=(--force --sign "$identity" --options runtime)
 if [[ "$identity" != "-" ]]; then signing+=(--timestamp); fi
 codesign "${signing[@]}" "$app"
 codesign --verify --strict "$app"
+python3 tools/validate_installer.py --app "$app"
 destination="$output/Minion Rush Installer.app"
 if [[ -e "$destination" ]]; then
   mv "$destination" "$temporary/previous.app"
@@ -51,5 +52,5 @@ fi
 mv "$app" "$destination"
 printf 'DONE: %s\n' "$destination"
 if [[ "$identity" == "-" ]]; then
-  printf 'Local ad-hoc build. Public downloads require Developer ID signing and notarization.\n'
+  printf 'Ad-hoc signed, not notarized. Downloaded copies need manual Gatekeeper approval.\n'
 fi
