@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import plistlib
 import re
 import sys
@@ -130,7 +131,7 @@ def read_tree() -> dict[str, str]:
     """Every maintained file, keyed by its path relative to the project root."""
     tree: dict[str, str] = {}
     for path in content_files(ROOT, IGNORED_ROOTS):
-        relative = str(path.relative_to(ROOT))
+        relative = path.relative_to(ROOT).as_posix()
         if relative not in EXPECTED and path.suffix not in SEARCHABLE_SUFFIXES:
             continue
         if path.is_symlink():
@@ -214,13 +215,14 @@ def check_tree_shape(tree: dict[str, str]) -> None:
         if unexpected:
             details.append("unexpected: " + ", ".join(unexpected))
         raise SystemExit("inconsistent source tree; " + "; ".join(details))
-    for relative in sorted(path for path in tree if path.endswith(".sh")):
-        if relative == "tools/project_common.sh":
-            continue
-        if not (ROOT / relative).stat().st_mode & 0o111:
-            raise SystemExit(f"{relative} is not executable")
-    if (ROOT / "tools/project_common.sh").stat().st_mode & 0o111:
-        raise SystemExit("internal project_common.sh must not be executable")
+    if os.name != "nt":
+        for relative in sorted(path for path in tree if path.endswith(".sh")):
+            if relative == "tools/project_common.sh":
+                continue
+            if not (ROOT / relative).stat().st_mode & 0o111:
+                raise SystemExit(f"{relative} is not executable")
+        if (ROOT / "tools/project_common.sh").stat().st_mode & 0o111:
+            raise SystemExit("internal project_common.sh must not be executable")
 
     icon = ROOT / "ios/MinionRush/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
     if icon.exists():

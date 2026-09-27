@@ -5,16 +5,26 @@ import struct
 import sys
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from unittest import mock
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
 sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
 from validate_windows_installer import validate
+import validate_source
 
 
 class WindowsPackageTests(unittest.TestCase):
+    def test_source_manifest_paths_are_portable(self) -> None:
+        source = mock.Mock(suffix=".json")
+        source.relative_to.return_value = PureWindowsPath("config/graphics.json")
+        source.is_symlink.return_value = False
+        source.read_bytes.return_value = b"{}"
+        with mock.patch.object(validate_source, "content_files", return_value=[source]):
+            self.assertEqual(validate_source.read_tree(), {"config/graphics.json": "{}"})
+
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

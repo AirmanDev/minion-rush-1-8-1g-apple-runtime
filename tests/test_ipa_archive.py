@@ -124,7 +124,8 @@ class IPAArchiveTests(unittest.TestCase):
         original = self.archive.read_bytes()
         with zipfile.ZipFile(self.archive) as archive:
             self.assertEqual(archive.read("Payload/MinionRush.app/MinionRush"), b"signed bytes")
-            self.assertEqual(archive.getinfo("Payload/MinionRush.app/MinionRush").external_attr >> 16 & 0o777, 0o755)
+            self.assertEqual(archive.getinfo("Payload/MinionRush.app/MinionRush").external_attr >> 16 & 0o777,
+                             stat.S_IMODE(binary.stat().st_mode))
         (application / "linked").symlink_to(binary)
         with self.assertRaisesRegex(ValueError, "Linked"):
             export_ipa(application, self.archive)
