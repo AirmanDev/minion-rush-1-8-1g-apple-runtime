@@ -56,10 +56,12 @@ internal static class InstallerWindowsUiTests
             Require(!device.IsDropDownOpen, "Native accessible selector must close");
             var buttons = Controls<Button>(window).ToArray();
             var archive = buttons.Single(button => AutomationProperties.GetAutomationId(button) == "installer.chooseArchive");
-            Require(archive.ActualWidth > 500 && archive.ActualHeight >= 100, "The full archive area must be a button");
+            Require(archive.ActualWidth > 500 && archive.ActualHeight >= 100,
+                $"The full archive area must be a button (actual: {archive.ActualWidth} x {archive.ActualHeight})");
             var install = buttons.Single(button => AutomationProperties.GetAutomationId(button) == "installer.install");
             Require(!install.IsEnabled, "Missing IPA must disable installation");
             var disclosure = buttons.Single(button => AutomationProperties.GetAutomationId(button) == "installer.logDisclosure");
+            Require(disclosure.ActualWidth > 500, "The log header must span its row");
             var invoke = (IInvokeProvider)new ButtonAutomationPeer(disclosure).GetPattern(PatternInterface.Invoke);
             invoke.Invoke(); Pump();
             Require(AutomationProperties.GetHelpText(disclosure) == contract.Text("expanded"), "The full log header must expand");

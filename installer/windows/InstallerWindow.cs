@@ -290,7 +290,14 @@ internal sealed class InstallerWindow : Window
 
     private Button Button(string title, Action action)
     {
-        var button = new Button { Content = title, MinHeight = 36, MinWidth = 80, Padding = new Thickness(12, 6, 12, 6) };
+        var button = new Button
+        {
+            Content = title,
+            MinHeight = 36,
+            MinWidth = 80,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(12, 6, 12, 6)
+        };
         AutomationProperties.SetName(button, title);
         button.Click += (_, _) =>
         {
