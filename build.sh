@@ -21,6 +21,7 @@ COMMON_FLAGS=(
   -Wall -Wextra -Wpedantic -Werror
   -Wno-unused-parameter
   -Wno-unused-command-line-argument
+  -fobjc-arc
   -D_DARWIN_C_SOURCE -DGL_SILENCE_DEPRECATION
   -isysroot "$MACOS_SDK"
   "-I$SRC" "-I$OUT"

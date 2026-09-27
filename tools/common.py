@@ -11,16 +11,28 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def public_files(source: Path) -> list[Path]:
-    source = source.resolve()
-    names = (source / "config/source_manifest.txt").read_text().splitlines()
-    files: list[Path] = []
+def public_source_names(source: Path) -> list[str]:
+    names = (source / "config/source_manifest.txt").read_text(encoding="utf-8").splitlines()
+    if names != sorted(names) or len(names) != len(set(names)):
+        raise ValueError("The public source manifest must be sorted and contain no duplicates.")
+    if "config/source_manifest.txt" not in names:
+        raise ValueError("The public source manifest must include itself.")
     for name in names:
         relative = Path(name)
-        if not name or relative.is_absolute() or ".." in relative.parts:
+        if (not name or relative.is_absolute() or ".." in relative.parts
+                or name != relative.as_posix() or name != name.strip()):
             raise ValueError("Invalid public source manifest.")
+    return names
+
+
+def public_files(source: Path) -> list[Path]:
+    source = source.resolve()
+    files: list[Path] = []
+    for name in public_source_names(source):
+        relative = Path(name)
         path = source / relative
-        if path.is_symlink() or not path.is_file() or source not in path.resolve().parents:
+        if (any((source / parent).is_symlink() for parent in (relative, *relative.parents))
+                or not path.is_file() or source not in path.resolve().parents):
             raise ValueError(f"Missing or unsafe public source file: {name}")
         files.append(path)
     return files

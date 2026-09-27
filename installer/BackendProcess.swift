@@ -25,7 +25,6 @@ struct BackendEvent: Decodable, Sendable {
   let assets: AssetSummary?
   let devices: [Device]?
   let teams: [SigningTeam]?
-  let runtime: String?
   let toolchain: String?
   let toolchainError: String?
   let assetError: String?

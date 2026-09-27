@@ -73,7 +73,8 @@ publish it or commit it to Git. Transfer it privately for installation with
 [Sideloadly on Windows](INSTALLER_WINDOWS.md). Sideloadly's Apple ID mode can
 re-sign the IPA for another device or renew an expired profile; installation
 without re-signing still requires a valid profile for that exact device.
-Failed archive writes preserve an existing IPA.
+Failed archive writes preserve an existing IPA. The destination cannot be inside
+the signed app bundle, because creating an archive there would modify that bundle.
 
 **Cancel** stops the worker and its deployment process group. A device install
 is not reversible: cancellation during that phase may leave an installed app.
@@ -92,7 +93,10 @@ User data stays in `~/Library/Application Support/MinionRushInstaller`:
 | `logs` | Complete, timestamped operation logs, including failures and cancellation |
 
 **Show local files** opens this directory. Public source snapshots are keyed by
-their content hash, so an app update cannot merge incompatible source trees.
+their source content and executable permissions, so an app update cannot merge
+incompatible source trees. Every operation checks the cached public files against
+the bundled snapshot before using them. Missing, edited, or linked source files
+are rejected; the installer does not merge or repair a damaged snapshot silently.
 Assets remain separate from these snapshots. A newer source version does not
 migrate or build an older snapshot. Remove unwanted local files only after quitting
 the installer. Removing `assets` requires importing the ZIP again. Logs are local

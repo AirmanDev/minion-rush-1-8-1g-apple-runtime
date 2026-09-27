@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""JSON Lines bridge between native installer clients and the existing tools."""
+"""JSON Lines bridge between the native installer and the existing tools."""
 
 from __future__ import annotations
 
@@ -33,11 +33,18 @@ from installer_protocol import emit, operation_log, LogStream, workspace_lock
 
 
 def prepare_runtime(source: Path, workspace: Path) -> Path:
+    source = source.resolve()
     files = public_files(source)
     digest = hashlib.sha256()
+    fingerprints: dict[Path, tuple[bytes, int]] = {}
     for path in files:
-        digest.update(path.relative_to(source).as_posix().encode() + b"\0")
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        relative = path.relative_to(source)
+        fingerprint = hashlib.sha256(path.read_bytes()).digest()
+        executable = path.stat().st_mode & 0o111
+        fingerprints[relative] = (fingerprint, executable)
+        digest.update(relative.as_posix().encode() + b"\0")
+        digest.update(fingerprint)
+        digest.update(executable.to_bytes(2, "little"))
     versions = workspace / "runtimes"
     if versions.is_symlink():
         raise ValueError("The runtimes directory must not be a symbolic link.")
@@ -45,6 +52,7 @@ def prepare_runtime(source: Path, workspace: Path) -> Path:
     runtime = versions / digest.hexdigest()
     if runtime.is_symlink():
         raise ValueError("The runtime directory must not be a symbolic link.")
+    runtime = runtime.resolve()
     if not runtime.exists():
         with tempfile.TemporaryDirectory(prefix=".source-", dir=versions) as temporary:
             staged = Path(temporary) / "runtime"
@@ -54,6 +62,18 @@ def prepare_runtime(source: Path, workspace: Path) -> Path:
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, destination)
             staged.rename(runtime)
+    try:
+        cached = {path.relative_to(runtime): path for path in public_files(runtime)}
+        if set(cached) != set(fingerprints):
+            raise ValueError("The source manifest differs.")
+        for relative, (fingerprint, executable) in fingerprints.items():
+            path = cached[relative]
+            if (path.stat().st_mode & 0o111 != executable
+                    or hashlib.sha256(path.read_bytes()).digest() != fingerprint):
+                raise ValueError(f"Source content or executable permissions differ: {relative}")
+    except (OSError, ValueError) as exc:
+        raise ValueError("Cached runtime source is missing, changed, or unsafe. "
+                         "Remove that runtime snapshot from Show local files, then retry.") from exc
     return runtime
 
 
@@ -209,9 +229,9 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             emit("progress", message="Importing and validating release assets")
             with contextlib.redirect_stdout(LogStream()):
                 report = install_release(args.archive, runtime, assets)
-            return {"assets": asdict(report), "runtime": str(runtime)}
+            return {"assets": asdict(report)}
         if args.command == "status":
-            result: dict[str, object] = {"runtime": str(runtime)}
+            result: dict[str, object] = {}
             try:
                 result["assets"] = asdict(inspect_assets(runtime, assets))
             except (OSError, ValueError) as exc:

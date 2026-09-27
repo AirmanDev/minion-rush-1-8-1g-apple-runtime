@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-from common import ROOT, content_files, load_json_object
+from common import ROOT, content_files, load_json_object, public_source_names
 
 IGNORED_ROOTS = frozenset({
     "assets", "build", "logs", ".firecrawl", ".git", "__MACOSX", "__pycache__",
@@ -26,24 +26,10 @@ SEARCHABLE_SUFFIXES = {
 
 
 def load_source_manifest() -> frozenset[str]:
-    manifest = ROOT / "config/source_manifest.txt"
     try:
-        lines = manifest.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        raise SystemExit(f"source manifest is missing: {manifest}") from exc
-
-    entries = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
-    if entries != sorted(entries):
-        raise SystemExit("source manifest is not sorted")
-    if len(entries) != len(set(entries)):
-        raise SystemExit("duplicate entry in source manifest")
-    for entry in entries:
-        path = Path(entry)
-        if path.is_absolute() or ".." in path.parts or entry.startswith("./"):
-            raise SystemExit(f"invalid source manifest entry: {entry}")
-    if "config/source_manifest.txt" not in entries:
-        raise SystemExit("source manifest does not include itself")
-    return frozenset(entries)
+        return frozenset(public_source_names(ROOT))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 EXPECTED = load_source_manifest()

@@ -4,7 +4,7 @@ set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
 
 usage() {
-  printf 'Usage: ./tools/build_ios.sh [--platform device|simulator] [output_directory]\n'
+  printf 'Usage: ./tools/build_ios.sh [--platform device|simulator]\n'
 }
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
@@ -21,7 +21,7 @@ if [[ "${1:-}" == "--platform" ]]; then
   platform="$2"
   shift 2
 fi
-if (( $# > 1 )) || [[ "${1:-}" == -* ]]; then
+if (( $# != 0 )); then
   usage >&2
   exit 2
 fi
@@ -42,11 +42,16 @@ case "$platform" in
     ;;
 esac
 
+OUT_DIR="$default_output"
+[[ ! -L "$OUT" ]] || {
+  printf 'ERROR: the build directory must not be a symbolic link.\n' >&2
+  exit 1
+}
+
 project_use_full_xcode
 project_require_command xcrun
 CC="${CC:-$(xcrun --sdk "$sdk" --find clang)}"
 SDK="$(xcrun --sdk "$sdk" --show-sdk-path)"
-OUT_DIR="${1:-$default_output}"
 
 FLAGS=(
   -std=c11 -O2 -gline-tables-only

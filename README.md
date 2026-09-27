@@ -85,6 +85,8 @@ app or Windows ZIP-build workflow. Follow the [Windows guide](docs/INSTALLER_WIN
 for Apple's iTunes/iCloud prerequisites, account signing, and expiration limits.
 Keep exported IPAs private; they include proprietary game assets. The Sideloadly
 workflow has not been physically tested for this project.
+Download the installer ZIP and matching checksum from
+[Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases).
 Downloaded installer copies are ad-hoc signed, not notarized, and can require
 manual approval in macOS Privacy & Security. See the
 [download and opening guide](docs/INSTALLER_DOWNLOAD.md). To build the asset-free
@@ -397,6 +399,8 @@ configuration, installed original assets, or private XLIFF translations.
 
 Technical and historical references are listed in
 `docs/TECHNICAL_SOURCES.md`.
+See the [code audit](docs/AUDIT.md) for the reviewed boundaries, corrections,
+verification results, and remaining test limits.
 
 ## License
 

@@ -105,6 +105,14 @@ class IPAArchiveTests(unittest.TestCase):
         self.assertEqual(self.archive.read_bytes(), b"previous archive")
         self.assert_no_temporary_archives()
 
+    def test_export_cannot_write_inside_the_signed_bundle(self) -> None:
+        destination = self.application / "export.ipa"
+        with mock.patch("ipa_archive.tempfile.mkstemp", side_effect=AssertionError("Unsafe export")):
+            with self.assertRaisesRegex(ValueError, "inside"):
+                export_ipa(self.application, destination)
+        self.assertFalse(destination.exists())
+        self.assertEqual(self.binary.read_bytes(), b"signed bytes")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,18 +59,15 @@ static void apply_frame_rate(double hz) {
 static void destroy_window(void) {
     if (DISPLAY_LINK) {
         [DISPLAY_LINK invalidate];
-        [DISPLAY_LINK release];
         DISPLAY_LINK = nil;
     }
     if (VIEW) [VIEW clearGLContext];
     if (WIN) {
         [WIN close];
-        [WIN release];
     }
     CTX = nil;
     VIEW = nil;
     WIN = nil;
-    [LANGUAGE_TARGET release];
     LANGUAGE_TARGET = nil;
 }
 
@@ -95,20 +92,20 @@ static void configure_language_menu(void) {
     if (mr_localization_count() == 0) return;
     if (!LANGUAGE_TARGET) LANGUAGE_TARGET = [[MRLanguageTarget alloc] init];
 
-    NSMenu *menu_bar = [[[NSMenu alloc] initWithTitle:@""] autorelease];
-    NSMenuItem *application_item = [[[NSMenuItem alloc] initWithTitle:@""
-                                                               action:nil
-                                                        keyEquivalent:@""] autorelease];
-    NSMenu *application_menu = [[[NSMenu alloc] initWithTitle:@"Minion Rush"] autorelease];
+    NSMenu *menu_bar = [[NSMenu alloc] initWithTitle:@""];
+    NSMenuItem *application_item = [[NSMenuItem alloc] initWithTitle:@""
+                                                              action:nil
+                                                       keyEquivalent:@""];
+    NSMenu *application_menu = [[NSMenu alloc] initWithTitle:@"Minion Rush"];
     NSString *quit_title = [@"Quit " stringByAppendingString:NSProcessInfo.processInfo.processName];
     [application_menu addItemWithTitle:quit_title action:@selector(terminate:) keyEquivalent:@"q"];
     application_item.submenu = application_menu;
     [menu_bar addItem:application_item];
 
-    NSMenuItem *language_item = [[[NSMenuItem alloc] initWithTitle:@"Language"
-                                                            action:nil
-                                                     keyEquivalent:@""] autorelease];
-    NSMenu *language_menu = [[[NSMenu alloc] initWithTitle:@"Language"] autorelease];
+    NSMenuItem *language_item = [[NSMenuItem alloc] initWithTitle:@"Language"
+                                                           action:nil
+                                                    keyEquivalent:@""];
+    NSMenu *language_menu = [[NSMenu alloc] initWithTitle:@"Language"];
     int selected = mr_localization_current();
     NSMenuItem *original = [language_menu addItemWithTitle:@"English"
                                                     action:@selector(selectLanguage:)
@@ -402,7 +399,6 @@ int mr_win_open(uint32_t window_w, uint32_t window_h, uint32_t surface_w, uint32
         }
 
         VIEW = [[MRGameView alloc] initWithFrame:frame pixelFormat:pf];
-        [pf release]; // MRGameView retains the pixel format.
         if (!VIEW) {
             destroy_window();
             return -1;
@@ -410,7 +406,6 @@ int mr_win_open(uint32_t window_w, uint32_t window_h, uint32_t surface_w, uint32
         [VIEW setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
         [VIEW setWantsBestResolutionOpenGLSurface:YES];
         [WIN setContentView:VIEW];
-        [VIEW release];
 
         CTX = [VIEW openGLContext];
         if (!CTX) {
@@ -438,7 +433,7 @@ int mr_win_open(uint32_t window_w, uint32_t window_h, uint32_t surface_w, uint32
         MAX_REFRESH_HZ = screen ? (double)[screen maximumFramesPerSecond] : 60.0;
         TARGET_REFRESH_HZ = START_REFRESH_HZ = MAX_REFRESH_HZ;
 
-        DISPLAY_LINK = [[VIEW displayLinkWithTarget:VIEW selector:@selector(displayTick:)] retain];
+        DISPLAY_LINK = [VIEW displayLinkWithTarget:VIEW selector:@selector(displayTick:)];
         if (!DISPLAY_LINK) {
             fprintf(stderr, "ERROR: display link cannot be created for the screen\n");
             destroy_window();

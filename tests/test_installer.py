@@ -242,6 +242,26 @@ class InstallerBackendTests(unittest.TestCase):
                 backend.prepare_runtime(TOOLS.parent, workspace)
             self.assertEqual(list(other.iterdir()), [])
 
+    def test_runtime_copy_rejects_changed_missing_or_linked_cached_sources(self) -> None:
+        for damage in ("changed", "missing", "link", "parent", "permissions"):
+            with self.subTest(damage=damage), tempfile.TemporaryDirectory() as temporary:
+                workspace = Path(temporary)
+                runtime = backend.prepare_runtime(TOOLS.parent, workspace)
+                path = runtime / "tools/deploy_ios.sh"
+                if damage == "changed":
+                    path.write_bytes(b"changed source")
+                elif damage == "permissions":
+                    path.chmod(0o644)
+                elif damage == "parent":
+                    path.parent.rename(workspace / "other-tools")
+                    path.parent.symlink_to(workspace / "other-tools", target_is_directory=True)
+                else:
+                    path.unlink()
+                    if damage == "link":
+                        path.symlink_to(TOOLS / "deploy_ios.sh")
+                with self.assertRaisesRegex(ValueError, "Cached runtime"):
+                    backend.prepare_runtime(TOOLS.parent, workspace)
+
     def test_workspace_lock_rejects_concurrent_operations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary)

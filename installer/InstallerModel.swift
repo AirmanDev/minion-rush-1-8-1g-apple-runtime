@@ -47,7 +47,6 @@ final class InstallerModel {
   var teams: [SigningTeam] = []
   var selectedDevice = ""
   var toolchain = ""
-  var runtime: URL?
   var installed = false
   var exportedIPA: URL?
   var team: String {
@@ -183,7 +182,6 @@ final class InstallerModel {
         teams = items
         if team.isEmpty, items.count == 1 { team = items[0].id }
       }
-      if let path = item.runtime { runtime = URL(fileURLWithPath: path) }
       if let chain = item.toolchain { toolchain = chain }
       if let problem = item.toolchainError {
         toolchain = ""

@@ -13,6 +13,8 @@ def export_ipa(application: Path, destination: Path) -> None:
         raise ValueError("The exported archive must use the .ipa extension.")
     if not application.is_dir() or application.is_symlink() or application.suffix != ".app":
         raise ValueError("The signed application bundle is missing.")
+    if destination.resolve().is_relative_to(application.resolve()):
+        raise ValueError("The IPA cannot be saved inside the signed application bundle.")
     descriptor, temporary = tempfile.mkstemp(prefix=".minion-rush-", suffix=".ipa", dir=destination.parent)
     try:
         with os.fdopen(descriptor, "wb") as output:

@@ -186,6 +186,9 @@ and does not distribute that binary.
 
 ## Native installer
 
+- Clang ARC ownership, compiler flags, and prohibited explicit releases:
+  https://clang.llvm.org/docs/AutomaticReferenceCounting.html
+
 - Menu selection, clear labels, and native interaction:
   https://developer.apple.com/design/human-interface-guidelines/menus
 - Sideloadly IPA signing, install modes, and web iTunes/iCloud requirements:

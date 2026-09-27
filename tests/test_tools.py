@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import plistlib
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -15,7 +17,7 @@ TOOLS = Path(__file__).resolve().parents[1] / "tools"
 sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
-from common import content_files, is_disposable, load_json  # noqa: E402
+from common import content_files, is_disposable, load_json, public_files, public_source_names  # noqa: E402
 from configure_graphics import apply_configuration, validate  # noqa: E402
 from install_assets import extract_release_archive  # noqa: E402
 from list_ios_devices import paired_physical_devices  # noqa: E402
@@ -37,6 +39,60 @@ from verify_ios_startup import startup_state, valid_png  # noqa: E402
 
 
 class CommonTests(unittest.TestCase):
+    def test_public_manifest_has_one_canonical_validation_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "config").mkdir()
+            manifest = root / "config/source_manifest.txt"
+            valid = ["README.md", "config/source_manifest.txt"]
+            (root / "README.md").write_text("fixture")
+            manifest.write_text("\n".join(valid) + "\n")
+            self.assertEqual(public_source_names(root), valid)
+            self.assertEqual(len(public_files(root)), 2)
+            for entries in (valid * 2, valid[::-1], ["README.md"],
+                            ["../outside", valid[1]], ["./README.md", valid[1]],
+                            [" README.md", valid[1]], ["", *valid]):
+                with self.subTest(entries=entries):
+                    manifest.write_text("\n".join(entries) + "\n")
+                    with self.assertRaises(ValueError):
+                        public_source_names(root)
+
+    def test_ios_build_rejects_custom_output_without_deleting_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "output"
+            destination.mkdir()
+            marker = destination / "keep"
+            marker.write_bytes(b"user files")
+            result = subprocess.run(
+                ["/bin/bash", str(TOOLS / "build_ios.sh"), str(destination)],
+                env={**os.environ, "CC": "/usr/bin/false"},
+                text=True, capture_output=True,
+            )
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertEqual(marker.read_bytes(), b"user files")
+
+    def test_ios_build_rejects_a_linked_build_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            project = root / "project"
+            (project / "tools").mkdir(parents=True)
+            (project / "ios").mkdir()
+            for name in ("build_ios.sh", "project_common.sh"):
+                shutil.copyfile(TOOLS / name, project / "tools" / name)
+            shutil.copyfile(TOOLS.parent / "ios/Deployment.xcconfig", project / "ios/Deployment.xcconfig")
+            target = root / "other/ios"
+            target.mkdir(parents=True)
+            marker = target / "keep"
+            marker.write_bytes(b"user files")
+            (project / "build").symlink_to(target.parent, target_is_directory=True)
+            result = subprocess.run(
+                ["/bin/bash", str(project / "tools/build_ios.sh")],
+                text=True, capture_output=True,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("symbolic link", result.stderr)
+            self.assertEqual(marker.read_bytes(), b"user files")
+
     def test_safe_area_preserves_result_group_spacing(self) -> None:
         root = Path(__file__).resolve().parents[1]
         adapter = root / "src/native/safe_area.c"
@@ -53,6 +109,8 @@ class CommonTests(unittest.TestCase):
             subprocess.run(
                 [
                     "cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                    "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
+                    "-fno-omit-frame-pointer",
                     "-I", str(root / "src/native"), "-I", str(directory),
                     str(root / "tests/safe_area_test.c"), str(adapter),
                     "-lm", "-o", str(executable),

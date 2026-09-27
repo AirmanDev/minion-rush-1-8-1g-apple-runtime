@@ -30,6 +30,10 @@ The system has four layers:
 `tools/project_common.sh` owns the shared build source list.
 `config/source_manifest.txt` lists maintained public text files. macOS and iOS
 use the same portable sources and cannot diverge into separate runtime variants.
+`tools/common.py` owns manifest parsing for source validation, packaging, and
+snapshot reuse. Names must be canonical, sorted, unique, and include the manifest.
+Both Apple window layers use ARC; display links are invalidated before their
+owners are released.
 
 `ios/Deployment.xcconfig` owns the iOS/iPadOS 17 deployment minimum for every
 Xcode target and the native build script. Newer UIKit calls must pass the
@@ -310,7 +314,9 @@ validated ELF symbols through the generated `game_bindings.h`.
 ## iOS packaging
 
 `tools/build_ios.sh` creates platform-specific static libraries for physical
-ARM64 iOS and the ARM64 Simulator. The Xcode target selects the matching
+ARM64 iOS and the ARM64 Simulator, always under `build/ios` or
+`build/ios-simulator`. Caller-selected output directories and a linked build
+root are rejected before deletion. The Xcode target selects the matching
 library. `tools/package_ios.sh` copies the validated assets for a signed device
 build, while `tools/test_ios_simulator.sh` packages the same assets into an
 isolated unsigned Simulator build.

@@ -19,6 +19,7 @@ config/installer_ui.json
 config/localizations/hu.json
 config/source_manifest.txt
 docs/ARCHITECTURE.md
+docs/AUDIT.md
 docs/INSTALLER.md
 docs/INSTALLER_DOWNLOAD.md
 docs/INSTALLER_WINDOWS.md
