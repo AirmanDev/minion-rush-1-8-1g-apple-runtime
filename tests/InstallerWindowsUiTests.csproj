@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <StartupObject>InstallerWindowsUiTests</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="InstallerWindowsUiTests.cs" />
+    <Compile Include="../installer/windows/*.cs" Link="%(Filename)%(Extension)" />
+    <Content Include="../config/installer_ui.json" Link="installer_ui.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

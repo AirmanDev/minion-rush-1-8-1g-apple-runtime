@@ -53,6 +53,12 @@ the installer, choose the device, select or enter your signing team, and
 press Install. For a new Personal Team without a cached profile, first run
 a small iOS app from Xcode on the device with that team selected.
 
+The entire archive area opens the file chooser; device and team fields open
+across their full width. The log header can also be clicked anywhere. Choose
+**Export IPA** instead of Install to save a device-bound signed IPA for the
+Windows client, without installing. The IPA contains private game assets;
+do not publish or redistribute it. Windows installation remains under verification.
+
 The activity log shows extraction, validation, compilation, signing, device
 installation, and startup verification. Open full log opens the complete
 private transcript. Logs can contain personal paths and device/team metadata;

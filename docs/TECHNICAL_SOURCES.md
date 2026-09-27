@@ -186,6 +186,22 @@ and does not distribute that binary.
 
 ## Native installer
 
+- Menu selection, clear labels, and native interaction:
+  https://developer.apple.com/design/human-interface-guidelines/menus
+- Native Windows ComboBox interaction and templates:
+  https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/combobox
+- WPF Fluent theme resource dictionary (without experimental code APIs):
+  https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90
+- Windows USB driver requirements and iOS developer-service distinction:
+  https://github.com/doronz88/pymobiledevice3/blob/master/docs/installation.md
+- Installation proxy and bounded AFC writes:
+  https://github.com/doronz88/pymobiledevice3/blob/master/pymobiledevice3/services/installation_proxy.py
+  https://github.com/doronz88/pymobiledevice3/blob/master/pymobiledevice3/services/afc.py
+- Mandatory iOS executable signing:
+  https://support.apple.com/guide/security/app-code-signing-process-sec7c917bf14/web
+- Smart App Control and the absence of a per-app bypass:
+  https://support.microsoft.com/en-us/windows/smart-app-control-frequently-asked-questions-285ea03d-fa88-4d56-882e-6698afdb7003
+
 - Xcode host operating systems, SDKs, and deployment ranges:
   https://developer.apple.com/xcode/system-requirements
 - Standard controls and Liquid Glass adoption:

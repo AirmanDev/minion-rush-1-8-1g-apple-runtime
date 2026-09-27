@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import argparse
 import copy
 import io
 import json
@@ -22,6 +23,7 @@ sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
 import installer_backend as backend
+import installer_protocol as protocol
 import install_assets
 from list_ios_devices import paired_physical_devices
 import test_tools
@@ -252,7 +254,7 @@ class InstallerBackendTests(unittest.TestCase):
 
     def test_json_logs_do_not_reenter_redirected_stdout(self) -> None:
         output = io.StringIO()
-        with mock.patch.object(backend, "PROTOCOL_OUTPUT", output), \
+        with mock.patch.object(protocol, "PROTOCOL_OUTPUT", output), \
              contextlib.redirect_stdout(backend.LogStream()):
             print("Imported engine")
         message = json.loads(output.getvalue())
@@ -263,7 +265,7 @@ class InstallerBackendTests(unittest.TestCase):
         transcript = "build output\n" * 20_000
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary)
-            with mock.patch.object(backend, "PROTOCOL_OUTPUT", output):
+            with mock.patch.object(protocol, "PROTOCOL_OUTPUT", output):
                 with backend.operation_log(workspace):
                     backend.emit("log", message=transcript)
                     backend.emit("error", message="Installation rejected")
@@ -275,7 +277,7 @@ class InstallerBackendTests(unittest.TestCase):
             self.assertEqual(files[0].read_text(), transcript + "\n[error] Installation rejected\n")
             self.assertIn("Operation cancelled.", files[1].read_text())
             self.assertEqual(stat.S_IMODE(files[0].stat().st_mode), 0o600)
-        self.assertIsNone(backend.OPERATION_LOG)
+        self.assertIsNone(protocol.OPERATION_LOG)
 
     def test_operation_log_rejects_linked_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -371,13 +373,43 @@ class InstallerBackendTests(unittest.TestCase):
         environment = {}
         with mock.patch.object(backend, "query_devices", return_value=[{"id": "selected"}]), \
              mock.patch.object(backend.subprocess, "Popen", return_value=process) as launch, \
-             mock.patch.object(backend, "PROTOCOL_OUTPUT", io.StringIO()):
+             mock.patch.object(protocol, "PROTOCOL_OUTPUT", io.StringIO()):
             backend.deploy(Path("/runtime"), Path("/workspace"), "selected", environment)
         arguments, options = launch.call_args
         self.assertEqual(arguments[0], ["/bin/bash", "/runtime/tools/deploy_ios.sh",
                                        "--identifier", "selected"])
         self.assertIs(options["start_new_session"], True)
         self.assertEqual(environment["MR_ASSETS_ROOT"], "/workspace/assets")
+
+    def test_prepare_only_reuses_deployment_without_installing(self) -> None:
+        process = mock.Mock()
+        process.stdout = io.StringIO("== packaging ==\ncomplete\n")
+        process.wait.return_value = 0
+        with mock.patch.object(backend, "query_devices", return_value=[{"id": "selected"}]), \
+             mock.patch.object(backend.subprocess, "Popen", return_value=process) as launch, \
+             mock.patch.object(protocol, "PROTOCOL_OUTPUT", io.StringIO()):
+            backend.deploy(Path("/runtime"), Path("/workspace"), "selected", {}, prepare_only=True)
+        self.assertEqual(launch.call_args.args[0], ["/bin/bash", "/runtime/tools/deploy_ios.sh",
+                                                 "--prepare-only", "--identifier", "selected"])
+
+    def test_export_runs_codesign_verification_after_preparation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            args = argparse.Namespace(source=TOOLS.parent, workspace=workspace, command="export",
+                                      device="selected", team="ABCDEFGHIJ", bundle="org.example.game",
+                                      destination=workspace / "game.ipa")
+            with mock.patch.object(backend, "prepare_runtime", return_value=workspace), \
+                 mock.patch.object(backend, "toolchain", return_value={"developer": "/developer", "version": "Xcode 27"}), \
+                 mock.patch.object(backend, "inspect_assets", return_value=AssetReport(1, 4, 0)), \
+                 mock.patch.object(backend, "deploy") as prepare, \
+                 mock.patch.object(backend, "run_command") as verify, \
+                 mock.patch.object(backend, "export_ipa") as export, \
+                 mock.patch.object(protocol, "PROTOCOL_OUTPUT", io.StringIO()):
+                result = backend.execute(args)
+            self.assertTrue(prepare.call_args.kwargs["prepare_only"])
+            self.assertEqual(verify.call_args.args[0][:4], ["/usr/bin/codesign", "--verify", "--deep", "--strict"])
+            self.assertEqual(export.call_args.args[1], args.destination)
+            self.assertEqual(result, {"ipa_path": str(args.destination)})
 
     def test_cancelled_deployment_terminates_child_process_group(self) -> None:
         process = mock.Mock()
@@ -422,7 +454,7 @@ class InstallerBackendTests(unittest.TestCase):
         output = io.StringIO()
         with mock.patch.object(backend, "query_devices", return_value=[{"id": "selected"}]), \
              mock.patch.object(backend.subprocess, "Popen", return_value=process), \
-             mock.patch.object(backend, "PROTOCOL_OUTPUT", output):
+             mock.patch.object(protocol, "PROTOCOL_OUTPUT", output):
             with self.assertRaisesRegex(ValueError, "Free signing limit reached"):
                 backend.deploy(Path("/runtime"), Path("/workspace"), "selected", {})
         self.assertEqual(json.loads(output.getvalue())["message"], message)

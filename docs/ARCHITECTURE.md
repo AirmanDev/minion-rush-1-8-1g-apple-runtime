@@ -49,6 +49,11 @@ validation share `asset_contract.py` fingerprints and the same validation API.
 Signing-input validation shares `tools/signing.py` and the UI contract's rules.
 The public UI contract and Windows backend boundary are documented in
 `docs/INSTALLER.md`.
+The Windows WPF client in `installer/windows` consumes the same UI contract
+and delegates signed-IPA preflight and USB transfer to `ipa_device_backend.py`.
+It does not duplicate the Mac build or asset-import pipeline. The two backends
+share JSON Lines logging/locking in `installer_protocol.py`, IPA archive handling
+in `ipa_archive.py`, and signing-input rules in `signing.py`.
 
 | Module | Responsibility |
 |---|---|

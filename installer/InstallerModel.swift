@@ -22,6 +22,9 @@ struct InstallerLayout: Decodable {
 
 @MainActor @Observable
 final class InstallerModel {
+  enum Operation {
+    case refresh, importArchive, install, exportIPA
+  }
   let layout: InstallerLayout
   let workspace: URL
   private let source: URL
@@ -30,6 +33,9 @@ final class InstallerModel {
   private var job = UUID()
   private var receivedResult = false
   private var quitAfterCancellation = false
+  private var pendingArchiveName: String?
+  var operation: Operation?
+  var archiveName: String?
   var busy = false
   var cancelling = false
   var phase = ""
@@ -43,6 +49,7 @@ final class InstallerModel {
   var toolchain = ""
   var runtime: URL?
   var installed = false
+  var exportedIPA: URL?
   var team: String {
     didSet { defaults.set(team, forKey: "developmentTeam") }
   }
@@ -52,6 +59,7 @@ final class InstallerModel {
 
   init(resources: URL, workspace: URL? = nil, defaults: UserDefaults = .standard) throws {
     self.defaults = defaults
+    archiveName = defaults.string(forKey: "releaseArchiveName")
     source = resources.appendingPathComponent("Runtime")
     layout = try JSONDecoder().decode(
       InstallerLayout.self,
@@ -70,11 +78,15 @@ final class InstallerModel {
     defaults.set(bundleID, forKey: "gameBundleIdentifier")
   }
 
-  var validSigning: Bool {
-    team.range(of: layout.signingRules.team, options: .regularExpression)
-      == team.startIndex..<team.endIndex
-      && bundleID.range(of: layout.signingRules.bundle, options: .regularExpression)
-        == bundleID.startIndex..<bundleID.endIndex
+  var validTeam: Bool { matches(team, rule: layout.signingRules.team) }
+  var validBundle: Bool { matches(bundleID, rule: layout.signingRules.bundle) }
+  var validSigning: Bool { validTeam && validBundle }
+  var selectedDeviceInfo: Device? { devices.first { $0.id == selectedDevice } }
+
+  private func matches(_ value: String, rule: String) -> Bool {
+    !value.isEmpty
+      && value.range(of: rule, options: .regularExpression)
+        == value.startIndex..<value.endIndex
   }
 
   var canInstall: Bool {
@@ -86,6 +98,7 @@ final class InstallerModel {
     if busy { return phase }
     if let error { return error }
     if installed { return layout.text("installed") }
+    if exportedIPA != nil { return layout.text("ipaExported") }
     if assets == nil { return layout.text("importNeeded") }
     if toolchain.isEmpty { return layout.text("toolchainNeeded") }
     if devices.isEmpty || selectedDevice.isEmpty { return layout.text("deviceNeeded") }
@@ -93,18 +106,30 @@ final class InstallerModel {
     return layout.text("ready")
   }
 
-  func refresh() { start(["status"], phase: layout.text("checking")) }
+  func refresh() { start(["status"], phase: layout.text("checking"), operation: .refresh) }
 
   func importArchive(_ url: URL) {
     guard !busy, url.isFileURL, url.pathExtension.lowercased() == "zip" else { return }
-    start(["import", url.path], phase: layout.text("working"))
+    pendingArchiveName = url.lastPathComponent
+    start(["import", url.path], phase: layout.text("working"), operation: .importArchive)
   }
 
   func install() {
     guard canInstall else { return }
     start(
       ["install", "--device", selectedDevice, "--team", team, "--bundle", bundleID],
-      phase: layout.text("working")
+      phase: layout.text("working"), operation: .install
+    )
+  }
+
+  func exportIPA(to destination: URL) {
+    guard canInstall, destination.isFileURL else { return }
+    start(
+      [
+        "export", "--device", selectedDevice, "--team", team, "--bundle", bundleID,
+        "--destination", destination.path,
+      ],
+      phase: layout.text("working"), operation: .exportIPA
     )
   }
 
@@ -124,6 +149,10 @@ final class InstallerModel {
 
   private func receive(_ item: BackendEvent, token: UUID) {
     guard job == token else { return }
+    apply(item)
+  }
+
+  func apply(_ item: BackendEvent) {
     switch item.type {
     case "session":
       if let path = item.logPath { logFile = URL(fileURLWithPath: path) }
@@ -147,7 +176,7 @@ final class InstallerModel {
       if let items = item.devices {
         devices = items
         if !items.contains(where: { $0.id == selectedDevice }) {
-          selectedDevice = items.first?.id ?? ""
+          selectedDevice = items.count == 1 ? items[0].id : ""
         }
       }
       if let items = item.teams {
@@ -159,20 +188,24 @@ final class InstallerModel {
       if let problem = item.toolchainError {
         toolchain = ""
         error = problem
+        appendLog(problem)
       }
       installed = item.installed == true
+      if let path = item.ipaPath { exportedIPA = URL(fileURLWithPath: path) }
     default: error = "Unsupported installer response."
     }
   }
 
-  private func start(_ arguments: [String], phase: String) {
+  private func start(_ arguments: [String], phase: String, operation: Operation) {
     guard !busy else { return }
     busy = true
     cancelling = false
     error = nil
     installed = false
+    exportedIPA = nil
     receivedResult = false
     self.phase = phase
+    self.operation = operation
     logFile = nil
     appendLog("\n" + phase)
     let token = UUID()
@@ -202,9 +235,15 @@ final class InstallerModel {
         } else if exitStatus != 0 || !self.receivedResult {
           self.error = self.error ?? failure ?? "Installer backend exited without a result."
         }
+        if self.error == nil, operation == .importArchive, self.assets != nil {
+          self.archiveName = self.pendingArchiveName
+          self.defaults.set(self.archiveName, forKey: "releaseArchiveName")
+        }
+        self.pendingArchiveName = nil
         self.busy = false
         self.cancelling = false
         self.worker = nil
+        self.operation = nil
         if self.quitAfterCancellation { NSApp.reply(toApplicationShouldTerminate: true) }
       }
     }

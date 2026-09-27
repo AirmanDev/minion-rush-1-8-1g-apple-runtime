@@ -2,8 +2,8 @@
 # Test native process handling and UI state without assets or device installation.
 set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
-if (( $# )); then
-  printf 'Usage: ./tools/test_installer.sh\n' >&2
+if (( $# > 1 )); then
+  printf 'Usage: ./tools/test_installer.sh [snapshot-directory]\n' >&2
   exit 2
 fi
 project_use_full_xcode
@@ -18,7 +18,9 @@ minimum="$(plutil -extract LSMinimumSystemVersion raw -o - installer/Info.plist)
 xcrun swiftc -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
   -sdk "$(xcrun --sdk macosx --show-sdk-path)" -target "arm64-apple-macos$minimum" \
   -module-cache-path "$temporary/modules" \
-  installer/BackendProcess.swift installer/InstallerModel.swift tests/InstallerTests.swift \
+  installer/BackendProcess.swift installer/InstallerModel.swift \
+  installer/InstallerControls.swift installer/InstallerView.swift \
+  tests/InstallerTests.swift tests/InstallerViewTests.swift \
   -o "$temporary/installer-tests"
 python3 tools/run_with_timeout.py 30 \
-  "$temporary/installer-tests" "$app/Contents/Resources"
+  "$temporary/installer-tests" "$app/Contents/Resources" "$@"

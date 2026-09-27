@@ -5,9 +5,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import fcntl
 import hashlib
-import io
 import json
 import os
 import platform
@@ -18,12 +16,9 @@ import signal
 import subprocess
 import sys
 import tempfile
-import uuid
 import zipfile
 from dataclasses import asdict
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
 
 sys.dont_write_bytecode = True
 
@@ -31,65 +26,10 @@ from install_assets import install_release
 from common import public_files
 from list_ios_devices import paired_physical_devices
 from signing import signing_settings
+from ipa_archive import export_ipa
 from validate_assets import inspect_assets
 
-PROTOCOL = 1
-PROTOCOL_OUTPUT = sys.stdout
-OPERATION_LOG: io.TextIOBase | None = None
-
-
-def emit(kind: str, **fields: object) -> None:
-    if OPERATION_LOG is not None:
-        message = fields.get("message")
-        if isinstance(message, str):
-            OPERATION_LOG.write((message if kind == "log" else f"[{kind}] {message}") + "\n")
-        elif kind == "result":
-            OPERATION_LOG.write("Operation completed successfully.\n")
-    print(json.dumps({"protocol": PROTOCOL, "type": kind, **fields}),
-          file=PROTOCOL_OUTPUT, flush=True)
-
-
-@contextlib.contextmanager
-def operation_log(workspace: Path) -> Iterator[None]:
-    global OPERATION_LOG
-    if workspace.is_symlink():
-        raise ValueError("The installer workspace must not be a symbolic link.")
-    directory = workspace / "logs"
-    if directory.is_symlink():
-        raise ValueError("The log directory must not be a symbolic link.")
-    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = directory / f"{timestamp}-{uuid.uuid4().hex}.log"
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    previous = OPERATION_LOG
-    with os.fdopen(descriptor, "w", encoding="utf-8", buffering=1) as output:
-        OPERATION_LOG = output
-        try:
-            emit("session", log_path=str(path))
-            yield
-        finally:
-            OPERATION_LOG = previous
-
-
-class LogStream(io.TextIOBase):
-    def write(self, value: str) -> int:
-        for line in value.splitlines():
-            if line:
-                emit("log", message=line)
-        return len(value)
-
-
-@contextlib.contextmanager
-def workspace_lock(workspace: Path) -> Iterator[None]:
-    if workspace.is_symlink():
-        raise ValueError("The installer workspace must not be a symbolic link.")
-    workspace.mkdir(parents=True, exist_ok=True)
-    with (workspace / ".lock").open("a") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as exc:
-            raise ValueError("Another installer operation is running.") from exc
-        yield
+from installer_protocol import emit, operation_log, LogStream, workspace_lock
 
 
 def prepare_runtime(source: Path, workspace: Path) -> Path:
@@ -207,7 +147,8 @@ def discover_teams(environment: dict[str, str]) -> list[dict[str, str]]:
     return sorted(teams.values(), key=lambda team: (team["name"].casefold(), team["id"]))
 
 
-def deploy(runtime: Path, workspace: Path, device: str, environment: dict[str, str]) -> None:
+def deploy(runtime: Path, workspace: Path, device: str, environment: dict[str, str],
+           *, prepare_only: bool = False) -> None:
     devices = query_devices(environment)
     if device not in {item["id"] for item in devices}:
         raise ValueError("The selected device is no longer paired or available. Refresh devices.")
@@ -216,7 +157,8 @@ def deploy(runtime: Path, workspace: Path, device: str, environment: dict[str, s
         MR_IOS_DERIVED=str(workspace / "DerivedData"),
     )
     process = subprocess.Popen(
-        ["/bin/bash", str(runtime / "tools/deploy_ios.sh"), "--identifier", device],
+        ["/bin/bash", str(runtime / "tools/deploy_ios.sh")]
+        + (["--prepare-only"] if prepare_only else []) + ["--identifier", device],
         cwd=runtime, env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         stdin=subprocess.DEVNULL, text=True, errors="replace", start_new_session=True,
     )
@@ -293,6 +235,16 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         emit("progress", message="Validating imported assets")
         report = inspect_assets(runtime, assets)
         emit("log", message=report.summary())
+        if args.command == "export":
+            emit("log", message=f"Preparing signed bundle: {args.bundle}")
+            deploy(runtime, workspace, args.device, environment, prepare_only=True)
+            application = workspace / "DerivedData/Build/Products/Release-iphoneos/MinionRush.app"
+            run_command(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(application)],
+                        environment)
+            emit("progress", message="Exporting signed IPA")
+            export_ipa(application, args.destination)
+            emit("log", message=f"Exported IPA: {args.destination}")
+            return {"ipa_path": str(args.destination)}
         emit("log", message=f"Installing bundle: {args.bundle}")
         deploy(runtime, workspace, args.device, environment)
         return {"installed": True, "device": args.device}
@@ -307,10 +259,13 @@ def main() -> int:
     commands.add_parser("devices")
     importer = commands.add_parser("import")
     importer.add_argument("archive", type=Path)
-    installer = commands.add_parser("install")
-    installer.add_argument("--device", required=True)
-    installer.add_argument("--team", required=True)
-    installer.add_argument("--bundle", required=True)
+    for command in ("install", "export"):
+        installer = commands.add_parser(command)
+        installer.add_argument("--device", required=True)
+        installer.add_argument("--team", required=True)
+        installer.add_argument("--bundle", required=True)
+        if command == "export":
+            installer.add_argument("--destination", type=Path, required=True)
     args = parser.parse_args()
     signal.signal(signal.SIGTERM, cancel_operation)
     with contextlib.ExitStack() as resources:

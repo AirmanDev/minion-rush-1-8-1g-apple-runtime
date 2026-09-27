@@ -3,6 +3,12 @@
 set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
 
+PREPARE_ONLY=0
+if [[ "${1:-}" == "--prepare-only" ]]; then
+  PREPARE_ONLY=1
+  shift
+fi
+
 CONFIG="Release"
 DERIVED="${MR_IOS_DERIVED:-/tmp/minion-rush-ios}"
 APP="$DERIVED/Build/Products/$CONFIG-iphoneos/$IOS_SCHEME.app"
@@ -111,6 +117,11 @@ BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP/Info.plist")"
   printf 'ERROR: cannot read the packaged bundle identifier\n' >&2
   exit 1
 }
+
+if (( PREPARE_ONLY )); then
+  printf 'DONE: signed application prepared without installing: %s\n' "$APP"
+  exit 0
+fi
 
 install_app() {
   local ident="$1" log="$2"

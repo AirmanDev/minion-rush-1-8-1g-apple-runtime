@@ -56,13 +56,22 @@ not remove apps or change their identifiers automatically.
 **Install** becomes available after import, device selection, toolchain checks,
 and signing-input validation. It builds, signs, installs, and verifies startup
 through `tools/deploy_ios.sh`. Apple may still reject provisioning, or ask the
-user to unlock or approve something on the device. The activity log opens when
-an operation starts and streams ZIP extraction, APK verification, asset copying
+user to unlock or approve something on the device. The activity log opens for
+import, export, installation, and failures, not for a successful routine refresh.
+It streams ZIP extraction, APK verification, asset copying
 and validation, build output, signing, installation, and startup checks. Each
 operation also saves a complete private log; **Open full log** opens the current
 file. **Follow output** can be disabled to inspect earlier lines. The UI keeps
 a bounded recent tail rather than rendering an unlimited build transcript.
 No device is installed automatically on app launch or archive import.
+
+**Export IPA** uses the same build, signing, and packaging steps, but stops before
+device installation. Choose a save location in the native save dialog. The selected
+device must already be connected so Xcode can register it in the profile. The
+resulting IPA includes private assets and device-bound signing material; never
+publish it or commit it to Git. Transfer it privately to the Windows client
+described in [INSTALLER_WINDOWS.md](INSTALLER_WINDOWS.md). A new device or expired
+profile requires another export. Failed archive writes preserve an existing IPA.
 
 **Cancel** stops the worker and its deployment process group. A device install
 is not reversible: cancellation during that phase may leave an installed app.
@@ -96,7 +105,9 @@ ZIP, private XLIFF files, provisioning profiles, or credentials. Optional
 community language packs therefore remain a separate local setup described in
 `LOCALIZATION.md`; importing a release enables its original languages.
 
-`InstallerModel` owns UI state. `BackendProcess` runs a bounded JSON Lines
+`InstallerModel` owns UI state; `InstallerView` arranges the workflow and
+`InstallerControls` supplies reusable cards, fields, and native full-width
+pop-up controls. `BackendProcess` runs a bounded JSON Lines
 stream off the main thread and uses argument arrays, not interpolated shell
 commands. Blocking POSIX pipe reads return available bytes immediately, retry
 interrupted reads, and sleep when there is no output; they do not wait for a
@@ -105,6 +116,10 @@ requests to the existing asset validator/importer and deployment tools.
 A workspace lock rejects simultaneous
 operations, and the deployment tools retain their shared build lock. There is
 no background device polling, telemetry, or automatic download worker.
+Both device backends use `installer_protocol.py` for events, full logs, and
+workspace locking; `ipa_archive.py` provides bounded IPA preflight and atomic
+export. The Windows helper streams the upload in 1 MB chunks rather than
+loading the whole IPA into memory.
 
 `tools/signing.py` validates the UI contract's signing rules for both the
 backend and command-line scripts. Xcode can resolve its configured team when
@@ -126,17 +141,23 @@ order, minimum width, and signing-input rules. The stable arrangement is:
 6. Persistent footer: status on the left; Cancel and primary Install on the right.
 7. Window toolbar: Show local files.
 
-The future Windows client should consume the same contract and preserve this
-order and placement for equivalent states, including the full-log action and
-follow-output checkbox, using native Windows controls and accessibility.
-Platform fonts, control metrics, and material appearance are not
-pixel-identical. The Mac uses standard SwiftUI forms, controls, and a native
-Liquid Glass primary button; it has no web view or imitation glass renderer.
+The Windows WPF client consumes the same contract. Small platform-specific label
+overrides describe signed IPA input and read-only signing details instead of
+ZIP import and Xcode signing. Order, device/Refresh placement, full-log action,
+follow-output option, and footer arrangement are shared. Fonts and native material
+appearance are not pixel-identical. Neither client uses a web view.
 
-The current build/deployment adapter is macOS-specific. Xcode does not run on
-Windows. A Windows client therefore still needs a separately designed signing
-and device-installation backend, or an explicit Mac build companion. A shared
-UI contract does not by itself make Windows installation supported.
+The full archive area and log header are buttons, not tiny nested click targets.
+Device/team selectors cover their full rows and retain native keyboard behavior.
+Cmd+O on Mac and Ctrl+O on Windows choose an archive. Install remains the default
+action only when its prerequisites pass. Error state uses text as well as color.
+Scrollable content keeps the footer visible in small windows. A single device
+can be selected automatically; multiple devices require a deliberate selection.
+
+The Mac still needs Xcode to build and sign. Windows receives the exported IPA
+and uses Apple's USB service through `pymobiledevice3`; it neither signs nor
+builds, and it does not collect an Apple Account password. Windows startup
+verification is not equivalent to the Mac deployment script's launch check.
 
 ## Verification and distribution
 
@@ -144,19 +165,30 @@ The Python suite exercises import rollback, rejected archives, exact device
 selection, process-group cancellation (including an exited leader), private
 complete logs, shared signing validation, public-source packaging, and the UI
 contract. `tools/test_installer.sh` exercises the actual Swift process runner,
-live delivery before worker exit, fragmented UTF-8 output, cancellation, and
-Install gating without installing to a device. Public-source CI runs the Python
-suite; native tests require the macOS/Xcode environment above.
+live delivery before worker exit, fragmented UTF-8 output, cancellation,
+deliberate device selection, Install gating, and native selector layout without
+installing to a device. An optional snapshot-directory argument captures only
+the synthetic test window for light/dark, small-window, failure, and busy review.
+The .NET tests exercise Windows state and the real process bridge on any .NET 10
+host. IPA tests cover malformed archives, profile/device/OS mismatches, expiry,
+atomic export, bounded streaming, and staging cleanup. Windows native interaction
+and USB installation remain separate release checks.
 
-The installer was built and visually checked on macOS 27 with Xcode 27. The
-original ZIP passed import through both the backend and the native file chooser.
+The current UI revision was built and visually checked on macOS 27 with Xcode 27,
+including light/dark appearance, a minimum-size window, failure, and busy states.
+Native selector tests verify full-row hit targets, binding updates, and disabled
+state. Export of an existing signed app passed CMS/profile preflight and complete
+ZIP integrity checking without installing; its temporary IPA was removed.
+The earlier GUI flow's original ZIP passed import through both the backend and the native file chooser.
 The connected iPhone and iPad were enumerated. The user completed a separate-app
 iPhone installation through the native GUI on iOS 27. Its persisted operation
 log confirms compilation, signing, packaging, installation, and startup
 verification; the user also confirmed that the live activity log worked.
 The three-app free-signing limit was reproduced before that successful attempt.
 Runtime testing on macOS 26.6 and physical iPad installation through this GUI
-remain release checks.
+remain release checks. The new UI and export changes have not been retested with
+a fresh physical installation. Windows native execution, frozen packaging, and
+USB installation have not run here; its workflow is configured but not yet run.
 
 The source repository contains no private assets or signing material. The
 download package also excludes these files. Paid developer membership is not

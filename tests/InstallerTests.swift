@@ -28,8 +28,8 @@ struct InstallerTests {
 
   @MainActor
   static func main() throws {
-    guard CommandLine.arguments.count == 2 else {
-      fatalError("Usage: installer-tests <app-resources>")
+    guard (2...3).contains(CommandLine.arguments.count) else {
+      fatalError("Usage: installer-tests <app-resources> [snapshot-directory]")
     }
     let resources = URL(fileURLWithPath: CommandLine.arguments[1])
     let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -143,6 +143,31 @@ struct InstallerTests {
     model.devices = [Device(id: "selected", udid: "sample", name: "Test iPhone", os: "27.0")]
     model.selectedDevice = "selected"
     model.toolchain = "Xcode 27"
+    func applyResult(_ json: String) throws {
+      let decoder = JSONDecoder()
+      decoder.keyDecodingStrategy = .convertFromSnakeCase
+      model.apply(try decoder.decode(BackendEvent.self, from: Data(json.utf8)))
+    }
+    try applyResult(
+      """
+      {"protocol":1,"type":"result","devices":[
+      {"id":"first","udid":"one","name":"iPhone","os":"27.0"},
+      {"id":"second","udid":"two","name":"iPad","os":"27.0"}]}
+      """)
+    try require(model.selectedDevice.isEmpty, "Multiple devices require explicit selection")
+    model.selectedDevice = "second"
+    try applyResult(
+      """
+      {"protocol":1,"type":"result","devices":[
+      {"id":"second","udid":"two","name":"iPad","os":"27.0"}]}
+      """)
+    try require(model.selectedDevice == "second", "Refresh preserves a connected selection")
+    try applyResult(
+      """
+      {"protocol":1,"type":"result","devices":[
+      {"id":"selected","udid":"sample","name":"Test iPhone","os":"27.0"}]}
+      """)
+    try require(model.selectedDevice == "selected", "A single device can be selected automatically")
     model.team = "ABCDEFGHIJ"
     try require(model.canInstall, "Complete prerequisites must enable Install")
     model.team = "ABCDEFGHIJ\n"
@@ -162,6 +187,9 @@ struct InstallerTests {
     model.toolchain = "Xcode 27"
     model.busy = true
     try require(!model.canInstall, "Busy state must disable Install")
+    let snapshots =
+      CommandLine.arguments.count == 3 ? URL(fileURLWithPath: CommandLine.arguments[2]) : nil
+    try InstallerViewTests.run(model: model, snapshots: snapshots)
     print("INSTALLER: native process and model tests passed")
   }
 }

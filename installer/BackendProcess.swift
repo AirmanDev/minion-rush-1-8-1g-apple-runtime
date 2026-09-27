@@ -31,6 +31,7 @@ struct BackendEvent: Decodable, Sendable {
   let assetError: String?
   let installed: Bool?
   let logPath: String?
+  let ipaPath: String?
 }
 
 // Process lifetime is shared with Cancel; all mutable state is protected by the lock.

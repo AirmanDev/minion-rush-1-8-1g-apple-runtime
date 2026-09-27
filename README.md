@@ -54,7 +54,7 @@ game data. The complete smoke test fails if a final network guard is reached.
 | `src/native` | ARM32 to ARM64 translator, runtime, and platform layers |
 | `ios/MinionRush.xcodeproj` | iPhone and iPad application project |
 | `ios/MinionRush` | UIKit entry point and public asset catalog metadata |
-| `installer` | Native macOS ZIP importer and iPhone/iPad installer |
+| `installer` | Native macOS ZIP importer/exporter and Windows signed-IPA installer |
 | `config/installer_ui.json` | Shared installer labels, layout order, and signing rules |
 | `assets/lib` | Validated 1.8.1g ARM32 engine, stored locally only |
 | `assets/game` | Original game data, stored locally only |
@@ -78,7 +78,10 @@ It accepts the original release ZIP, validates and arranges its private assets,
 and installs on one selected, paired iPhone or iPad. The installer requires
 Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
 It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
-for signing, free-account limits, test coverage, and the future Windows UI contract.
+for signing, free-account limits, test coverage, and the shared UI contract.
+The native [Windows client](docs/INSTALLER_WINDOWS.md) accepts a device-bound IPA
+created by **Export IPA** on the Mac. It is under verification, not yet a tested
+Windows download. It does not build from the release ZIP or sign in to Apple.
 Downloaded installer copies are ad-hoc signed, not notarized, and can require
 manual approval in macOS Privacy & Security. See the
 [download and opening guide](docs/INSTALLER_DOWNLOAD.md). To build the asset-free

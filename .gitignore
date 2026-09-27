@@ -5,6 +5,10 @@
 /DerivedData/
 /assets/
 /build/
+/installer/windows/bin/
+/installer/windows/obj/
+/tests/bin/
+/tests/obj/
 /logs/
 /localizations/
 /ios/MinionRush/Assets.xcassets/AppIcon.appiconset/AppIcon.png
