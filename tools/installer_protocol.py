@@ -1,8 +1,9 @@
-"""Shared JSON Lines events, complete operation logs, and workspace locking."""
+"""Installer JSON Lines events, complete operation logs, and workspace locking."""
 
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import io
 import json
 import os
@@ -65,17 +66,7 @@ def workspace_lock(workspace: Path) -> Iterator[None]:
     workspace.mkdir(parents=True, exist_ok=True)
     with (workspace / ".lock").open("a+") as lock:
         try:
-            if os.name == "nt":
-                import msvcrt
-                lock.seek(0)
-                if lock.read(1) == "":
-                    lock.write(" ")
-                    lock.flush()
-                lock.seek(0)
-                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as exc:
             raise ValueError("Another installer operation is running.") from exc
         yield

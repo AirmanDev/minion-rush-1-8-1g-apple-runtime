@@ -11,26 +11,6 @@
     {"id": "device", "title": "2. Connected device"},
     {"id": "signing", "title": "3. Apple signing"}
   ],
-  "windows": {
-    "labels": {
-      "drop": "Drop your signed Minion Rush IPA here",
-      "choose": "Choose IPA...",
-      "releaseHelp": "Export an IPA with the Mac installer's Export IPA action. It contains your private game assets; do not publish or redistribute it.",
-      "noAssets": "No signed IPA selected",
-      "assetsReady": "IPA preflight passed",
-      "invalidDrop": "Drop one IPA archive at a time.",
-      "deviceHelp": "Install iTunes from Apple, connect by USB, unlock your iPhone or iPad, and trust this computer. Enable Developer Mode. iOS or iPadOS 17 or later is required.",
-      "signingHelp": "Signing is already included in the IPA. This app does not sign in to Apple or change its signature. The selected device must be registered in the profile. Expired or mismatched profiles require a new Mac export.",
-      "signingNeeded": "Select an IPA to view its signing details",
-      "importNeeded": "Choose a signed IPA to continue",
-      "profileMismatch": "Export a new IPA on the Mac for this device and operating system",
-      "installed": "Installation verified. Open the game on your device.",
-      "expires": "Profile expires",
-      "show": "Show",
-      "hide": "Hide",
-      "quitHelp": "Cancel and quit? A started device installation may still finish. The installer never uninstalls the game or removes its data."
-    }
-  },
   "labels": {
     "drop": "Drop your 1.8.1g ZIP here",
     "choose": "Choose ZIP...",
@@ -59,7 +39,7 @@
     "accountHelp": "Apple account help",
     "install": "Install",
     "exportIPA": "Export IPA...",
-    "exportHelp": "Build and sign for the selected device, then save an IPA without installing. The same device must be included in its provisioning profile when installing from Windows.",
+    "exportHelp": "Build and sign for the selected device, then save an IPA without installing. The IPA contains private game assets; do not publish or redistribute it.",
     "ipaExported": "Signed IPA exported",
     "cancel": "Cancel",
     "cancelling": "Cancelling...",

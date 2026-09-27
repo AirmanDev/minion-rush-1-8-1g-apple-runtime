@@ -18,12 +18,10 @@ from common import ROOT, content_files, load_json_object
 IGNORED_ROOTS = frozenset({
     "assets", "build", "logs", ".firecrawl", ".git", "__MACOSX", "__pycache__",
     "xcuserdata",
-    "bin", "obj",
 })
 SEARCHABLE_SUFFIXES = {
     ".c", ".h", ".m", ".swift", ".py", ".sh", ".md", ".S", ".def", ".json",
     ".pbxproj", ".xcprivacy", ".xcworkspacedata",
-    ".cs", ".csproj", ".ps1", ".manifest",
 }
 
 

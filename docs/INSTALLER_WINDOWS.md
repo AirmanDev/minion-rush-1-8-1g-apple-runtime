@@ -1,91 +1,83 @@
-# Minion Rush Installer for Windows
+# Windows IPA installation with Sideloadly
 
-The native WPF client installs a signed IPA exported by the Mac installer.
-It does not build the game from the original release ZIP, sign in to Apple,
-or create a provisioning profile. Xcode is not needed on Windows, but the IPA
-must first be built and signed on a Mac for the target device.
+This project does not provide a Windows installer. Use the independent
+[Sideloadly application](https://sideloadly.io/) to sign and install a privately
+exported IPA on an iPhone or iPad. Sideloadly is not bundled with this project
+and is not maintained by its contributors.
 
-The Windows x64 client passes native WPF interaction and state/process tests
-on GitHub's Windows runner. The frozen helper passes its dependency/API smoke
-test, and the package passes public-content, executable-architecture, license,
-and extracted-archive hash checks. This is a prerelease: physical USB installation
-through Apple's Windows service, a clean-system security/driver setup, and ARM64
-execution remain unverified. CI does not replace those checks.
+Windows cannot build this runtime from the original release ZIP. The Mac
+installer's **Export IPA** action still requires Apple Silicon, macOS 26.6+,
+Xcode 27, an Apple Account configured in Xcode, and a connected target device.
+The game requires iOS or iPadOS 17 or later; changing an IPA's minimum OS does
+not make unsupported versions compatible.
 
-## Prepare the IPA
+## Prepare a private IPA
 
-1. On the Mac, import your legally obtained 1.8.1g release ZIP.
-2. Connect and select the iPhone or iPad that will receive the game.
-3. Enter your signing details, keeping the same bundle identifier for updates.
-4. Choose **Export IPA** to build and sign without installing.
-5. Transfer the private IPA to Windows. Never publish it or include it in Git.
+1. On the Mac, import your lawfully obtained, unmodified Minion Rush 1.8.1g ZIP.
+2. Connect and select an iPhone or iPad. Configure your Xcode signing team and
+   bundle identifier as described in [INSTALLER.md](INSTALLER.md).
+3. Choose **Export IPA** and save the archive.
+4. Transfer it privately to the Windows computer.
 
-Free Personal Team profiles expire after seven days. Export again when the
-profile expires or when adding a device outside that profile. Changing computers
-does not extend its lifetime. The installer does not remove other apps to work
-around Apple's three-app limit.
+The exported IPA contains proprietary game assets and a development profile
+with signing and device metadata. Never upload it to a public release, Git,
+an issue, or a public file-sharing service. This repository distributes only
+the public runtime source and the asset-free Mac installer.
 
-## Install on Windows
+## Set up Windows
 
-Use Windows 11 and install [iTunes from Apple](https://www.apple.com/itunes/download/win64).
-It supplies the Apple Mobile Device Service. Pair through iTunes, unlock the
-device, approve **Trust This Computer**, and enable Developer Mode. The game
-requires iOS/iPadOS 17 or later.
+1. Download Sideloadly only from [its official website](https://sideloadly.io/).
+2. Follow that website's current Windows prerequisites. Its instructions
+   require the **web versions of both iTunes and iCloud**, not the Microsoft
+   Store versions. Use its Apple download links rather than third-party driver
+   packages. If replacing installed Apple software, review its effects on your
+   existing setup; this project does not remove or reconfigure that software.
+3. Connect the iPhone or iPad by USB, unlock it, and accept **Trust This Computer**.
+4. Enable Developer Mode on the device when required and approve the developer
+   under Settings > General > VPN & Device Management if prompted.
 
-Extract the entire installer ZIP; keep `backend` next to `MinionRushInstaller.exe`.
-Run without administrator privileges. Click anywhere in the IPA area or drop one
-`.ipa` onto it. Select the device, review the read-only signing details, and choose
-**Install**. Multiple devices require an explicit selection. Launch, import, and
-Refresh never install automatically.
+Do not disable Windows security protections or run a download flagged as
+malware. Consult the official Sideloadly support information for installation
+or security errors.
 
-Preflight checks archive layout, bounded metadata, guest version, profile
-expiration, application identifier, device membership, and minimum OS. CMS
-decoding is not certificate-chain or executable-signature verification. The
-device makes the final Apple signature/provisioning decision. Installation is
-checked in its app database; startup and gameplay require a device check.
+## Sign and install
 
-The log streams upload and installation progress. **Follow output** can be
-disabled, and **Open full log** opens the complete transcript. Logs stay under
-`%LOCALAPPDATA%\MinionRushInstaller\logs`, inheriting user-profile Windows access
-controls. Review before sharing: paths, device IDs, and team metadata can appear.
+1. Open Sideloadly and select the connected device.
+2. Drop the private IPA into its archive area.
+3. Use its **Apple ID sideload** mode and enter your own Apple Account. Complete
+   authentication or two-factor approval when requested.
+4. Start sideloading and keep the device connected and unlocked until it finishes.
+5. Open the game and check the intro, portrait orientation, menus, and gameplay.
 
-**Cancel** requests cleanup of only this operation's staging file when reachable.
-A started device installation may still finish. Cancellation never uninstalls
-the game or deletes saves. Quitting while busy requires confirmation.
+Apple ID sideloading re-signs the IPA for the selected device using your account.
+The device does not need to be included in the Mac export's original profile
+when a new valid profile is created by Sideloadly. Its **normal install** mode
+instead relies on the existing signature and profile; it cannot fix an expired
+profile or an unregistered device.
 
-## Build from source
+Enter credentials only into a tool you trust. This project's installer neither
+handles that login nor controls Sideloadly's credential storage. Do not enable
+tweak injection, minimum-OS overrides, or restriction-removal options for this
+runtime. No jailbreak or JIT-enabling step is required.
 
-On a Windows machine of the target architecture, install PowerShell 7, .NET 10
-SDK, and Python 3.13 or later, then run:
+Use a consistent final bundle identifier and signing account when refreshing
+the same app. A different identifier installs a separate app with separate data.
+Changing signing teams may prevent an in-place update; back up important data
+before changing signing identity. Do not uninstall an existing game to resolve
+an error without considering the loss of its local save.
 
-```powershell
-./tools/build_installer_windows.ps1
-```
+## Expiration and troubleshooting
 
-`win-x64` is the default. `-Runtime win-arm64` requires Windows ARM64 and ARM64
-Python so the frozen helper matches the target. The builder runs IPA and .NET
-state/process tests, publishes a self-contained native GUI, freezes its helper,
-and packages public code, dependencies, licenses, and this guide. No game assets,
-IPA, profile, Apple credentials, or SDK are included. Outputs and checksums stay
-under `build/windows`, ignored by Git.
+Free-account sideloads expire after seven days. Re-sign with the same account
+and identifier before expiration, or configure Sideloadly's optional automatic
+refresh. Automatic refresh depends on its own service, computer availability,
+and device connection; this project does not run that service.
 
-The executable is unsigned. SmartScreen can warn about an unknown publisher;
-Smart App Control or organization policy can block it entirely. There is not
-always a per-app **Run anyway** option. Do not disable security protections or
-bypass malware/invalid-signature alerts. Stable release verification still needs
-first launch, USB driver setup, and installation on a clean Windows system.
+Use [Sideloadly's FAQ](https://sideloadly.io/faq) for account limits, pairing,
+drivers, signing errors, and refresh configuration. Review its logs before
+sharing them: they can contain account, device, and signing information.
 
-Download the matching `.sha256` file beside the ZIP. To compare its recorded
-SHA-256 with the actual archive in PowerShell:
-
-```powershell
-$Archive = "minion-rush-installer-1.0.0-win-x64.zip"
-$Expected = (Get-Content "$Archive.sha256").Split()[0]
-if ((Get-FileHash $Archive -Algorithm SHA256).Hash -ne $Expected) {
-    throw "Download checksum mismatch."
-}
-```
-
-A checksum detects changed download bytes; it is not a publisher certificate.
-
-References are listed in [TECHNICAL_SOURCES.md](TECHNICAL_SOURCES.md).
+Mac installer tests do not validate Sideloadly or Windows USB drivers. A complete
+Windows signing, installation, and refresh cycle has not been tested for this
+project. The official site advertises iOS 26+ support, but this project has not
+verified Sideloadly installation on iOS or iPadOS 27.

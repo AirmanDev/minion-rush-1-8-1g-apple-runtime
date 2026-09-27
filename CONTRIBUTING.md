@@ -23,8 +23,7 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
 ## Coding rules
 
 - The portable core is C11, Apple platform code is Objective-C with ARC, and
-  tools use Swift, Python 3, or Bash. The Windows installer uses C#/.NET WPF
-  with a PowerShell packaging script.
+  tools use Swift, Python 3, or Bash.
 - Use English for source identifiers, comments, user-facing tool output, and
   documentation.
 - Keep maintained text files ASCII. Use Unicode escapes in tests and code when
@@ -70,11 +69,11 @@ that separate first-launch check before publishing a downloadable binary.
 
 Keep installer labels, ordering, and signing-input rules in
 `config/installer_ui.json`. Do not duplicate import or device-installation logic
-in a native client. See `docs/INSTALLER.md` for the shared UI contract and
-`docs/INSTALLER_WINDOWS.md` for the signed-IPA workflow and outstanding Windows
-release checks. Windows changes require the .NET state/process tests and
-`tools/build_installer_windows.ps1` on Windows. A successful cross-compilation
-is not a native interaction, driver, or physical installation test.
+in the native client. See `docs/INSTALLER.md` for the UI contract and
+`docs/INSTALLER_WINDOWS.md` for external Sideloadly installation. IPA export
+changes require the archive tests and Mac packaging checks. Updates to third-party
+instructions must cite current official sources and distinguish documented
+capabilities from physically tested signing, installation, and refresh results.
 
 iOS platform changes require `tools/test_ios_simulator.sh` and physical-device
 testing before release. Keep the deployment minimum in `ios/Deployment.xcconfig`

@@ -10,9 +10,8 @@ import sys
 from pathlib import Path
 
 
-def signing_settings(team: str, bundle: str, *, require_team: bool = True,
-                     rules_path: Path | None = None) -> dict[str, str]:
-    contract = rules_path or Path(__file__).resolve().parents[1] / "config/installer_ui.json"
+def signing_settings(team: str, bundle: str, *, require_team: bool = True) -> dict[str, str]:
+    contract = Path(__file__).resolve().parents[1] / "config/installer_ui.json"
     rules = json.loads(contract.read_text())["signingRules"]
     if (team or require_team) and not re.fullmatch(rules["team"], team):
         raise ValueError("Team ID must contain 10 uppercase letters or digits.")

@@ -69,9 +69,11 @@ No device is installed automatically on app launch or archive import.
 device installation. Choose a save location in the native save dialog. The selected
 device must already be connected so Xcode can register it in the profile. The
 resulting IPA includes private assets and device-bound signing material; never
-publish it or commit it to Git. Transfer it privately to the Windows client
-described in [INSTALLER_WINDOWS.md](INSTALLER_WINDOWS.md). A new device or expired
-profile requires another export. Failed archive writes preserve an existing IPA.
+publish it or commit it to Git. Transfer it privately for installation with
+[Sideloadly on Windows](INSTALLER_WINDOWS.md). Sideloadly's Apple ID mode can
+re-sign the IPA for another device or renew an expired profile; installation
+without re-signing still requires a valid profile for that exact device.
+Failed archive writes preserve an existing IPA.
 
 **Cancel** stops the worker and its deployment process group. A device install
 is not reversible: cancellation during that phase may leave an installed app.
@@ -116,10 +118,10 @@ requests to the existing asset validator/importer and deployment tools.
 A workspace lock rejects simultaneous
 operations, and the deployment tools retain their shared build lock. There is
 no background device polling, telemetry, or automatic download worker.
-Both device backends use `installer_protocol.py` for events, full logs, and
-workspace locking; `ipa_archive.py` provides bounded IPA preflight and atomic
-export. The Windows helper streams the upload in 1 MB chunks rather than
-loading the whole IPA into memory.
+`installer_protocol.py` owns events, full logs, and workspace locking.
+`ipa_archive.py` packages the signed application into a temporary IPA and
+commits it atomically after writing succeeds. No separate Windows backend,
+USB library, or third-party signing dependency is included in the project.
 
 `tools/signing.py` validates the UI contract's signing rules for both the
 backend and command-line scripts. Xcode can resolve its configured team when
@@ -127,7 +129,7 @@ the command-line workflow omits an explicit Team ID; the native installer
 requires one. The Swift UI also requires a complete regex match, so whitespace
 and trailing newlines cannot pass one layer and fail another.
 
-## UI contract and Windows
+## UI contract
 
 `config/installer_ui.json` is the shared source for English labels, section
 order, minimum width, and signing-input rules. The stable arrangement is:
@@ -141,23 +143,17 @@ order, minimum width, and signing-input rules. The stable arrangement is:
 6. Persistent footer: status on the left; Cancel and primary Install on the right.
 7. Window toolbar: Show local files.
 
-The Windows WPF client consumes the same contract. Small platform-specific label
-overrides describe signed IPA input and read-only signing details instead of
-ZIP import and Xcode signing. Order, device/Refresh placement, full-log action,
-follow-output option, and footer arrangement are shared. Fonts and native material
-appearance are not pixel-identical. Neither client uses a web view.
-
 The full archive area and log header are buttons, not tiny nested click targets.
 Device/team selectors cover their full rows and retain native keyboard behavior.
-Cmd+O on Mac and Ctrl+O on Windows choose an archive. Install remains the default
+Cmd+O opens the archive chooser. Install remains the default
 action only when its prerequisites pass. Error state uses text as well as color.
 Scrollable content keeps the footer visible in small windows. A single device
 can be selected automatically; multiple devices require a deliberate selection.
 
-The Mac still needs Xcode to build and sign. Windows receives the exported IPA
-and uses Apple's USB service through `pymobiledevice3`; it neither signs nor
-builds, and it does not collect an Apple Account password. Windows startup
-verification is not equivalent to the Mac deployment script's launch check.
+The Mac needs Xcode to build and sign. Windows users install the exported IPA
+with the external Sideloadly application and its Apple Account signing workflow.
+That application's UI, credentials, drivers, and refresh service are outside
+this project's installer. See [INSTALLER_WINDOWS.md](INSTALLER_WINDOWS.md).
 
 ## Verification and distribution
 
@@ -169,16 +165,14 @@ live delivery before worker exit, fragmented UTF-8 output, cancellation,
 deliberate device selection, Install gating, and native selector layout without
 installing to a device. An optional snapshot-directory argument captures only
 the synthetic test window for light/dark, small-window, failure, and busy review.
-The .NET tests exercise Windows state and the real process bridge on any .NET 10
-host. IPA tests cover malformed archives, profile/device/OS mismatches, expiry,
-atomic export, bounded streaming, and staging cleanup. Windows native interaction
-and frozen-helper checks run in the Windows workflow; USB installation remains
-a separate physical-device check.
+IPA export tests cover bundle layout, byte and executable-permission preservation,
+invalid input, rejected links, atomic replacement, and cleanup after failed writes.
+These checks do not validate a third-party signing tool or Windows USB drivers.
 
 The current UI revision was built and visually checked on macOS 27 with Xcode 27,
 including light/dark appearance, a minimum-size window, failure, and busy states.
 Native selector tests verify full-row hit targets, binding updates, and disabled
-state. Export of an existing signed app passed CMS/profile preflight and complete
+state. Export of an existing signed app passed complete
 ZIP integrity checking without installing; its temporary IPA was removed.
 The earlier GUI flow's original ZIP passed import through both the backend and the native file chooser.
 The connected iPhone and iPad were enumerated. The user completed a separate-app
@@ -188,10 +182,8 @@ verification; the user also confirmed that the live activity log worked.
 The three-app free-signing limit was reproduced before that successful attempt.
 Runtime testing on macOS 26.6 and physical iPad installation through this GUI
 remain release checks. The new UI and export changes have not been retested with
-a fresh physical installation. On GitHub's Windows x64 runner, native WPF and
-state/process tests, the frozen-helper smoke test, license/public-package checks,
-and extracted-ZIP hash comparisons pass. Windows physical USB installation,
-clean-system security/driver setup, and ARM64 execution remain unverified.
+a fresh physical installation. Windows signing, USB installation, and refresh
+through Sideloadly remain unverified for this project.
 
 The source repository contains no private assets or signing material. The
 download package also excludes these files. Paid developer membership is not

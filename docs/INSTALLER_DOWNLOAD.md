@@ -55,10 +55,13 @@ a small iOS app from Xcode on the device with that team selected.
 
 The entire archive area opens the file chooser; device and team fields open
 across their full width. The log header can also be clicked anywhere. Choose
-**Export IPA** instead of Install to save a device-bound signed IPA for the
-Windows client, without installing. The IPA contains private game assets;
-do not publish or redistribute it. The Windows x64 prerelease passes CI build,
-UI, helper, and package checks; physical Windows USB installation is unverified.
+**Export IPA** instead of Install to save a device-bound signed IPA without
+installing. On Windows, [Sideloadly](https://sideloadly.io/) can re-sign and install
+it with your Apple Account. See the
+[Windows guide](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/blob/main/docs/INSTALLER_WINDOWS.md) for
+iTunes/iCloud requirements and signing limits. There is no project-maintained
+Windows app. The IPA contains private game assets; do not publish or redistribute
+it. This project's tests do not cover Sideloadly's Windows installation workflow.
 
 The activity log shows extraction, validation, compilation, signing, device
 installation, and startup verification. Open full log opens the complete
