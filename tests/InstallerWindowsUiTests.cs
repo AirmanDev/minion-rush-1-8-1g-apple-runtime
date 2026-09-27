@@ -55,11 +55,11 @@ internal static class InstallerWindowsUiTests
             using (var drawing = surface.RenderOpen())
             {
                 drawing.DrawRectangle(window.Background, null, rectangle);
-                drawing.DrawRectangle(new VisualBrush(content), null, rectangle);
             }
             var bitmap = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight,
                 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(surface);
+            bitmap.Render(content);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var output = File.Create(Path.Combine(arguments[0], name + ".png"));
@@ -84,9 +84,11 @@ internal static class InstallerWindowsUiTests
             Require(!install.IsEnabled, "Missing IPA must disable installation");
             var disclosure = buttons.Single(button => AutomationProperties.GetAutomationId(button) == "installer.logDisclosure");
             Require(disclosure.ActualWidth > 500, "The log header must span its row");
+            var scroll = Controls<ScrollViewer>(window).First();
             var invoke = (IInvokeProvider)new ButtonAutomationPeer(disclosure).GetPattern(PatternInterface.Invoke);
             invoke.Invoke(); Pump();
             Require(AutomationProperties.GetHelpText(disclosure) == contract.Text("expanded"), "The full log header must expand");
+            Require(scroll.VerticalOffset > 0, "Expanded activity must scroll into view");
             invoke.Invoke(); Pump();
             Require(AutomationProperties.GetHelpText(disclosure) == contract.Text("collapsed"), "The log header must collapse");
             state.Receive(JsonSerializer.SerializeToElement(new
@@ -104,6 +106,7 @@ internal static class InstallerWindowsUiTests
                 }
             }));
             state.CommitArchive("MinionRush.ipa"); Pump();
+            scroll.ScrollToTop(); Pump();
             Require(install.IsEnabled, "A valid IPA and matching device must enable the native Install button");
             Capture("windows-native");
             window.Width = 640; window.Height = 660; Pump(); window.UpdateLayout();

@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace MinionRushInstaller;
@@ -80,8 +81,11 @@ internal sealed class InstallerWindow : Window
         cancelButton = Button(state.Contract.Text("cancel"), Cancel);
         logButton = Button(state.Contract.Text("logs"), () =>
         {
-            logBody.Visibility = logBody.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-            UpdateDisclosure();
+            if (logBody.Visibility == Visibility.Visible)
+            {
+                logBody.Visibility = Visibility.Collapsed; UpdateDisclosure();
+            }
+            else ShowLog();
         });
         logButton.HorizontalContentAlignment = HorizontalAlignment.Left;
         AutomationProperties.SetAutomationId(logButton, "installer.logDisclosure");
@@ -209,7 +213,7 @@ internal sealed class InstallerWindow : Window
         if (state.Busy) return;
         using var cancellation = new CancellationTokenSource();
         operation = cancellation;
-        if (arguments[0] != "devices") { logBody.Visibility = Visibility.Visible; UpdateDisclosure(); }
+        if (arguments[0] != "devices") ShowLog();
         state.Begin(phase);
         try
         {
@@ -221,7 +225,7 @@ internal sealed class InstallerWindow : Window
         catch (Exception error)
         {
             if (state.Error is null) state.Fail(error.Message);
-            logBody.Visibility = Visibility.Visible; UpdateDisclosure();
+            ShowLog();
         }
         finally
         {
@@ -251,7 +255,7 @@ internal sealed class InstallerWindow : Window
         args.Handled = true;
         if (state.Busy) return;
         if (IsArchiveDrop(args, out var path)) Inspect(path!);
-        else state.Fail(state.Contract.Text("invalidDrop"));
+        else { state.Fail(state.Contract.Text("invalidDrop")); ShowLog(); }
     }
 
     private static bool IsArchiveDrop(DragEventArgs args, out string? path)
@@ -288,6 +292,13 @@ internal sealed class InstallerWindow : Window
             logBody.Visibility == Visibility.Visible ? "expanded" : "collapsed"));
     }
 
+    private void ShowLog()
+    {
+        logBody.Visibility = Visibility.Visible;
+        UpdateDisclosure();
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => logBody.BringIntoView()));
+    }
+
     private Button Button(string title, Action action)
     {
         var button = new Button
@@ -304,7 +315,7 @@ internal sealed class InstallerWindow : Window
             try { action(); }
             catch (Exception error)
             {
-                state.Fail(error.Message); logBody.Visibility = Visibility.Visible; UpdateDisclosure();
+                state.Fail(error.Message); ShowLog();
             }
         };
         return button;
