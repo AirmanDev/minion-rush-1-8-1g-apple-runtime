@@ -5,11 +5,12 @@ It does not build the game from the original release ZIP, sign in to Apple,
 or create a provisioning profile. Xcode is not needed on Windows, but the IPA
 must first be built and signed on a Mac for the target device.
 
-This client is under verification. Its source has been cross-compiled and its
-state/process tests run on macOS. Windows packaging, native Windows interaction,
-and installation through Apple's Windows USB service remain release checks.
-The Windows workflow runs compiled native UI checks and the frozen-helper smoke
-test, but it has not yet been executed for this change.
+The Windows x64 client passes native WPF interaction and state/process tests
+on GitHub's Windows runner. The frozen helper passes its dependency/API smoke
+test, and the package passes public-content, executable-architecture, license,
+and extracted-archive hash checks. This is a prerelease: physical USB installation
+through Apple's Windows service, a clean-system security/driver setup, and ARM64
+execution remain unverified. CI does not replace those checks.
 
 ## Prepare the IPA
 
@@ -71,7 +72,20 @@ under `build/windows`, ignored by Git.
 The executable is unsigned. SmartScreen can warn about an unknown publisher;
 Smart App Control or organization policy can block it entirely. There is not
 always a per-app **Run anyway** option. Do not disable security protections or
-bypass malware/invalid-signature alerts. Before publishing, test the package,
+bypass malware/invalid-signature alerts. Stable release verification still needs
 first launch, USB driver setup, and installation on a clean Windows system.
+
+Download the matching `.sha256` file beside the ZIP. To compare its recorded
+SHA-256 with the actual archive in PowerShell:
+
+```powershell
+$Archive = "minion-rush-installer-1.0.0-win-x64.zip"
+$Expected = (Get-Content "$Archive.sha256").Split()[0]
+if ((Get-FileHash $Archive -Algorithm SHA256).Hash -ne $Expected) {
+    throw "Download checksum mismatch."
+}
+```
+
+A checksum detects changed download bytes; it is not a publisher certificate.
 
 References are listed in [TECHNICAL_SOURCES.md](TECHNICAL_SOURCES.md).

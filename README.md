@@ -80,8 +80,9 @@ Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
 It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
 for signing, free-account limits, test coverage, and the shared UI contract.
 The native [Windows client](docs/INSTALLER_WINDOWS.md) accepts a device-bound IPA
-created by **Export IPA** on the Mac. It is under verification, not yet a tested
-Windows download. It does not build from the release ZIP or sign in to Apple.
+created by **Export IPA** on the Mac. Its Windows x64 build, native UI tests,
+frozen helper, and package checks pass in CI. Physical Windows USB installation
+remains unverified. It does not build from the release ZIP or sign in to Apple.
 Downloaded installer copies are ad-hoc signed, not notarized, and can require
 manual approval in macOS Privacy & Security. See the
 [download and opening guide](docs/INSTALLER_DOWNLOAD.md). To build the asset-free

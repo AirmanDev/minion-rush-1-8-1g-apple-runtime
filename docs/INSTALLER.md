@@ -172,7 +172,8 @@ the synthetic test window for light/dark, small-window, failure, and busy review
 The .NET tests exercise Windows state and the real process bridge on any .NET 10
 host. IPA tests cover malformed archives, profile/device/OS mismatches, expiry,
 atomic export, bounded streaming, and staging cleanup. Windows native interaction
-and USB installation remain separate release checks.
+and frozen-helper checks run in the Windows workflow; USB installation remains
+a separate physical-device check.
 
 The current UI revision was built and visually checked on macOS 27 with Xcode 27,
 including light/dark appearance, a minimum-size window, failure, and busy states.
@@ -187,8 +188,10 @@ verification; the user also confirmed that the live activity log worked.
 The three-app free-signing limit was reproduced before that successful attempt.
 Runtime testing on macOS 26.6 and physical iPad installation through this GUI
 remain release checks. The new UI and export changes have not been retested with
-a fresh physical installation. Windows native execution, frozen packaging, and
-USB installation have not run here; its workflow is configured but not yet run.
+a fresh physical installation. On GitHub's Windows x64 runner, native WPF and
+state/process tests, the frozen-helper smoke test, license/public-package checks,
+and extracted-ZIP hash comparisons pass. Windows physical USB installation,
+clean-system security/driver setup, and ARM64 execution remain unverified.
 
 The source repository contains no private assets or signing material. The
 download package also excludes these files. Paid developer membership is not

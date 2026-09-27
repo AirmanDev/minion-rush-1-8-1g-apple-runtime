@@ -44,6 +44,28 @@ internal static class InstallerWindowsUiTests
         var window = new InstallerWindow(state, discoverOnLaunch: false)
         { Left = -10000, Top = -10000 };
         window.Show(); Pump(); window.UpdateLayout();
+
+        void Capture(string name)
+        {
+            if (arguments.Length != 1) return;
+            Directory.CreateDirectory(arguments[0]);
+            var content = (FrameworkElement)window.Content;
+            var rectangle = new Rect(0, 0, content.ActualWidth, content.ActualHeight);
+            var surface = new DrawingVisual();
+            using (var drawing = surface.RenderOpen())
+            {
+                drawing.DrawRectangle(window.Background, null, rectangle);
+                drawing.DrawRectangle(new VisualBrush(content), null, rectangle);
+            }
+            var bitmap = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight,
+                96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(surface);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var output = File.Create(Path.Combine(arguments[0], name + ".png"));
+            encoder.Save(output);
+        }
+
         try
         {
             var device = Controls<ComboBox>(window).Single();
@@ -67,20 +89,41 @@ internal static class InstallerWindowsUiTests
             Require(AutomationProperties.GetHelpText(disclosure) == contract.Text("expanded"), "The full log header must expand");
             invoke.Invoke(); Pump();
             Require(AutomationProperties.GetHelpText(disclosure) == contract.Text("collapsed"), "The log header must collapse");
-            if (arguments.Length == 1)
+            state.Receive(JsonSerializer.SerializeToElement(new
             {
-                Directory.CreateDirectory(arguments[0]);
-                var content = (FrameworkElement)window.Content;
-                var bitmap = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(content);
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                using var output = File.Create(Path.Combine(arguments[0], "windows-native.png"));
-                encoder.Save(output);
-            }
+                protocol = 1,
+                type = "result",
+                ipa = new
+                {
+                    bundle = "org.example.minionrush",
+                    team = "ABCDEFGHIJ",
+                    expires = DateTimeOffset.UtcNow.AddDays(1).ToString("O"),
+                    devices = new[] { "registered" },
+                    minimum_os = "17.0",
+                    bytes = 749900000
+                }
+            }));
+            state.CommitArchive("MinionRush.ipa"); Pump();
+            Require(install.IsEnabled, "A valid IPA and matching device must enable the native Install button");
+            Capture("windows-native");
+            window.Width = 640; window.Height = 660; Pump(); window.UpdateLayout();
+            var root = (FrameworkElement)window.Content;
+            var installBottom = install.TransformToAncestor(root).Transform(new Point(0, install.ActualHeight));
+            Require(installBottom.Y <= root.ActualHeight, "Install must stay visible in the minimum-size window");
+            Capture("windows-minimum");
+            state.Fail("The selected device is unavailable. Unlock it, check the USB connection and Apple Mobile Device Service, then choose Refresh.");
+            Pump();
+            Require(!install.IsEnabled, "A failure must disable the native Install button");
+            Capture("windows-failure");
+            window.Width = 740; window.Height = 880;
+            state.Begin("Uploading IPA: 50%");
+            state.AppendLog("Inspecting signed IPA\nProfile and device matched\nUploading IPA: 50%");
+            invoke.Invoke(); Pump();
+            Require(!install.IsEnabled && !device.IsEnabled, "Busy native actions must be disabled");
+            Capture("windows-working");
             Console.WriteLine("INSTALLER: Windows native UI tests passed");
             return 0;
         }
-        finally { window.Close(); }
+        finally { state.Finish(); window.Close(); }
     }
 }

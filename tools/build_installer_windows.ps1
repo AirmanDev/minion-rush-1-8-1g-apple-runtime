@@ -72,7 +72,7 @@ try {
         }
     }
     $Hash = (Get-FileHash -Algorithm SHA256 $Archive).Hash.ToLowerInvariant()
-    "$Hash  $(Split-Path $Archive -Leaf)" | Set-Content -Encoding ascii -Path "$Archive.sha256"
+    "$Hash  $(Split-Path $Archive -Leaf)`n" | Set-Content -NoNewline -Encoding ascii -Path "$Archive.sha256"
     Write-Output "DONE: $Archive (unsigned; package checks passed; physical USB installation not tested)"
 } finally {
     Remove-Item -LiteralPath $Stage -Recurse -Force
