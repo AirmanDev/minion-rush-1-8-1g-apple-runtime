@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import sys
@@ -16,7 +17,8 @@ sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
 import build_windows_kit
-from windows_native_package import (_needs_local_archive_copy,
+from windows_native_package import (_utm_http_stream, _utm_webdav_url,
+                                    _needs_local_archive_copy,
                                     _stage_source_archive, create_unsigned_ipa,
                                     validate_kit)
 
@@ -103,6 +105,57 @@ class WindowsKitTests(unittest.TestCase):
                 self.assertEqual(opened.read("synthetic-test.txt"), b"private test bytes")
             self.assertEqual(len(list(target.iterdir())), 1)
 
+    def test_utm_local_http_copy_preserves_private_zip_and_bypasses_share_open(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"unchanged private source")
+            scratch = root / "scratch"
+            scratch.mkdir()
+            data = b"synthetic guest-local HTTP contents" * 4000
+            stream = io.BytesIO(data)
+            stream.headers = {"Content-Length": str(len(data))}
+            with (mock.patch("windows_native_package._needs_local_archive_copy",
+                             return_value=True),
+                  mock.patch("windows_native_package._utm_webdav_url",
+                             return_value="http://127.0.0.1:9843/original.zip"),
+                  mock.patch("windows_native_package._utm_http_stream",
+                             return_value=stream)):
+                staged = _stage_source_archive(source, scratch)
+            self.assertEqual(staged.read_bytes(), data)
+            self.assertEqual(source.read_bytes(), b"unchanged private source")
+
+    def test_utm_local_http_rejects_truncated_transfer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"source")
+            scratch = root / "scratch"
+            scratch.mkdir()
+            stream = io.BytesIO(b"only part of ZIP")
+            stream.headers = {"Content-Length": "1000"}
+            with (mock.patch("windows_native_package._needs_local_archive_copy",
+                             return_value=True),
+                  mock.patch("windows_native_package._utm_webdav_url",
+                             return_value="http://127.0.0.1:9843/original.zip"),
+                  mock.patch("windows_native_package._utm_http_stream",
+                             return_value=stream)):
+                with self.assertRaisesRegex(ValueError, "incomplete"):
+                    _stage_source_archive(source, scratch)
+
+    def test_utm_local_http_rejects_external_hosts_and_oversized_files(self):
+        with self.assertRaisesRegex(ValueError, "unsafe UTM share URL"):
+            _utm_http_stream("http://example.com/original.zip")
+        stream = io.BytesIO(b"")
+        stream.headers = {"Content-Length": str(3 * 1024 ** 3)}
+        opener = mock.MagicMock()
+        opener.open.return_value = stream
+        with mock.patch("windows_native_package.urllib.request.build_opener",
+                        return_value=opener):
+            with self.assertRaisesRegex(ValueError, "exceeds supported size"):
+                _utm_http_stream("http://127.0.0.1:9843/original.zip")
+        self.assertTrue(stream.closed)
+
     def test_local_zip_skips_unnecessary_copy(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -151,12 +204,19 @@ class WindowsKitTests(unittest.TestCase):
             self.assertEqual(private_zip.read_bytes(), b"synthetic private source zip")
             self.assertFalse(list(root.glob("minion-rush-private-*")))
 
-    @unittest.skipUnless(os.name == "nt", "Windows-specific UNC detection")
-    def test_unc_path_automatically_requests_local_copy(self):
+    @unittest.skipUnless(os.name == "nt", "Windows-specific UTM drive mapping")
+    def test_utm_mapped_drive_and_unc_url_resolution(self):
         from pathlib import PureWindowsPath
-        self.assertTrue(_needs_local_archive_copy(
-            PureWindowsPath(r"\\localhost@9843\DavWWWRoot\original-1.8.1g-PRIVATE.zip")
-        ))
+        unc = PureWindowsPath(r"\\localhost@9843\DavWWWRoot\original-1.8.1g-PRIVATE.zip")
+        self.assertTrue(_needs_local_archive_copy(unc))
+        self.assertEqual(_utm_webdav_url(unc),
+                         "http://127.0.0.1:9843/original-1.8.1g-PRIVATE.zip")
+        with mock.patch("windows_native_package._mapped_unc_root",
+                        return_value=r"\\localhost@9843\DavWWWRoot"):
+            self.assertEqual(
+                _utm_webdav_url(PureWindowsPath(r"Z:\original-1.8.1g-PRIVATE.zip")),
+                "http://127.0.0.1:9843/original-1.8.1g-PRIVATE.zip",
+            )
 
     def test_rejects_unverified_python_distribution(self):
         with tempfile.TemporaryDirectory() as directory:

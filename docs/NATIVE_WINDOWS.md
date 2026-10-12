@@ -39,9 +39,11 @@ natively after the IPA has been correctly signed.
 2. Double-click run-native-ipa.cmd.
 3. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the file
    selection dialog. On UTM, the original ZIP may stay in the Mac shared
-   folder: the builder automatically stages a private copy from the Windows
-   WebDAV/UNC share into Windows TEMP before reading it as a ZIP archive.
-   There is no manual copying or need to change the UTM share settings.
+   folder: the builder automatically stages a private copy into Windows TEMP.
+   For the default UTM SPICE WebDAV share, the input is retrieved through the
+   VM's loopback-only HTTP endpoint (127.0.0.1:9843), not the mapped Windows
+   WebDAV drive, which can refuse to open a ZIP larger than 50 MB.
+   There is no manual copying or need to change registry/WebClient limits.
 4. Wait for the local ZIP verification, full AOT translation, and IPA assembly.
 5. The resulting MinionRush-unsigned-*.ipa is written to the Windows
    Downloads directory (on the local Windows disk for better performance).
@@ -129,10 +131,15 @@ kit-manifest.json. The runtime verifies hashes again when launched.
 
 - No overwriting existing output archives or operating outside the intended
   temporary working directory. Windows network ZIP sources are streamed into
-  local TEMP using bounded 1 MiB buffers, because UTM's WebDAV implementation
-  may reject the random seeks used by ZIP readers (Errno 22). Local NTFS ZIPs
-  are used directly without an unnecessary copy. Scratch copies are deleted
-  on success or failure; reserve sufficient free Windows VM disk space.
+  local TEMP using bounded 1 MiB buffers. UTM's mapped SPICE WebDAV drive
+  can reject even the initial open of a 454 MB file (Errno 22) because of
+  Windows WebClient file-size limits. For recognized UTM loopback WebDAV
+  mappings only, the importer instead issues a direct HTTP GET to the guest's
+  own 127.0.0.1:9843 SPICE service, without proxies or redirects. The
+  result is size-checked before ZIP validation. Unrelated remote shares
+  continue using the regular file API. Local NTFS ZIPs are used directly
+  without an unnecessary copy. Scratch copies are deleted on success or
+  failure; reserve sufficient free Windows VM disk space.
 - Version-locked original 1.8.1g engine hash, asset content validation, bounded
   original ZIP extraction, path-traversal and symlink checks.
 - Thin ARM64 MH_EXECUTE Mach-O only, exactly one file-backed executable
