@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$Kit
+    [string]$Kit,
+    [switch]$SmokeTest
 )
 
 Set-StrictMode -Version Latest
@@ -419,7 +420,18 @@ $form.Add_FormClosing({
 })
 
 try {
-    [System.Windows.Forms.Application]::Run($form)
+    if ($SmokeTest) {
+        if (-not [System.IO.File]::Exists($script:pythonPath) -or
+            -not [System.IO.File]::Exists($script:builderPath) -or
+            $form.Controls.Count -lt 12 -or
+            (Quote-ProcessArgument 'C:\test folder\game.zip') -ne
+            '"C:\test folder\game.zip"') {
+            throw 'Windows GUI smoke test failed.'
+        }
+        $form.CreateControl()
+    } else {
+        [System.Windows.Forms.Application]::Run($form)
+    }
 } finally {
     $timer.Dispose()
     $form.Dispose()
