@@ -219,7 +219,7 @@ static DWORD WINAPI run_build(LPVOID opaque) {
         goto done;
     }
     HRESULT hr = StringCchPrintfW(
-        command, cap, L"\"%s\" \"%s\" \"%s\" --kit \"%s\" --output \"%s\"",
+        command, cap, L"\"%s\" -X utf8 \"%s\" \"%s\" --kit \"%s\" --output \"%s\"",
         job->python, job->tool, job->source, job->kit, job->output
     );
     if (SUCCEEDED(hr) && job->catalog[0]) {
