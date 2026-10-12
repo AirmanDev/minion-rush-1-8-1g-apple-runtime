@@ -33,6 +33,13 @@ Payload/MinionRush.app IPA archive. Windows 11 ARM supports running the
 Windows x64 offline compiler through emulation. iOS will run the ARM64 result
 natively after the IPA has been correctly signed.
 
+The kit's prebuilt translator is verified by SHA-256 and executed directly
+from its existing kit location. It is never copied into the private AOT
+output or deleted by the preparation routine: Windows can keep executable
+images locked briefly after the child exits (WinError 5). This also avoids
+an unnecessary executable copy. The private output contains only original
+assets, generated ARM64 data and the AOT manifest.
+
 ## For users of an authorized, reviewed Windows kit
 
 1. Extract the provided portable Windows kit to a private directory.
