@@ -103,6 +103,7 @@ tests/test_ipa_archive.py
 tests/test_native_aot.py
 tests/test_native_ipa.py
 tests/test_tools.py
+tests/test_windows_gui.py
 tests/test_windows_native.py
 tools/asset_contract.py
 tools/build_installer.sh
