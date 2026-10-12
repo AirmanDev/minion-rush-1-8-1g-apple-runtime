@@ -2,11 +2,11 @@
 #include "elf_loader.h"
 
 #include "host_pages.h"
-#ifndef _WIN32
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
