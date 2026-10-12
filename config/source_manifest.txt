@@ -139,4 +139,5 @@ tools/validate_assets.py
 tools/validate_installer.py
 tools/validate_source.py
 tools/verify_ios_startup.py
+tools/windows_native_gui.ps1
 tools/windows_native_package.py
