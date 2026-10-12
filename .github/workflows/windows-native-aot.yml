@@ -75,3 +75,5 @@ jobs:
           $toolScript = Join-Path (Join-Path (Join-Path $kit 'runtime') 'tools') 'windows_native_package.py'
           & $exe $toolScript --help
           if ($LASTEXITCODE -ne 0) { throw 'Portable Windows CLI startup failed' }
+          & powershell.exe -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File (Join-Path $kit 'runtime\tools\windows_native_gui.ps1') -Kit $kit -SmokeTest
+          if ($LASTEXITCODE -ne 0) { throw 'Portable Windows GUI startup failed' }
