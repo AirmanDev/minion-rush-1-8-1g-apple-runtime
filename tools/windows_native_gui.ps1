@@ -202,6 +202,7 @@ function Start-Build {
         $timer.Start()
     } catch {
         if ($null -ne $script:worker) {
+            if (-not $script:worker.HasExited) { Stop-Worker }
             $script:worker.Dispose()
             $script:worker = $null
         }
@@ -403,7 +404,11 @@ $form.Add_FormClosing({
             return
         }
         Stop-Worker
-        $script:worker.WaitForExit(10000) | Out-Null
+        if (-not $script:worker.WaitForExit(10000)) {
+            $eventArgs.Cancel = $true
+            $status.Text = 'The worker is still running. Close was cancelled.'
+            return
+        }
     }
     $timer.Stop()
     if ($null -ne $script:worker) {
