@@ -23,6 +23,7 @@ sys.dont_write_bytecode = True
 
 from common import ROOT
 from install_assets import install_release
+from localize import prepare as prepare_localizations
 
 AOT_PRODUCTS = ("minion_code.bin", "minion_map.inc", "rejected-candidates.tsv",
                 "game_bindings.h")
@@ -73,7 +74,8 @@ def check_destination(destination: Path) -> Path:
 
 def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
             prebuilt_compiler: Path | None = None,
-            compiler_sha256: str | None = None) -> dict:
+            compiler_sha256: str | None = None,
+            translations_root: Path | None = None) -> dict:
     zip_path = zip_path.resolve(strict=True)
     if not zip_path.is_file() or zip_path.suffix.lower() != ".zip":
         raise ValueError("source must be a local ZIP archive")
@@ -109,6 +111,15 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
         with open(os.devnull, "w", encoding="utf-8") as sink:
             with contextlib.redirect_stdout(sink):
                 install_release(zip_path, ROOT, assets)
+        # Use the same XLIFF, font and formatter compiler as the normal Mac
+        # build. The original ZIP has no community translation by itself.
+        print("Preparing configured localizations", flush=True)
+        locale_header = staging / "localization_config.h"
+        enabled = prepare_localizations(ROOT, assets, locale_header,
+                                        translations_root=translations_root)
+        if not enabled:
+            raise ValueError("no configured localization was generated")
+        print("Localizations:", ", ".join(item.code for item in enabled), flush=True)
         print("Generating native ARM64 blocks", flush=True)
         compiled = staging / "compiled"
         compiled.mkdir()

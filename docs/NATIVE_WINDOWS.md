@@ -23,7 +23,11 @@ link time. The additional Windows path uses a special **developer-built**
 unsigned iOS Mach-O application template. It contains the same compiled host
 runtime and block map, but reserves a file-backed executable __MRCODE/__text
 section filled with zeros. No original game engine, artwork, DLC, audio, icon,
-or translated ARM64 instructions belong in this template.
+or translated ARM64 instructions belong in this template. No compiled app
+icon catalog is included: after importing the user's ZIP, the Windows builder
+generates correctly sized iPhone/iPad PNG icons from its validated original
+app-icon.png and records them in CFBundleIcons. The final per-user IPA therefore
+uses the original game's launcher artwork; the developer's template does not.
 
 The Windows kit uses a locally shipped x64 AOT translator and Python standard
 library to validate the user's original ZIP, generate machine code, verify
@@ -44,20 +48,25 @@ assets, generated ARM64 data and the AOT manifest.
 
 1. Extract the provided portable Windows kit to a private directory.
 2. Double-click run-native-ipa.cmd.
-3. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the file
+3. For Hungarian, place the private hu.xlf catalog in
+   MinionRush-Private-Languages/hu.xlf next to the portable Windows kit.
+   The original game ZIP does not contain this separate community translation,
+   and the public repository does not distribute it. A missing catalog fails
+   the build rather than silently producing question-mark labels.
+4. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the file
    selection dialog. On UTM, the original ZIP may stay in the Mac shared
    folder: the builder automatically stages a private copy into Windows TEMP.
    For the default UTM SPICE WebDAV share, the input is retrieved through the
    VM's loopback-only HTTP endpoint (127.0.0.1:9843), not the mapped Windows
    WebDAV drive, which can refuse to open a ZIP larger than 50 MB.
    There is no manual copying or need to change registry/WebClient limits.
-4. Wait for the local ZIP verification, full AOT translation, and IPA assembly.
-5. The resulting MinionRush-unsigned-*.ipa is written to the Windows
+5. Wait for the local ZIP verification, full AOT translation, and IPA assembly.
+6. The resulting MinionRush-unsigned-*.ipa is written to the Windows
    Downloads directory (on the local Windows disk for better performance).
    The lightweight windows-native-ipa-report.txt is written to the kit
    directory so it can also be read through an UTM shared folder. The IPA
    is **unsigned** and contains copyrighted game files. Do NOT publish it.
-6. Sign it with a compatible trusted external Apple sideloading tool using
+7. Sign it with a compatible trusted external Apple sideloading tool using
    your own signing identity, and install it on your iPhone/iPad.
 
 There are no embedded private game data, Apple SDK files, Apple certificates,
@@ -82,10 +91,9 @@ Default output:
 build/native-template/MinionRush-native-template-unsigned.zip
 
 The template builder uses Xcode's iPhoneOS SDK only on the developer's Mac,
-builds the isolated build/ios-template library, creates an independently
-generated neutral icon, turns off Xcode code signing, builds a separate
-DerivedData tree, and rejects any original game assets/signatures and any
-nonzero executable slot. It does not modify build/ios, the normal iOS target,
+builds the isolated build/ios-template library, disables the asset-catalog
+app icon and code signing, builds a separate DerivedData tree, and rejects
+any app icon, original game assets/signatures or nonzero executable slot. It does not modify build/ios, the normal iOS target,
 or the existing Mac installer.
 
 A normal iOS device build remains:
@@ -126,8 +134,9 @@ No site import or system-wide PYTHONPATH is enabled. The full extracted
 Python interpreter and native-extension files have an additional SHA-256
 inventory; this prevents accidental file mismatches relative to the kit's
 manifest, but does not replace an independently authenticated release signature. Windows users require
-neither Xcode, a Mac, a Python installation nor a C compiler. The input ZIP
-must be provided privately by the end user.
+neither Xcode, a Mac, a Python installation nor a C compiler. The input ZIP and optional community-language catalogs must be
+provided privately by the end user. The original game ZIP provides the
+launcher icon, but not the Hungarian translation.
 
 A source-manifest-based inventory protects the local runtime copy against
 accidental content mismatches. SHA-256 of the downloaded Python embeddable ZIP
@@ -157,6 +166,10 @@ kit-manifest.json. The runtime verifies hashes again when launched.
   unknown files, signing data, and game-data paths.
 - The user's original engine and assets never enter the public source release.
   Native code is emitted only as private per-user output.
+- The source icon is validated against the original game's SHA-256 digest.
+  The app's own PNG icon variants are created after private ZIP import,
+  without Xcode, from the validated source artwork. Template-provided icon
+  catalogs or icon metadata are rejected to prevent duplicate icon sources.
 - No Android emulation, no iOS JIT, no remote upload or host networking.
 - iOS signature must be created only **after** the per-user IPA is assembled;
   modifying a signed executable invalidates the signature.

@@ -86,7 +86,8 @@ for signing, free-account limits, test coverage, and the shared UI contract.
 
 A [portable native Windows IPA builder](docs/NATIVE_WINDOWS.md) now supports
 preparing a private, **unsigned** IPA from the user's own unmodified 1.8.1g
-release ZIP, with **native ARM64 code** compiled entirely on Windows.
+release ZIP and separately supplied community-language catalogs, with
+**native ARM64 code** compiled entirely on Windows.
 The Windows package uses an independently prepared, asset-free iOS executable
 template, the verified Windows AOT translator, and a portable Python runtime.
 No Mac, Xcode, JIT, Android emulator, or third-party game assets are needed

@@ -7,7 +7,8 @@ Two separate IPA preparation paths are supported in the source tree:
 - **Windows (experimental, not publicly released):** A portable builder takes
   the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
   blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
-  packages the original assets. No Mac is required *for this local build*.
+  packages the original assets. A private Hungarian hu.xlf catalog is needed
+  for Hungarian; the original launcher icon comes directly from the ZIP. No Mac is required *for this local build*.
   See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
   IPA** and does not install or sign itself.
 

@@ -20,7 +20,6 @@ import sys
 import tempfile
 import unicodedata
 import zipfile
-import zlib
 from pathlib import Path, PurePosixPath
 
 sys.dont_write_bytecode = True
@@ -28,6 +27,7 @@ sys.dont_write_bytecode = True
 from asset_contract import OFFICIAL_ENGINE_SHA256
 from common import ROOT, content_files
 from ipa_archive import export_ipa
+from ios_private_icon import install_private_icon
 from native_macho import file_sha256, find_code_slot, normalized_text_sha256, require_zero_slot
 from validate_assets import inspect_assets
 
@@ -35,7 +35,7 @@ APP_NAME = "MinionRush.app"
 EXE_NAME = "MinionRush"
 TEMPLATE_PREFIX = "Template/" + APP_NAME + "/"
 TEMPLATE_MANIFEST = "template-manifest.json"
-VERSION = 1
+VERSION = 2
 MAX_TEMPLATE_BYTES = 350 * 1024 * 1024
 MAX_TEMPLATE_MEMBERS = 512
 MAX_PRIVATE_ASSETS = 2 * 1024 * 1024 * 1024
@@ -44,7 +44,6 @@ PRIVATE_TOP_LEVEL = frozenset(("lib", "game", "localizations"))
 SIGNING_FILES = frozenset(("embedded.mobileprovision", "_CodeSignature", "SC_Info"))
 ALLOWED_TEMPLATE_FILES = frozenset((
     "MinionRush", "Info.plist", "PrivacyInfo.xcprivacy", "PkgInfo",
-    "Assets.car", "AppIcon60x60@2x.png", "AppIcon76x76@2x~ipad.png",
 ))
 
 
@@ -164,6 +163,9 @@ def _validate_app_info(data: bytes) -> None:
     identifier = payload.get("CFBundleIdentifier")
     if not isinstance(identifier, str) or not identifier or len(identifier) > 255:
         raise ValueError("unsigned template lacks a bundle identifier")
+    for key in ("CFBundleIcons", "CFBundleIcons~ipad", "CFBundleIconFiles", "CFBundleIconName"):
+        if key in payload:
+            raise ValueError("unsigned template must not contain app icon metadata")
 
 
 def create_template(application: Path, compiled: Path, output: Path) -> dict:
@@ -207,21 +209,6 @@ def create_template(application: Path, compiled: Path, output: Path) -> dict:
     finally:
         Path(staging).unlink(missing_ok=True)
     return manifest
-
-
-def make_neutral_icon(output: Path) -> None:
-    """Independent opaque placeholder icon, no third-party artwork or assets."""
-    if output.exists() or output.is_symlink():
-        raise ValueError("refusing to overwrite an existing app icon")
-    width = 1024
-    row = b"\x00" + bytes((36, 46, 69)) * width
-    compressed = zlib.compress(row * width, 9)
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-    png = (b"\x89PNG\r\n\x1a\n" +
-           chunk(b"IHDR", struct.pack(">IIBBBBB", width, width, 8, 2, 0, 0, 0)) +
-           chunk(b"IDAT", compressed) + chunk(b"IEND", b""))
-    output.write_bytes(png)
 
 
 def _unpack_template(template: Path, staging: Path) -> tuple[Path, dict]:
@@ -271,7 +258,7 @@ def _validate_private_assets(assets: Path) -> list[tuple[Path, Path]]:
             raise ValueError("unsupported asset file type")
         relative = path.relative_to(assets)
         if relative.parts[0] not in PRIVATE_TOP_LEVEL:
-            # The original icon is not distributed. The template has an original icon.
+            # The original launcher artwork is converted into private icons later.
             if relative.as_posix() == "app-icon.png":
                 continue
             raise ValueError("unexpected private asset location")
@@ -327,14 +314,13 @@ def assemble_unsigned_ipa(template: Path, private_aot: Path, output: Path) -> No
             target = app / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(original, target)
+        install_private_icon(app, assets / "app-icon.png")
         export_ipa(app, output)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="action", required=True)
-    icon = subs.add_parser("neutral-icon")
-    icon.add_argument("output", type=Path)
     template = subs.add_parser("create-template")
     template.add_argument("--app", type=Path, required=True)
     template.add_argument("--compiled", type=Path, required=True)
@@ -345,9 +331,7 @@ def main() -> int:
     assembler.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.action == "neutral-icon":
-            make_neutral_icon(args.output)
-        elif args.action == "create-template":
+        if args.action == "create-template":
             create_template(args.app, args.compiled, args.output)
         else:
             assemble_unsigned_ipa(args.template, args.private_aot, args.output)

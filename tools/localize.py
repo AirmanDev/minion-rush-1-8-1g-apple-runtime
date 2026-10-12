@@ -551,7 +551,12 @@ def remove_generated_outputs(root: Path, assets: Path) -> None:
         shutil.rmtree(output_root)
 
 
-def prepare(root: Path, assets: Path, header: Path) -> list[Catalog]:
+def prepare(root: Path, assets: Path, header: Path,
+            *, translations_root: Path | None = None) -> list[Catalog]:
+    if translations_root is None:
+        translations_root = root / "localizations"
+    if translations_root.is_symlink() or not translations_root.is_dir():
+        raise ValueError("private translation catalog directory is missing or linked")
     source_path = assets / "game/files/text/en.texts"
     source = read_texts(source_path)
     formatter = assets / "game/files/localizationText/langs.json"
@@ -562,7 +567,9 @@ def prepare(root: Path, assets: Path, header: Path) -> list[Catalog]:
     enabled: list[Catalog] = []
     translations: dict[str, list[TextEntry]] = {}
     for catalog in catalogs:
-        translation = root / "localizations" / f"{catalog.code}.xlf"
+        translation = translations_root / f"{catalog.code}.xlf"
+        if translation.is_symlink():
+            raise ValueError(f"linked translation catalog is not supported: {translation}")
         if not translation.is_file():
             continue
         entries = read_xliff(translation, source, catalog.code)

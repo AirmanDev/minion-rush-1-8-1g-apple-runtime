@@ -186,11 +186,15 @@ class WindowsKitTests(unittest.TestCase):
             private_zip.write_bytes(b"synthetic private source zip")
             kit = root / "kit"
             kit.mkdir()
+            private_translations = root / "MinionRush-Private-Languages"
+            private_translations.mkdir()
+            (private_translations / "hu.xlf").write_text("synthetic private catalog")
             output = root / "final.ipa"
             def verify_prepare(path, output_path, **kwargs):
                 self.assertEqual(path.name, "original-private-source.zip")
                 self.assertEqual(path.read_bytes(), private_zip.read_bytes())
                 self.assertNotEqual(path.parent, kit)
+                self.assertEqual(kwargs["translations_root"].resolve(), private_translations.resolve())
             def verify_assemble(template, private, dest):
                 dest.write_bytes(b"synthetic unsigned IPA")
             with (mock.patch("windows_native_package.validate_kit",

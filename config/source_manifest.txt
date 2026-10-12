@@ -116,6 +116,7 @@ tools/format_source.sh
 tools/install_assets.py
 tools/installer_backend.py
 tools/installer_protocol.py
+tools/ios_private_icon.py
 tools/ipa_archive.py
 tools/list_ios_devices.py
 tools/localize.py

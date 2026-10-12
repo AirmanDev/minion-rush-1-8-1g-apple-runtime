@@ -230,6 +230,14 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path) -> None:
         raise ValueError("output must be in an existing absolute directory")
     kit = kit.resolve(strict=True)
     config = validate_kit(kit)
+    translations_root = kit.parent / "MinionRush-Private-Languages"
+    if translations_root.is_symlink() or not translations_root.is_dir():
+        raise ValueError(
+            "private Hungarian catalog is missing: supply "
+            "MinionRush-Private-Languages/hu.xlf next to the Windows kit"
+        )
+    if not (translations_root / "hu.xlf").is_file():
+        raise ValueError("private hu.xlf localization catalog is missing")
     with tempfile.TemporaryDirectory(prefix="minion-rush-private-", dir=None) as tmp:
         temporary = Path(tmp)
         private = temporary / "private-AOT"
@@ -239,6 +247,7 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path) -> None:
             local_zip, private,
             prebuilt_compiler=kit / "a64-compiler.exe",
             compiler_sha256=config["compiler_sha256"],
+            translations_root=translations_root,
         )
         print("2/3: Assemble the unsigned IPA and embed original game data.", flush=True)
         assemble_unsigned_ipa(

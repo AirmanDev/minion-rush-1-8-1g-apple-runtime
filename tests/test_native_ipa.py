@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -17,9 +18,10 @@ TOOLS = Path(__file__).resolve().parents[1] / "tools"
 sys.path.insert(0, str(TOOLS))
 
 from native_macho import find_code_slot, require_zero_slot, normalized_text_sha256
+from ios_private_icon import ICON_DIMENSIONS, _chunk, _read_rgba, install_private_icon
 from native_ipa import (
     APP_NAME, TEMPLATE_MANIFEST, TEMPLATE_PREFIX, _check_template_zip,
-    assemble_unsigned_ipa, create_template, make_neutral_icon,
+    assemble_unsigned_ipa, create_template,
 )
 
 
@@ -61,6 +63,23 @@ def synthetic_compiled(root: Path) -> Path:
     return compiled
 
 
+def synthetic_original_icon() -> bytes:
+    size = 576
+    rows = []
+    for y in range(size):
+        row = bytearray()
+        for x in range(size):
+            if 170 < x < 406 and 170 < y < 406:
+                row.extend((40, 90, 150, 255))
+            else:
+                row.extend((255, 0, 0, 255))
+        rows.append(b"\x00" + bytes(row))
+    return (b"\x89PNG\r\n\x1a\n"
+            + _chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
+            + _chunk(b"IDAT", zlib.compress(b"".join(rows)))
+            + _chunk(b"IEND", b""))
+
+
 class NativeMachoTests(unittest.TestCase):
     def test_find_and_check_zero_slot(self):
         data = macho()
@@ -97,6 +116,39 @@ class NativeMachoTests(unittest.TestCase):
 
 
 class NativeIpaTests(unittest.TestCase):
+    def test_private_original_icon_cannot_be_bundled_in_public_template(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            app = synthetic_app(root)
+            compiled = synthetic_compiled(root)
+            (app / "Assets.car").write_bytes(b"compiled neutral icon")
+            with self.assertRaisesRegex(ValueError, "unexpected file"):
+                create_template(app, compiled, root / "template.zip")
+            (app / "Assets.car").unlink()
+            info = plistlib.loads((app / "Info.plist").read_bytes())
+            info["CFBundleIcons"] = {"CFBundlePrimaryIcon": {"CFBundleIconName": "AppIcon"}}
+            (app / "Info.plist").write_bytes(plistlib.dumps(info))
+            with self.assertRaisesRegex(ValueError, "must not contain app icon metadata"):
+                create_template(app, compiled, root / "template.zip")
+
+    def test_private_icon_requires_validated_source_and_unsigned_template(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            app = synthetic_app(root)
+            png = root / "app-icon.png"
+            png.write_bytes(synthetic_original_icon())
+            with self.assertRaisesRegex(ValueError, "official"):
+                install_private_icon(app, png)
+            with mock.patch("ios_private_icon.validate_app_icon"):
+                install_private_icon(app, png)
+            with self.assertRaisesRegex(ValueError, "unexpected app icon metadata"):
+                with mock.patch("ios_private_icon.validate_app_icon"):
+                    install_private_icon(app, png)
+            self.assertEqual(len(_read_rgba(png.read_bytes())), 576 * 576 * 4)
+            info = plistlib.loads((app / "Info.plist").read_bytes())
+            self.assertIn("CFBundleIcons~ipad", info)
+
+
     def fixture(self, root: Path):
         app = synthetic_app(root)
         compiled = synthetic_compiled(root)
@@ -162,15 +214,25 @@ class NativeIpaTests(unittest.TestCase):
             assets.mkdir()
             (assets / "lib").mkdir()
             (assets / "lib/game.so").write_bytes(b"synthetic private ELF")
+            (assets / "app-icon.png").write_bytes(synthetic_original_icon())
             output = root / "private.ipa"
-            with mock.patch("native_ipa._validate_private_assets",
-                            return_value=[(assets / "lib/game.so", Path("lib/game.so"))]):
+            with (mock.patch("native_ipa._validate_private_assets",
+                             return_value=[(assets / "lib/game.so", Path("lib/game.so"))]),
+                  mock.patch("ios_private_icon.validate_app_icon")):
                 assemble_unsigned_ipa(template, private, output)
             with zipfile.ZipFile(output) as archive:
                 self.assertIn("Payload/MinionRush.app/lib/game.so", archive.namelist())
                 binary = archive.read("Payload/MinionRush.app/MinionRush")
                 self.assertEqual(binary[0x1000:0x1100], (compiled / "minion_code.bin").read_bytes())
                 self.assertFalse(any("_CodeSignature" in item for item in archive.namelist()))
+                self.assertNotIn("Payload/MinionRush.app/Assets.car", archive.namelist())
+                info = plistlib.loads(archive.read("Payload/MinionRush.app/Info.plist"))
+                self.assertEqual(info["CFBundleIcons"]["CFBundlePrimaryIcon"]
+                                 ["CFBundleIconFiles"], ["MRIcon60"])
+                self.assertNotIn("CFBundleIconName", info["CFBundleIcons"]["CFBundlePrimaryIcon"])
+                for name, size in ICON_DIMENSIONS.items():
+                    icon = archive.read("Payload/MinionRush.app/" + name)
+                    self.assertEqual(struct.unpack_from(">II", icon, 16), (size, size))
 
     def test_cannot_overwrite_existing_ipa_or_mismatched_compiled_code(self):
         with tempfile.TemporaryDirectory() as folder:

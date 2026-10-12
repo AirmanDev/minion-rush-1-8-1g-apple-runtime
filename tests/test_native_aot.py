@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 from unittest import mock
 
@@ -80,6 +81,8 @@ class NativeAotTests(unittest.TestCase):
 
             with (mock.patch("prepare_native_aot.compile_host_compiler", stub_compile),
                   mock.patch("prepare_native_aot.install_release", stub_import),
+                  mock.patch("prepare_native_aot.prepare_localizations",
+                             return_value=[SimpleNamespace(code="hu")]),
                   mock.patch("prepare_native_aot.subprocess.run", stub_run)):
                 details = prepare(archive, target)
             self.assertTrue(details["not_an_ipa"])
@@ -136,6 +139,8 @@ class NativeAotTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0)
 
             with (mock.patch("prepare_native_aot.install_release", fake_import),
+                  mock.patch("prepare_native_aot.prepare_localizations",
+                             return_value=[SimpleNamespace(code="hu")]),
                   mock.patch("prepare_native_aot.subprocess.run", fake_run),
                   mock.patch("prepare_native_aot.shutil.copy2",
                              side_effect=AssertionError("do not duplicate the kit executable")),

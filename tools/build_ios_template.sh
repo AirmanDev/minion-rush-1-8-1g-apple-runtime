@@ -35,32 +35,35 @@ output="${1:-$PROJECT_ROOT/build/native-template/MinionRush-native-template-unsi
   printf 'ERROR: output already exists: %s\n' "$output" >&2
   exit 1
 }
-[[ ! -e "$IOS_APP_ICON" && ! -L "$IOS_APP_ICON" ]] || {
-  printf 'ERROR: a temporary icon already exists; do not overwrite it.\n' >&2
-  exit 1
-}
 lock="${TMPDIR:-/tmp}/minion-rush-build.lock"
 mkdir "$lock" 2>/dev/null || {
   printf 'ERROR: another Minion Rush build is in progress.\n' >&2
   exit 1
 }
 cleanup() {
-  rm -f "$IOS_APP_ICON"
   rmdir "$lock" 2>/dev/null || true
 }
 trap cleanup EXIT
 
-python3 tools/native_ipa.py neutral-icon "$IOS_APP_ICON"
 printf '== unsigned native template library ==\n'
 "$PROJECT_ROOT/tools/build_ios.sh" --template
 
 printf '== unsigned iOS application, no game assets ==\n'
-derived="$PROJECT_ROOT/build/ios-native-template-derived"
+derived="$PROJECT_ROOT/build/ios-native-template-noicon-derived"
+bundle="$derived/Build/Products/Release-iphoneos/$IOS_SCHEME.app"
+if [[ -L "$bundle" ]]; then
+  printf 'ERROR: the previous template bundle is a symbolic link.\n' >&2
+  exit 1
+fi
+if [[ -d "$bundle" ]]; then
+  rm -rf -- "$bundle"
+fi
 xcrun xcodebuild -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath "$derived" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   MR_IOS_LIB_DIR=ios-template \
+  ASSETCATALOG_COMPILER_APPICON_NAME= \
   APP_BUNDLE_IDENTIFIER="$IOS_BUNDLE_ID" \
   build
 
