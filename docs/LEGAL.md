@@ -12,7 +12,8 @@ the specific acts performed. The technical tests cannot resolve legal rights.
 
 ## What the public Apache License 2.0 covers
 
-The license covers original project contributions only: independent runtime,
+The public source is offered under the Apache
+License 2.0. It covers original project contributions only: independent runtime,
 translator, platform adapters, tools, tests, and documentation. Contributors
 cannot license third-party game code, characters, names, designs, artwork,
 audio, scripts or translations that they do not own. Apache License 2.0
