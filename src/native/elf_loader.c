@@ -192,7 +192,7 @@ int mr_elf_load(const char *path, mr_elf_image *img, uint32_t extra_bytes) {
     // Host mapping location does not affect guest addresses.
     void *base = mr_host_pages(img->span);
     if (!base) {
-        err(img, "cannot allocate guest region (%zu bytes)", img->span);
+        err(img, "cannot allocate guest region (%llu bytes)", (unsigned long long)img->span);
         goto done;
     }
     img->host_base = base;
