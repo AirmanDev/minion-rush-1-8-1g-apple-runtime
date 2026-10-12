@@ -13,8 +13,10 @@ Two separate IPA preparation paths are supported in the source tree:
   IPA** and does not install or sign itself.
 
 To use the Mac path, export the IPA locally and transfer it privately. To use
-the Windows experimental kit, launch the included run-native-ipa.cmd, choose
-the original ZIP, and wait for the unsigned IPA in the kit folder.
+the Windows experimental kit, launch the included run-native-ipa.cmd. Drop the original ZIP into the
+Windows GUI or select Browse, choose where to save the unsigned IPA, and
+select Create IPA. The output goes to that chosen location. The CLI runner
+run-native-ipa.ps1 remains available for diagnostic command-line use.
 
 Use the independent [Sideloadly application](https://sideloadly.io/) to sign
 and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
@@ -24,6 +26,10 @@ Sideloadly; the user confirmed gameplay, sound, saves, Hungarian text and
 the original icon. This does not guarantee support for every device/version.
 The app requires iOS/iPadOS 17 or later. Changing a package's minimum OS does
 not make unsupported versions compatible.
+
+The GUI does not sign the IPA, require an Apple ID, or upload the ZIP.
+It displays the build status and can cancel the local build. The original
+translator and asset validator remain the only build implementation.
 
 A private IPA contains the original game engine and assets. Never upload a
 completed IPA to a public GitHub release, issue, or public sharing service.
