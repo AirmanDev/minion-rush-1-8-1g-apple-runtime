@@ -49,24 +49,31 @@ assets, generated ARM64 data and the AOT manifest.
 ## For users of an authorized, reviewed Windows kit
 
 1. Extract the provided portable Windows kit to a private directory.
-2. Double-click run-native-ipa.cmd.
+2. Double-click run-native-ipa.cmd to open the Windows graphical builder.
+   Drop one original ZIP onto the release area or select Browse. Choose an
+   output IPA filename and folder, then select Create IPA. The window displays
+   translation and packaging messages while the build runs. Cancel ends the
+   local worker process and removes its dedicated private scratch directory.
+   The command-line tool remains available as run-native-ipa.ps1.
 3. For Hungarian, place the private hu.xlf catalog in
    MinionRush-Private-Languages/hu.xlf next to the portable Windows kit.
    The original game ZIP does not contain this separate community translation,
    and the public repository does not distribute it. A missing catalog fails
    the build rather than silently producing question-mark labels.
-4. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the file
-   selection dialog. On UTM, the original ZIP may stay in the Mac shared
+4. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the app. On UTM, the original ZIP may stay in the Mac shared
    folder: the builder automatically stages a private copy into Windows TEMP.
    For the default UTM SPICE WebDAV share, the input is retrieved through the
    VM's loopback-only HTTP endpoint (127.0.0.1:9843), not the mapped Windows
    WebDAV drive, which can refuse to open a ZIP larger than 50 MB.
    There is no manual copying or need to change registry/WebClient limits.
 5. Wait for the local ZIP verification, full AOT translation, and IPA assembly.
-6. The resulting MinionRush-unsigned-*.ipa is written to the Windows
-   Downloads directory (on the local Windows disk for better performance).
-   The lightweight windows-native-ipa-report.txt is written to the kit
-   directory so it can also be read through an UTM shared folder. The IPA
+   The progress indicator is indeterminate because translation stages do not
+   provide trustworthy percent-complete measurements. The status reports
+   each backend stage without inventing percentages.
+6. The resulting unsigned IPA is written to the exact location selected in
+   the app. Prefer local Windows storage for performance. The command-line
+   runner still defaults to Downloads and writes windows-native-ipa-report.txt
+   in the kit directory. The IPA
    is **unsigned** and contains copyrighted game files. Do NOT publish it.
 7. Sign it with a compatible trusted external Apple sideloading tool using
    your own signing identity, and install it on your iPhone/iPad.
@@ -74,7 +81,8 @@ assets, generated ARM64 data and the AOT manifest.
 There are no embedded private game data, Apple SDK files, Apple certificates,
 provisioning profiles, or developer secrets in the portable kit. Python is
 included as the official embeddable distribution (PSF license included).
-No installer/GUI in this project handles Apple account passwords.
+Neither the Windows GUI nor the Mac installer handles Apple account passwords
+for third-party sideloading tools.
 
 **Sideloadly successfully signed and installed a Windows-generated unsigned
 IPA in the 2026-10-12 user test on an iPhone running iOS 27. Signing refresh,
@@ -131,7 +139,10 @@ Then run:
 
 The kit includes a Python 3.14.7 embeddable interpreter, the locally
 compiled x64 AOT executable, this project's public source tree, and the
-developer-built unsigned iPhone application template. The portable Python
+developer-built unsigned iPhone application template. The portable Windows UI uses built-in PowerShell 5.1 and Windows Forms, with
+no network service or extra GUI runtime. It starts the already verified Python
+backend using an argument array, not an interpolated command or shell script.
+The portable Python
 python314._pth uses isolated module loading, explicitly permitting only
 python314.zip, the interpreter directory, and the kit's runtime/tools directory.
 No site import or system-wide PYTHONPATH is enabled. The full extracted
@@ -216,9 +227,9 @@ uploaded to public releases.
 
 Still required before any public Windows kit: review the copyright status of
 source-derived code maps/bindings and legal terms for redistributing the
-asset-free template, test additional real Windows systems, and validate
-long-duration stability plus sideload signing renewal and save retention after
-a signing refresh. No public Windows kit or private IPA has been released.
+asset-free template, test the GUI and build on additional real Windows systems,
+and validate long-duration stability plus sideload signing renewal and save
+retention after a signing refresh. No public Windows kit or private IPA has been released.
 
 ## Further reading
 
