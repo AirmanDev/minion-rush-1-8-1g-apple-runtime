@@ -1,57 +1,143 @@
-# Legal and distribution boundary
+# Copyright, licensing and release review
 
-This is an independent preservation and compatibility project for the
-historical Minion Rush 1.8.1g Android release. It is not source code for, or a
-modification of, the current Unity-based Minion Rush client. It is not
-affiliated with Gameloft, Illumination, or Universal Products & Experiences.
+Review date: 2026-10-12. Scope: the historical Minion Rush 1.8.1g
+compatibility runtime, native Windows ZIP-to-IPA builder, source-derived
+iOS executable template, optional translations and distribution packaging.
 
-The Minion Rush name, Despicable Me setting, Minion characters, original
-engine, graphics, audio, levels, DLC, and other game data belong to their
-respective rights holders. The repository's source license does not grant
-permission to use or distribute them.
+This is an independent project, not affiliated with Gameloft, Illumination
+or Universal Products & Experiences. The Minion Rush name identifies the
+historical title being studied, not an official or endorsed product.
 
-## Allowed in the public repository
+## Project source and third-party rights
 
-- Original runtime, translator, platform, and tooling code
-- Original documentation and tests
-- Checksums and format descriptions needed to identify original files
+Original project contributions are published under the Apache
+License 2.0. The license covers only code and other contributions whose
+authors can grant those rights. Section 6 does not grant trademark
+licenses. It cannot authorize copying or distributing third-party games.
 
-## Excluded from the public repository
+The game name, characters, engine, textures, audio, animations, levels,
+DLC and other game content remain the property of their rightsholders.
+Do not include any game APK, ARM32 engine binary, JPK or DLC archive,
+artwork, original launcher icon, soundtrack, private translation XLIFF,
+savegame, converted executable, signed or unsigned finished IPA, Apple
+certificate, profile, personal log or device ID in the public repository,
+release or automated test artifacts.
 
-- APK files, ARM32 engine binaries, and modified copies of those binaries
-- JPK archives, DLC, graphics, audio, video, fonts, and saved games
-- XLIFF files containing original or translated game text
-- Original or modified Minion depictions and icons derived from the game
-- Certificates, provisioning profiles, device identifiers, and personal logs
+A SHA-256 engine fingerprint and original file-format description can
+support verification. Neither proves permission to use or redistribute
+the corresponding protected content.
 
-The original repository material listed above is available under the Apache
-License 2.0. That license applies only to material for which the repository's
-contributors can grant rights. It does not license or alter the ownership of
-the original game, engine, assets, characters, names, or trademarks.
+## Private Windows build
 
-Users construct the ignored `assets` directory locally from their own lawfully
-obtained 1.8.1g release. `.gitignore` excludes this directory and all build
-products. Repository owners must review their own legal position before
-publication. This document is not legal advice.
+The native Win32 GUI accepts a user's separately obtained original ZIP.
+It delegates to the existing local Python validator, AOT translator and
+unsigned IPA assembler. The user selects the output location. The optional
+hu.xlf catalog stays local. No game content or Apple Account credentials
+are bundled or sent to a remote service.
 
-## Windows GUI and release rights
+The prebuilt iOS template is described as asset-free and uses a zeroed
+code section. It still contains a static game-derived block map and
+binding addresses. Such derived information may itself raise copyright
+and contractual questions. Technical removal of assets and original
+instructions does not establish that the template is cleared for public
+distribution. The complete Windows kit includes the template and is
+therefore held back on the same basis.
 
-The Windows application package contains an unsigned, asset-free iOS template,
-not a playable IPA. The user privately imports the original game ZIP. Private
-translations are optional and are not distributed with the public kit.
+The generated IPA contains the user's private game assets and translated
+machine code and cannot be treated as a publicly distributable output.
+External sideload signing does not grant redistribution rights.
 
-The asset-free template nevertheless contains source-derived block maps
-and binding addresses. These may still raise copyright or contractual
-questions. Permission or an independent legal assessment is required
-before public redistribution. Gameloft's terms restrict copying,
-modification, derivative works and distribution of protected materials.
-The project's Apache-2.0 license does not override those restrictions.
+## Gameloft license and acquisition history
 
-A public Windows Release additionally needs Windows GUI testing, a release
-integrity review and an appropriate Windows executable signing approach.
-Windows SmartScreen may warn about an unsigned application. The private
-ZIP, generated IPA, community translation catalogs and Apple credentials
-must not be uploaded to the release.
+Gameloft's published End-User License Agreement restricts decompilation,
+modification, reverse engineering, copying, derivative works and
+distribution. Its current Terms and Conditions also impose restrictions
+on unauthorized modifications and protected content.
 
-Gameloft: https://www.gameloft.com/en/conditions-of-use
-Microsoft SmartScreen: https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation
+The web EULA was last updated on 2021-08-30; it is not evidence of
+which exact license governed a 2014-era 1.8.1g acquisition. Determine
+the historical release's actual contractual terms, jurisdiction and
+source of acquisition before a final conclusion. Ownership of a local
+copy, no commercial motive and the age of a release do not alone provide
+a right to translate or distribute the software.
+
+Sources:
+- https://www.gameloft.com/en/eula
+- https://www.gameloft.com/en/conditions-of-use
+
+## EU and Hungarian interoperability rules
+
+Directive 2009/24/EC Article 5 addresses limited acts relating to
+lawful software use, backups and observation. Article 6 addresses
+decompilation only where indispensable to obtain information necessary
+to make an independently created program interoperate with others.
+The conditions include lawful access, unavailable interoperability
+information, limits to necessary program portions and restrictions
+on later use or communication of the information.
+
+Hungary's Copyright Act, Act LXXVI of 1999, sections 59 and 60,
+implements specific software exceptions and constraints. In particular,
+section 60 does not permit using interoperability information for an
+unrelated purpose or for making a substantially similar program.
+
+These provisions do not automatically authorize wholesale code
+translation, a reconstructed game, publicly shared engine-derived
+maps or a playable IPA. Whether any precise step qualifies for a
+statutory exception requires a fact-specific legal analysis.
+
+Directive Article 8 states that contractual provisions contrary to
+Article 6 and the exceptions in Article 5(2) and (3) are void.
+Consequently it is also inaccurate to describe every EULA restriction
+as necessarily overriding statutory rights. Neither the EULA nor the
+exception alone resolves this particular project.
+
+Primary sources:
+- https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0024
+- https://njt.jog.gov.hu/jogszabaly/1999-76-00-00
+
+## Windows binary licensing and distribution
+
+The kit bundles an official Python embeddable runtime. Retain its
+license text and applicable copyright/attribution notices and check
+every separately bundled dependency before public distribution.
+Review the compiler, native GUI, template and archive contents against
+a complete file inventory. Do not assume that an Apache license on
+this repository licenses third-party runtime binaries.
+
+Windows SmartScreen may warn about a new executable even after valid
+publisher signing. Unsigned executables may additionally be blocked
+by Smart App Control on some systems. Provide checksums and a verified
+publisher identity where appropriate; never instruct users to disable
+Windows security protections to run the tool.
+
+Sideloadly is an independent signing and installation utility. Do not
+bundle it, claim an association, or collect Apple Account credentials
+through the project's GUI.
+
+References:
+- https://docs.python.org/3/license.html
+- https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation
+- https://sideloadly.io/
+
+## Release decision
+
+Public Windows GUI and portable-kit publication is on hold until all
+of these issues are resolved:
+
+1. Confirm lawful acquisition, the historical license and the exact
+   uses for which copyright exceptions or authorization are claimed.
+2. Obtain qualified review of the source-derived block map, binding
+   metadata and complete asset-free template before redistributing it.
+3. Check licenses and attribution obligations for every shipped binary.
+4. Verify build provenance, dependency integrity, checksums, signing
+   and absence of private materials in the release archive.
+5. Run interactive native Windows GUI tests, Windows x64 and ARM64
+   compatibility checks, failure/cancellation/cleanup scenarios, and
+   physical-device sideload and signing-renewal tests.
+
+The 2026-10-12 Windows-to-iPhone test confirms that the private
+command-line preparation and signing path worked for one test setup.
+It is not a legal clearance or a validation of the newer native GUI.
+
+This is a documented release assessment, not legal advice. Public
+distribution needs appropriate legal review or rightsholder permission.

@@ -22,8 +22,8 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
 
 ## Coding rules
 
-- The portable core is C11, Apple platform code is Objective-C with ARC, and
-  tools use Swift, Python 3, or Bash.
+- The portable core and native Win32 GUI are C11. Apple platform code is
+  Objective-C with ARC. Other tools use Swift, Python 3 or Bash.
 - Use English for source identifiers, comments, user-facing tool output, and
   documentation.
 - Keep maintained text files ASCII. Use Unicode escapes in tests and code when
@@ -35,6 +35,16 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
   paths, signing data, or device identifiers.
 - Add every maintained text file to the sorted `config/source_manifest.txt`.
 - Extend a shared implementation instead of adding a parallel copy.
+
+Windows changes must keep archive import, AOT translation and IPA assembly
+in their existing Python modules. `src/windows/ipa_builder.c` owns only native
+file dialogs, worker-process control, progress, cancellation and status UI.
+Do not restore an alternative PowerShell or batch GUI, copy proprietary game
+data into tests or distribute the unsigned iOS template before review.
+Run the Windows workflow, which builds the EXE, checks the portable Python
+kit and executes the GUI self-test. Also test drag-and-drop, file selection,
+spaces and non-ASCII paths, cancellation and failed builds interactively on
+Windows before a public release. Follow the checklist in `docs/LEGAL.md`.
 
 ## Validation
 

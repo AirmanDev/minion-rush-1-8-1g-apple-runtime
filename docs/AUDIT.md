@@ -26,12 +26,24 @@ and safe-area adapter retain separate ownership. Both platform builds consume
 the same portable source list. Engine addresses stay in generated bindings;
 release fingerprints reject a different engine image.
 
-The installer delegates asset import and deployment to their existing tools.
-It has no second signing or build pipeline. Windows installation remains an
-external Sideloadly workflow; no Windows client or its dependencies remain.
-The public manifest excludes private game data, signing material, and outputs.
+The Mac installer delegates asset import and deployment to the existing tools.
+The separate Windows GUI in `src/windows/ipa_builder.c` delegates ZIP validation,
+AOT compilation and IPA assembly to `tools/windows_native_package.py`; it does
+not duplicate those operations. Sideloadly remains an external signing and
+installation workflow. The public manifest excludes private game data,
+signing material and generated output.
 Source validation checks English/ASCII conventions and duplicated native bodies;
 these checks cannot prove the absence of every semantic duplication or defect.
+
+## Windows extension reviewed on 2026-10-12
+
+The Windows 11 ARM command-line build and physical iOS 27 gameplay were
+verified separately before the native Windows GUI was added. The Windows
+x64 executable now uses one Python backend; the shipped kit also contains an
+asset-free iOS template and SHA-256 checked tools. Its game-derived block
+map and bindings need legal review before public distribution. Compilation
+and synthetic tests cannot establish GUI usability, signing renewal,
+long-running stability or legal clearance. See `docs/LEGAL.md`.
 
 ## Verification
 
