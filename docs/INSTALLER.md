@@ -186,8 +186,9 @@ verification; the user also confirmed that the live activity log worked.
 The three-app free-signing limit was reproduced before that successful attempt.
 Runtime testing on macOS 26.6 and physical iPad installation through this GUI
 remain release checks. The new UI and export changes have not been retested with
-a fresh physical installation. Windows signing, USB installation, and refresh
-through Sideloadly remain unverified for this project.
+a fresh physical installation. Separately, the Windows 11 ARM workflow passed
+a user-reported physical iPhone signing, USB installation and gameplay test
+through Sideloadly on 2026-10-12; signing refresh is not yet verified.
 
 The source repository contains no private assets or signing material. The
 download package also excludes these files. Paid developer membership is not

@@ -5,8 +5,10 @@ native Xcode iOS workflow. It does not replace either. The goal is to let a
 Windows user compile their own original Minion Rush 1.8.1g ZIP into an IPA with
 native ARM64 machine code, without an interpreter, runtime JIT, or local Mac.
 
-**Release status: Experimental. A public Windows release is blocked pending
-physical iPhone signing/installation tests and legal review of the template.**
+**Release status: Experimental. Physical iPhone signing, installation,
+gameplay, Hungarian text, saves, sound and the original icon have passed a
+user-reported Windows 11 ARM test on 2026-10-12. Public distribution is still
+blocked pending copyright review of the template and release readiness checks.**
 
 ## How the system works
 
@@ -74,8 +76,10 @@ provisioning profiles, or developer secrets in the portable kit. Python is
 included as the official embeddable distribution (PSF license included).
 No installer/GUI in this project handles Apple account passwords.
 
-**Sideloadly signing and installing an unsigned Windows-generated IPA has
-not yet been verified on physical iPhones. No App Store submission is planned.**
+**Sideloadly successfully signed and installed a Windows-generated unsigned
+IPA in the 2026-10-12 user test on an iPhone running iOS 27. Signing refresh,
+long-duration stability, and additional Windows/iOS combinations have not
+been validated. No App Store submission is planned.**
 
 ## Developer: build the unsigned template on a Mac
 
@@ -194,10 +198,27 @@ On 2026-10-12:
   codesign --verify --deep --strict, confirming the Mach-O can be signed
   structurally. This ad-hoc signature is NOT sufficient for an iPhone.
 
-Still required: execute the portable ZIP-to-IPA builder end-to-end inside the
-Windows VM, test external signing of its unsigned IPA, and install and run it
-on a physical iPhone, verifying CPU/GPU/audio/gameplay and data preservation.
-No public Windows kit or private IPA has been released.
+The same day, a complete Windows 11 ARM UTM end-to-end test succeeded:
+the portable kit read the original game ZIP over local SPICE WebDAV, compiled
+native ARM64 code, included the 2483-entry private Hungarian localization,
+generated the app's icon PNGs from the owner's original ZIP, and produced an
+unsigned IPA. The shared Windows report recorded PASS, an output size of
+447664313 bytes, and SHA-256:
+
+2a4702ff8627d67f6b0396b90ad4523a35e6e345410cc9c7271654bb063cb4fd
+
+The user then confirmed successful Sideloadly installation on an iPhone
+running iOS 27, working original app icon, Hungarian labels instead of ???,
+sound, introductory sequence, completed gameplay, and saves. This confirmation
+comes from the user's physical-device test; it is not automated hardware
+regression coverage. The original game/IPA remains private and has not been
+uploaded to public releases.
+
+Still required before any public Windows kit: review the copyright status of
+source-derived code maps/bindings and legal terms for redistributing the
+asset-free template, test additional real Windows systems, and validate
+long-duration stability plus sideload signing renewal and save retention after
+a signing refresh. No public Windows kit or private IPA has been released.
 
 ## Further reading
 

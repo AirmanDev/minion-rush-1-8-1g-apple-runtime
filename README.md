@@ -95,10 +95,15 @@ on the end-user's Windows machine once a vetted template/kit is distributed.
 
 The Mac native build, Mac installer, iOS device build, and IPA export remain
 fully maintained and have **not** been replaced. The Windows-generated IPA
-still needs independent iOS code signing before installation; Sideloadly
-signing and physical iPhone installation have **not yet been verified**.
-Do not publish the template/kit as a release until the legal and device tests
-are complete. See the [Windows install and signing guide](docs/INSTALLER_WINDOWS.md).
+still needs independent iOS code signing before installation. On 2026-10-12,
+a Windows 11 ARM user test completed native compilation, unsigned IPA assembly,
+Sideloadly signing and installation, and successful gameplay on a physical
+iPhone running iOS 27. The user also confirmed sound, saved progress,
+Hungarian text, and the original ZIP-derived app icon. This is a verified
+user test, not a guarantee of compatibility across all Windows PCs/devices.
+Do not publish the template/kit as a release until legal review and remaining
+release tests are complete. See the
+[Windows install and signing guide](docs/INSTALLER_WINDOWS.md).
 Never publish finished IPAs or original game files.
 
 Download the installer ZIP and matching checksum from

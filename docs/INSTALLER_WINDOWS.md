@@ -18,8 +18,10 @@ the original ZIP, and wait for the unsigned IPA in the kit folder.
 
 Use the independent [Sideloadly application](https://sideloadly.io/) to sign
 and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
-or maintained by this project. Signing a Windows-generated unsigned IPA and
-physical device installation remain unverified; do not promise success yet.
+or maintained by this project. A 2026-10-12 Windows 11 ARM user test on
+iOS 27 successfully signed and installed an unsigned native IPA using
+Sideloadly; the user confirmed gameplay, sound, saves, Hungarian text and
+the original icon. This does not guarantee support for every device/version.
 The app requires iOS/iPadOS 17 or later. Changing a package's minimum OS does
 not make unsupported versions compatible.
 
@@ -81,7 +83,8 @@ Use [Sideloadly's FAQ](https://sideloadly.io/faq) for account limits, pairing,
 drivers, signing errors, and refresh configuration. Review its logs before
 sharing them: they can contain account, device, and signing information.
 
-Mac installer tests do not validate Sideloadly or Windows USB drivers. A complete
-Windows signing, installation, and refresh cycle has not been tested for this
-project. The official site advertises iOS 26+ support, but this project has not
-verified Sideloadly installation on iOS or iPadOS 27.
+The Mac installer tests are separate from the Windows sideload workflow.
+A physical-device test using UTM Windows 11 ARM, USB forwarding and Sideloadly
+v0.70.1 successfully installed and ran the unsigned IPA on an iPhone with
+iOS 27. Renewal of the signature, extended gameplay, and installation on
+other Windows PCs and iPads remain untested.
