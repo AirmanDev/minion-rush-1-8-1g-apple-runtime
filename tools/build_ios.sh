@@ -4,7 +4,7 @@ set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
 
 usage() {
-  printf 'Usage: ./tools/build_ios.sh [--platform device|simulator]\n'
+  printf 'Usage: ./tools/build_ios.sh [--platform device|simulator] [--template]\n'
 }
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
@@ -21,8 +21,17 @@ if [[ "${1:-}" == "--platform" ]]; then
   platform="$2"
   shift 2
 fi
+template=0
+if [[ "${1:-}" == "--template" ]]; then
+  template=1
+  shift
+fi
 if (( $# != 0 )); then
   usage >&2
+  exit 2
+fi
+if (( template )) && [[ "$platform" != "device" ]]; then
+  printf 'ERROR: the native AOT template supports physical iOS devices only.\n' >&2
   exit 2
 fi
 case "$platform" in
@@ -43,6 +52,9 @@ case "$platform" in
 esac
 
 OUT_DIR="$default_output"
+if (( template )); then
+  OUT_DIR="$OUT/ios-template"
+fi
 [[ ! -L "$OUT" ]] || {
   printf 'ERROR: the build directory must not be a symbolic link.\n' >&2
   exit 1
@@ -91,9 +103,15 @@ for source in "${IOS_NATIVE_SOURCES[@]}"; do
   objects+=("$OUT_DIR/$name.o")
 done
 
-printf 'Compile: game_code.S\n'
+printf 'Compile: game_code.S%s\n' "$( (( template )) && printf ' (unsigned template)' || true )"
+code_options=("-I$PROJECT_ROOT")
+if (( template )); then
+  slot_bytes="$(stat -f %z "$OUT/minion_code.bin")"
+  project_validate_positive_int "$slot_bytes"
+  code_options+=(-DMR_IOS_AOT_TEMPLATE "-DMR_AOT_SLOT_BYTES=$slot_bytes")
+fi
 "$CC" -c -std=c11 -isysroot "$SDK" -target "$target" \
-  "-I$PROJECT_ROOT" -o "$OUT_DIR/game_code.o" "$SRC/game_code.S"
+  "${code_options[@]}" -o "$OUT_DIR/game_code.o" "$SRC/game_code.S"
 objects+=("$OUT_DIR/game_code.o")
 
 xcrun libtool -static -o "$OUT_DIR/libminionrush.a" "${objects[@]}"

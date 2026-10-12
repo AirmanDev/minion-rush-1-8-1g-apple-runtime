@@ -1,30 +1,31 @@
 # Windows IPA installation with Sideloadly
 
-This project does not provide a Windows installer. Use the independent
-[Sideloadly application](https://sideloadly.io/) to sign and install a privately
-exported IPA on an iPhone or iPad. Sideloadly is not bundled with this project
-and is not maintained by its contributors.
+Two separate IPA preparation paths are supported in the source tree:
 
-Windows cannot yet generate an installable IPA from the original release ZIP.
-An [experimental native AOT preparer](NATIVE_WINDOWS.md) can generate private
-ARM64 blocks and assets on Windows, but not a complete signed IPA. The Mac
-installer's **Export IPA** action still requires Apple Silicon, macOS 26.6+,
-Xcode 27, an Apple Account configured in Xcode, and a connected target device.
-The game requires iOS or iPadOS 17 or later; changing an IPA's minimum OS does
+- **Mac (maintained):** The native installer exports a signed IPA using Xcode
+  and the owner's Apple signing account. See [INSTALLER.md](INSTALLER.md).
+- **Windows (experimental, not publicly released):** A portable builder takes
+  the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
+  blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
+  packages the original assets. No Mac is required *for this local build*.
+  See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
+  IPA** and does not install or sign itself.
+
+To use the Mac path, export the IPA locally and transfer it privately. To use
+the Windows experimental kit, launch the included run-native-ipa.cmd, choose
+the original ZIP, and wait for the unsigned IPA in the kit folder.
+
+Use the independent [Sideloadly application](https://sideloadly.io/) to sign
+and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
+or maintained by this project. Signing a Windows-generated unsigned IPA and
+physical device installation remain unverified; do not promise success yet.
+The app requires iOS/iPadOS 17 or later. Changing a package's minimum OS does
 not make unsupported versions compatible.
 
-## Prepare a private IPA
-
-1. On the Mac, import your lawfully obtained, unmodified Minion Rush 1.8.1g ZIP.
-2. Connect and select an iPhone or iPad. Configure your Xcode signing team and
-   bundle identifier as described in [INSTALLER.md](INSTALLER.md).
-3. Choose **Export IPA** and save the archive.
-4. Transfer it privately to the Windows computer.
-
-The exported IPA contains proprietary game assets and a development profile
-with signing and device metadata. Never upload it to a public release, Git,
-an issue, or a public file-sharing service. This repository distributes only
-the public runtime source and the asset-free Mac installer.
+A private IPA contains the original game engine and assets. Never upload a
+completed IPA to a public GitHub release, issue, or public sharing service.
+A distributable Windows template and source-derived metadata require a legal
+review before publication. The current Mac installer remains unchanged.
 
 ## Set up Windows
 

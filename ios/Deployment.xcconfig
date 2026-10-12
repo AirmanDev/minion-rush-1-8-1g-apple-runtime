@@ -1,3 +1,6 @@
 IPHONEOS_DEPLOYMENT_TARGET = 17.0
 CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE
 OTHER_CFLAGS = $(inherited) -Werror=unguarded-availability
+
+// Device runtime library, overridden only by the experimental AOT template build.
+MR_IOS_LIB_DIR = ios

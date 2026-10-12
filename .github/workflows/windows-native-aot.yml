@@ -31,3 +31,5 @@ jobs:
         run: |
           clang --version
           python -m unittest discover -s tests -p test_native_aot.py -v
+          python -m unittest discover -s tests -p test_native_ipa.py -v
+          python -m unittest discover -s tests -p test_windows_native.py -v

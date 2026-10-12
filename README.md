@@ -20,6 +20,9 @@ release 1.8.1g. See `docs/LEGAL.md`.
 - Xcode 27 or later with the matching iOS SDK (local builds require macOS 26.6+)
 - ARM64 iPhone or iPad running iOS or iPadOS 17 or later
 - Python 3 and the Xcode command-line tools
+- Optional, still experimental: Windows 11 ARM or x64 for the private native
+  IPA builder. Once a signed-off portable kit is available, Windows users
+  will not need a Mac, Xcode, Clang, or a separate Python installation.
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -79,16 +82,24 @@ and installs on one selected, paired iPhone or iPad. The installer requires
 Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
 It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
 for signing, free-account limits, test coverage, and the shared UI contract.
-A [Windows native AOT preparation prototype](docs/NATIVE_WINDOWS.md) can privately
-prepare ARM64 translation from a user-owned original ZIP, but it is not yet
-an IPA builder. The supported Mac installer remains unchanged.
+### Additional Windows support (experimental)
 
-For Windows, use [Sideloadly](https://sideloadly.io/) to re-sign and install an IPA
-created with **Export IPA** on the Mac. There is no project-maintained Windows
-app or Windows ZIP-to-IPA build workflow. Follow the [Windows guide](docs/INSTALLER_WINDOWS.md)
-for Apple's iTunes/iCloud prerequisites, account signing, and expiration limits.
-Keep exported IPAs private; they include proprietary game assets. The Sideloadly
-workflow has not been physically tested for this project.
+A [portable native Windows IPA builder](docs/NATIVE_WINDOWS.md) now supports
+preparing a private, **unsigned** IPA from the user's own unmodified 1.8.1g
+release ZIP, with **native ARM64 code** compiled entirely on Windows.
+The Windows package uses an independently prepared, asset-free iOS executable
+template, the verified Windows AOT translator, and a portable Python runtime.
+No Mac, Xcode, JIT, Android emulator, or third-party game assets are needed
+on the end-user's Windows machine once a vetted template/kit is distributed.
+
+The Mac native build, Mac installer, iOS device build, and IPA export remain
+fully maintained and have **not** been replaced. The Windows-generated IPA
+still needs independent iOS code signing before installation; Sideloadly
+signing and physical iPhone installation have **not yet been verified**.
+Do not publish the template/kit as a release until the legal and device tests
+are complete. See the [Windows install and signing guide](docs/INSTALLER_WINDOWS.md).
+Never publish finished IPAs or original game files.
+
 Download the installer ZIP and matching checksum from
 [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases).
 Downloaded installer copies are ad-hoc signed, not notarized, and can require
@@ -416,3 +427,6 @@ are licensed under the Apache License 2.0. See `LICENSE`.
 The source license does not grant rights to distribute the original game,
 name, or assets. Resolve the required rights and App Store compliance
 separately before any public binary or commercial release.
+
+The optional native Windows IPA template build uses the Xcode-only override
+MR_IOS_LIB_DIR=ios-template; the standard builds retain MR_IOS_LIB_DIR=ios.

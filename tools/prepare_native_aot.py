@@ -71,7 +71,9 @@ def check_destination(destination: Path) -> Path:
     return destination
 
 
-def prepare(zip_path: Path, destination: Path, *, cc: str = "clang") -> dict:
+def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
+            prebuilt_compiler: Path | None = None,
+            compiler_sha256: str | None = None) -> dict:
     zip_path = zip_path.resolve(strict=True)
     if not zip_path.is_file() or zip_path.suffix.lower() != ".zip":
         raise ValueError("source must be a local ZIP archive")
@@ -81,7 +83,22 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang") -> dict:
         assets = staging / "assets"
         compiler = staging / ("a64-compiler.exe" if os.name == "nt" else "a64-compiler")
         print("Building host-native ARM32-to-ARM64 translator", flush=True)
-        compile_host_compiler(compiler, cc=cc)
+        if prebuilt_compiler is None:
+            if compiler_sha256 is not None:
+                raise ValueError("unexpected compiler SHA-256 without a prebuilt compiler")
+            compile_host_compiler(compiler, cc=cc)
+        else:
+            if (not compiler_sha256 or len(compiler_sha256) != 64
+                    or any(char not in "0123456789abcdef" for char in compiler_sha256)):
+                raise ValueError("prebuilt compiler requires a lowercase SHA-256 digest")
+            external = prebuilt_compiler.resolve(strict=True)
+            if not external.is_file():
+                raise ValueError("prebuilt compiler is missing")
+            with external.open("rb") as stream:
+                actual = hashlib.file_digest(stream, "sha256").hexdigest()
+            if actual != compiler_sha256:
+                raise ValueError("prebuilt compiler checksum mismatch")
+            shutil.copy2(external, compiler)
         print("Validating and importing original ZIP locally", flush=True)
         with open(os.devnull, "w", encoding="utf-8") as sink:
             with contextlib.redirect_stdout(sink):
@@ -125,9 +142,14 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True,
                         help="absolute, NEW private output directory")
     parser.add_argument("--cc", default="clang", help="host C compiler (default: clang)")
+    parser.add_argument("--prebuilt-compiler", type=Path,
+                        help="trusted prebuilt Windows AOT executable")
+    parser.add_argument("--compiler-sha256", help="expected SHA-256 of prebuilt executable")
     args = parser.parse_args()
     try:
-        result = prepare(args.source_zip, args.output, cc=args.cc)
+        result = prepare(args.source_zip, args.output, cc=args.cc,
+                         prebuilt_compiler=args.prebuilt_compiler,
+                         compiler_sha256=args.compiler_sha256)
     except (ValueError, OSError, zipfile.BadZipFile, subprocess.SubprocessError) as exc:
         print(f"AOT preparation failed: {exc}", file=sys.stderr)
         return 1

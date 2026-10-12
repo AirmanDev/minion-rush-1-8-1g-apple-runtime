@@ -93,6 +93,19 @@ class NativeAotTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "new"):
                 prepare(archive, target)
 
+    def test_rejects_untrusted_prebuilt_windows_compiler(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            archive = root / "original.zip"
+            archive.write_bytes(b"synthetic archive")
+            compiler = root / "a64-compiler.exe"
+            compiler.write_bytes(b"untrusted executable")
+            output = root / "private"
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                prepare(archive, output, prebuilt_compiler=compiler,
+                        compiler_sha256="0" * 64)
+            self.assertFalse(output.exists())
+
     def test_failed_conversion_does_not_leave_partial_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
