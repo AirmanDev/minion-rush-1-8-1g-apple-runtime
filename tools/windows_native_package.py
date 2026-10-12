@@ -31,12 +31,14 @@ def validate_kit(kit: Path) -> dict:
     if not isinstance(config, dict) or set(config) != {
         "version", "engine_sha256", "template_sha256", "compiler_sha256",
         "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
+        "python_files_sha256",
     } or config["version"] != 1:
         raise ValueError("Windows kit manifest format is invalid")
     if config["engine_sha256"] != OFFICIAL_ENGINE_SHA256:
         raise ValueError("Windows kit targets the wrong game engine")
     for label in ("template_sha256", "compiler_sha256",
-                  "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256"):
+                  "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
+                  "python_files_sha256"):
         digest = config[label]
         if (not isinstance(digest, str) or len(digest) != 64
                 or any(char not in "0123456789abcdef" for char in digest)):
@@ -48,6 +50,7 @@ def validate_kit(kit: Path) -> dict:
         "runtime_manifest_sha256": runtime_root / "config/source_manifest.txt",
         "runtime_files_sha256": kit / "runtime-file-hashes.json",
         "python_zip_sha256": kit / "python/python314.zip",
+        "python_files_sha256": kit / "python-file-hashes.json",
     }
     for name, path in paths.items():
         if not path.is_file() or path.is_symlink():
@@ -63,6 +66,33 @@ def validate_kit(kit: Path) -> dict:
     }
     if reference != current:
         raise ValueError("Windows runtime source integrity verification failed")
+    # Reject any additional runtime files: an attacker cannot add an unchecked
+    # module in the import directory or swap a verified Python extension.
+    if not runtime_root.is_dir() or any(p.is_symlink() for p in runtime_root.rglob("*")):
+        raise ValueError("Windows runtime contains an invalid symlink")
+    actual_runtime_files = {
+        p.relative_to(runtime_root).as_posix() for p in runtime_root.rglob("*")
+        if p.is_file()
+    }
+    if actual_runtime_files != set(reference):
+        raise ValueError("Windows runtime contains missing or extra files")
+    python_root = kit / "python"
+    if not python_root.is_dir() or python_root.is_symlink():
+        raise ValueError("Windows embedded Python directory is missing or linked")
+    python_manifest = json.loads((kit / "python-file-hashes.json").read_text(encoding="utf-8"))
+    if not isinstance(python_manifest, dict) or not python_manifest:
+        raise ValueError("Windows embedded Python inventory is invalid")
+    if any(p.is_symlink() or not p.is_file() for p in python_root.iterdir()):
+        raise ValueError("Windows embedded Python contains unexpected file types")
+    actual_python = {
+        path.name: file_sha256(path) for path in python_root.iterdir()
+    }
+    if actual_python != python_manifest:
+        raise ValueError("Windows embedded Python integrity verification failed")
+    if (python_root / "python314._pth").read_bytes() != (
+        b"python314.zip\n.\n..\\runtime\\tools\n"
+    ):
+        raise ValueError("unsafe embedded Python import configuration")
     return config
 
 

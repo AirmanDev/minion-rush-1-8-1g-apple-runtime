@@ -33,3 +33,29 @@ jobs:
           python -m unittest discover -s tests -p test_native_aot.py -v
           python -m unittest discover -s tests -p test_native_ipa.py -v
           python -m unittest discover -s tests -p test_windows_native.py -v
+
+      - name: Validate isolated portable Python runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $temp = Join-Path $env:RUNNER_TEMP 'minion-native-kit-ci'
+          New-Item -ItemType Directory -Path $temp | Out-Null
+          $pyzip = Join-Path $temp 'python-3.14.7-embed-amd64.zip'
+          Invoke-WebRequest 'https://www.python.org/ftp/python/3.14.7/python-3.14.7-embed-amd64.zip' -OutFile $pyzip
+          $sha = (Get-FileHash $pyzip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha -ne 'd297e5ff019966817ad8502465176139f2d3d840fa4ed84b13bed399a6ab1f15') {
+            throw 'Embedded Python download digest mismatch'
+          }
+          $compiler = Join-Path $temp 'a64-compiler.exe'
+          clang -std=c11 -O2 -D_CRT_SECURE_NO_WARNINGS -DMR_ELF_BUILD_TOOLS -Isrc/native -o $compiler src/native/a64_compiler.c src/native/elf_loader.c
+          if ($LASTEXITCODE -ne 0) { throw 'Windows AOT compiler build failed' }
+          $template = Join-Path $temp 'unsigned-test-template.zip'
+          [System.IO.File]::WriteAllBytes($template, [byte[]](1, 2, 3))
+          $kit = Join-Path $temp 'kit'
+          python tools/build_windows_kit.py --python-embed-zip $pyzip --compiler $compiler --template $template --output $kit
+          if ($LASTEXITCODE -ne 0) { throw 'Portable kit assembly failed' }
+          $exe = Join-Path $kit 'python\python.exe'
+          & $exe -c 'import windows_native_package; import prepare_native_aot; import native_ipa; print("Embedded runtime imports: PASS")'
+          if ($LASTEXITCODE -ne 0) { throw 'Embedded Python import failed' }
+          & $exe (Join-Path $kit 'runtime	ools\windows_native_package.py') --help
+          if ($LASTEXITCODE -ne 0) { throw 'Portable Windows CLI startup failed' }

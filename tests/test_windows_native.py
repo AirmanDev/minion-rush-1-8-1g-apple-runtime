@@ -49,6 +49,13 @@ class WindowsKitTests(unittest.TestCase):
             self.assertFalse((kit / "runtime/build").exists())
             self.assertTrue((kit / "python/LICENSE.txt").exists())
             self.assertIn(b"\r\n", (kit / "run-native-ipa.cmd").read_bytes())
+            self.assertEqual(
+                (kit / "python/python314._pth").read_bytes(),
+                b"python314.zip\n.\n..\\runtime\\tools\n",
+            )
+            self.assertFalse((kit / "python/site-packages").exists())
+            self.assertTrue((kit / "python-file-hashes.json").is_file())
+
 
     def test_rejects_changed_template_compiler_and_runtime_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -66,6 +73,17 @@ class WindowsKitTests(unittest.TestCase):
                 finally:
                     path.write_bytes(original)
             self.assertEqual(self.validate(kit)["version"], 1)
+            tamper = kit / "python/python314._pth"
+            original = tamper.read_bytes()
+            tamper.write_bytes(b"import site\n")
+            with self.assertRaisesRegex(ValueError, "integrity"):
+                self.validate(kit)
+            tamper.write_bytes(original)
+            self.assertEqual(self.validate(kit)["version"], 1)
+            (kit / "runtime/tools/untrusted.py").write_text("print('bad')")
+            with self.assertRaisesRegex(ValueError, "extra files"):
+                self.validate(kit)
+
 
     def test_rejects_unverified_python_distribution(self):
         with tempfile.TemporaryDirectory() as directory:

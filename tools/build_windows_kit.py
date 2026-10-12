@@ -77,6 +77,12 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path
         shutil.copyfile(compiler_exe, staged / "a64-compiler.exe")
         shutil.copyfile(template, staged / "MinionRush-native-template-unsigned.zip")
         _unpack_verified_python(python_zip, staged / "python")
+        # The official embedded interpreter deliberately excludes the script
+        # directory from sys.path. Whitelist only our source-controlled tools,
+        # keep isolated mode, and never enable site or PYTHONPATH injection.
+        (staged / "python/python314._pth").write_bytes(
+            b"python314.zip\n.\n..\\runtime\\tools\n"
+        )
         runtime = staged / "runtime"
         runtime.mkdir()
         runtime = runtime.resolve()  # macOS /var is a symlink to /private/var
@@ -99,6 +105,15 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path
             json.dumps(runtime_hashes, sort_keys=True, indent=2) + "\n",
             encoding="utf-8"
         )
+        python_hashes = {
+            path.name: file_sha256(path)
+            for path in sorted((staged / "python").iterdir())
+            if path.is_file() and not path.is_symlink()
+        }
+        (staged / "python-file-hashes.json").write_text(
+            json.dumps(python_hashes, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8"
+        )
         config = {
             "version": 1,
             "engine_sha256": OFFICIAL_ENGINE_SHA256,
@@ -107,6 +122,7 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path
             "runtime_manifest_sha256": file_sha256(runtime / "config/source_manifest.txt"),
             "runtime_files_sha256": file_sha256(staged / "runtime-file-hashes.json"),
             "python_zip_sha256": file_sha256(staged / "python/python314.zip"),
+            "python_files_sha256": file_sha256(staged / "python-file-hashes.json"),
         }
         (staged / "kit-manifest.json").write_text(
             json.dumps(config, sort_keys=True, indent=2) + "\n", encoding="utf-8"
