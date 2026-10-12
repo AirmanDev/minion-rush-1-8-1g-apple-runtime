@@ -27,8 +27,10 @@ the same portable source list. Engine addresses stay in generated bindings;
 release fingerprints reject a different engine image.
 
 The installer delegates asset import and deployment to their existing tools.
-It has no second signing or build pipeline. Windows installation remains an
-external Sideloadly workflow; no Windows client or its dependencies remain.
+It has no second signing or build pipeline. Windows signing and installation remain an external Sideloadly workflow.
+The optional Windows Forms ZIP-to-IPA UI is only a thin process client of the
+existing tested Windows AOT builder. It runs without a GUI package download
+or a separate game-asset/signing implementation.
 The public manifest excludes private game data, signing material, and outputs.
 Source validation checks English/ASCII conventions and duplicated native bodies;
 these checks cannot prove the absence of every semantic duplication or defect.
