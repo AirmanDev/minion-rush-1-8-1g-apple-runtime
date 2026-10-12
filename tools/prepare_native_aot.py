@@ -45,6 +45,8 @@ def compile_host_compiler(destination: Path, cc: str = "clang") -> None:
         str(ROOT / "src/native/a64_compiler.c"),
         str(ROOT / "src/native/elf_loader.c"),
     ]
+    if os.name == "nt":
+        cmd += ["-D_CRT_SECURE_NO_WARNINGS"]
     if sys.platform == "darwin":
         cmd += ["-D_DARWIN_C_SOURCE"]
     elif sys.platform.startswith("linux"):

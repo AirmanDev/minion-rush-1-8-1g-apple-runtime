@@ -14,6 +14,14 @@
 #include <string.h>
 #include "host_pages.h"
 
+#ifdef _WIN32
+#include <process.h>
+#define MR_HOST_PID _getpid
+#else
+#include <unistd.h>
+#define MR_HOST_PID getpid
+#endif
+
 #define CODE_CAPACITY (256u * 1024u * 1024u)
 #define BLOCK_ROOM 16384u
 #define MAX_BLOCK MR_A64_MAX_BLOCK
@@ -2050,7 +2058,7 @@ static int write_rejected_report(const char *path) {
     size_t length = strlen(path) + 48u;
     char *tmp = malloc(length);
     if (!tmp) return -1;
-    snprintf(tmp, length, "%s.tmp.%ld", path, (long)getpid());
+    snprintf(tmp, length, "%s.tmp.%ld", path, (long)MR_HOST_PID());
 
     FILE *file = fopen(tmp, "w");
     if (!file) {
