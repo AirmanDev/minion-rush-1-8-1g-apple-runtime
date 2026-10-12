@@ -6,6 +6,7 @@
 .github/ISSUE_TEMPLATE/feature_request.yml
 .github/pull_request_template.md
 .github/workflows/source-checks.yml
+.github/workflows/windows-native-aot.yml
 .gitignore
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
