@@ -34,6 +34,21 @@ jobs:
           python -m unittest discover -s tests -p test_native_ipa.py -v
           python -m unittest discover -s tests -p test_windows_native.py -v
 
+      - name: Validate native Windows GUI source
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/windows_native_gui.ps1').Path,
+            [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            throw ($errors | Out-String)
+          }
+          Add-Type -AssemblyName System.Windows.Forms
+          python -m unittest discover -s tests -p test_windows_gui.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Windows GUI source tests failed' }
+
       - name: Validate isolated portable Python runtime
         shell: pwsh
         run: |
