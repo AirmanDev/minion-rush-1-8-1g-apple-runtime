@@ -89,5 +89,7 @@ sharing them: they can contain account, device, and signing information.
 The Mac installer tests are separate from the Windows sideload workflow.
 A physical-device test using UTM Windows 11 ARM, USB forwarding and Sideloadly
 v0.70.1 successfully installed and ran the unsigned IPA on an iPhone with
-iOS 27. Renewal of the signature, extended gameplay, and installation on
-other Windows PCs and iPads remain untested.
+iOS 27. The user also reported repeated extended gameplay without stability
+problems. Signing renewal and installation on additional Windows PCs and
+iPads remain untested. The new graphical Windows builder has not yet had
+its full interactive end-to-end device test.

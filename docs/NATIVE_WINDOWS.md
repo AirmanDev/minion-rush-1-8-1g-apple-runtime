@@ -232,16 +232,17 @@ unsigned IPA. The shared Windows report recorded PASS, an output size of
 
 The user then confirmed successful Sideloadly installation on an iPhone
 running iOS 27, working original app icon, Hungarian labels instead of ???,
-sound, introductory sequence, completed gameplay, and saves. This confirmation
-comes from the user's physical-device test; it is not automated hardware
-regression coverage. The original game/IPA remains private and has not been
+sound, introductory sequence, completed gameplay, and saves. The user
+subsequently confirmed repeated extended play without observed stability
+problems. This is user-reported physical-device testing, not automated
+hardware regression or comprehensive device coverage. The original game/IPA remains private and has not been
 uploaded to public releases.
 
 Still required before any public Windows kit: review the copyright status of
 source-derived code maps/bindings and legal terms for redistributing the
-asset-free template, test additional real Windows systems, and validate
-long-duration stability plus sideload signing renewal and save retention after
-a signing refresh. No public Windows kit or private IPA has been released.
+asset-free template, perform an interactive end-to-end test of the new Win32
+GUI on Windows, test additional real Windows systems, and validate
+sideload signing renewal and save retention after a signing refresh. No public Windows kit or private IPA has been released.
 
 ## Further reading
 
