@@ -1,20 +1,10 @@
 @echo off
 setlocal
-pushd "%~dp0" || (
-  echo ERROR: Cannot access the portable Windows kit folder.
+set "kit=%~dp0"
+if not exist "%kit%runtime\tools\windows_native_gui.ps1" (
+  echo ERROR: The Windows graphical builder is missing.
   pause
   exit /b 1
 )
-echo Minion Rush 1.8.1g - private native ARM64 IPA builder
-echo The game ZIP stays local and no files are uploaded.
-powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%CD%\run-native-ipa.ps1"
-set "result=%ERRORLEVEL%"
-popd
-echo.
-if "%result%"=="0" (
-  echo Native unsigned IPA successfully prepared.
-) else (
-  echo Windows native IPA preparation failed. See error output above.
-)
-pause
-exit /b %result%
+start "" powershell.exe -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "%kit%runtime\tools\windows_native_gui.ps1" -Kit "%kit%"
+exit /b %ERRORLEVEL%
