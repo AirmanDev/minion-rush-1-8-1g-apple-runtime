@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -15,6 +17,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 from asset_contract import OFFICIAL_ENGINE_SHA256
+from install_assets import MAX_ARCHIVE_BYTES
 from common import public_files
 from native_ipa import assemble_unsigned_ipa
 from native_macho import file_sha256
@@ -98,6 +101,48 @@ def validate_kit(kit: Path) -> dict:
     return config
 
 
+
+def _needs_local_archive_copy(source: Path) -> bool:
+    """A Windows network share may not support ZIP seek() and backward reads."""
+    if os.name != "nt":
+        return False
+    if str(source).startswith("\\\\"):
+        return True
+    # Also support mapped network drives, not just raw WebDAV/SMB UNC paths.
+    import ctypes
+    anchor = source.anchor
+    return bool(anchor) and ctypes.windll.kernel32.GetDriveTypeW(anchor) == 4
+
+
+def _stage_source_archive(source: Path, temporary: Path) -> Path:
+    """Copy remote ZIP sequentially to private local scratch, never to the kit.
+
+    UTM's SPICE WebDAV drive is accessible as a UNC path but does not reliably
+    implement random-access file operations required by Python's zipfile.
+    """
+    if source.suffix.lower() != ".zip":
+        raise ValueError("original source must be a ZIP archive")
+    if not _needs_local_archive_copy(source):
+        return source
+    destination = temporary / "original-private-source.zip"
+    if destination.exists() or destination.is_symlink():
+        raise ValueError("private ZIP scratch location already exists")
+    total = 0
+    print("Copying shared ZIP to temporary Windows storage for reliable reading.", flush=True)
+    # Stream with fixed buffers: the virtual WebDAV share need not support seek().
+    with source.open("rb") as incoming, destination.open("xb") as outgoing:
+        while chunk := incoming.read(1024 * 1024):
+            total += len(chunk)
+            if total > MAX_ARCHIVE_BYTES:
+                raise ValueError("original source ZIP exceeds supported size")
+            outgoing.write(chunk)
+        outgoing.flush()
+        os.fsync(outgoing.fileno())
+    if total == 0:
+        raise ValueError("original source ZIP is empty")
+    print("Original ZIP staged privately; validating official game contents.", flush=True)
+    return destination
+
 def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path) -> None:
     if output.exists() or output.is_symlink():
         raise ValueError("refusing to overwrite an existing unsigned IPA")
@@ -106,10 +151,12 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path) -> None:
     kit = kit.resolve(strict=True)
     config = validate_kit(kit)
     with tempfile.TemporaryDirectory(prefix="minion-rush-private-", dir=None) as tmp:
-        private = Path(tmp) / "private-AOT"
+        temporary = Path(tmp)
+        private = temporary / "private-AOT"
         print("1/3: Validate your own 1.8.1g ZIP and prepare native ARM64 blocks.", flush=True)
+        local_zip = _stage_source_archive(zip_path, temporary)
         prepare(
-            zip_path, private,
+            local_zip, private,
             prebuilt_compiler=kit / "a64-compiler.exe",
             compiler_sha256=config["compiler_sha256"],
         )

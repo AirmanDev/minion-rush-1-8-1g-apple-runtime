@@ -38,7 +38,10 @@ natively after the IPA has been correctly signed.
 1. Extract the provided portable Windows kit to a private directory.
 2. Double-click run-native-ipa.cmd.
 3. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the file
-   selection dialog.
+   selection dialog. On UTM, the original ZIP may stay in the Mac shared
+   folder: the builder automatically stages a private copy from the Windows
+   WebDAV/UNC share into Windows TEMP before reading it as a ZIP archive.
+   There is no manual copying or need to change the UTM share settings.
 4. Wait for the local ZIP verification, full AOT translation, and IPA assembly.
 5. The resulting MinionRush-unsigned-*.ipa is written to the Windows
    Downloads directory (on the local Windows disk for better performance).
@@ -125,7 +128,11 @@ kit-manifest.json. The runtime verifies hashes again when launched.
 ## Automated safety boundaries
 
 - No overwriting existing output archives or operating outside the intended
-  temporary working directory.
+  temporary working directory. Windows network ZIP sources are streamed into
+  local TEMP using bounded 1 MiB buffers, because UTM's WebDAV implementation
+  may reject the random seeks used by ZIP readers (Errno 22). Local NTFS ZIPs
+  are used directly without an unnecessary copy. Scratch copies are deleted
+  on success or failure; reserve sufficient free Windows VM disk space.
 - Version-locked original 1.8.1g engine hash, asset content validation, bounded
   original ZIP extraction, path-traversal and symlink checks.
 - Thin ARM64 MH_EXECUTE Mach-O only, exactly one file-backed executable
