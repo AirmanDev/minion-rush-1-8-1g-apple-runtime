@@ -54,9 +54,14 @@ Signing-input validation shares `tools/signing.py` and the UI contract's rules.
 The public UI contract is documented in `docs/INSTALLER.md`.
 `installer_protocol.py` owns JSON Lines events, complete operation logs, and
 workspace locking; `ipa_archive.py` atomically packages signed apps for export.
-Windows installation uses the external Sideloadly application, not a second
-project backend. It is neither bundled nor integrated with account handling.
-The private IPA workflow is documented in `docs/INSTALLER_WINDOWS.md`.
+On Windows, `src/windows/ipa_builder.c` is the native file-selection,
+progress and cancellation UI. It starts `windows_native_package.py`, which
+reuses the same asset validator, offline translator and unsigned IPA assembler.
+`build_windows_kit.py` packages that GUI with verified portable dependencies.
+The executable is built without original game data. It does not collect Apple
+credentials or perform signing. The external Sideloadly application handles
+signing and installation. See `docs/NATIVE_WINDOWS.md` and
+`docs/INSTALLER_WINDOWS.md`.
 
 | Module | Responsibility |
 |---|---|
