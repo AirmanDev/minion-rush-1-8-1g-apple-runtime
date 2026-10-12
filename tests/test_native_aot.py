@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -105,6 +106,48 @@ class NativeAotTests(unittest.TestCase):
                 prepare(archive, output, prebuilt_compiler=compiler,
                         compiler_sha256="0" * 64)
             self.assertFalse(output.exists())
+
+    def test_prebuilt_translator_runs_in_place_without_copy_or_delete(self) -> None:
+        # Regresses the Windows WinError 5 reported after the ARM64 compiler
+        # completed: the running kit .exe must never be in scratch/output.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            zip_path = root / "original.zip"
+            zip_path.write_bytes(b"synthetic source archive")
+            kit = root / "kit"
+            kit.mkdir()
+            executable = kit / "a64-compiler.exe"
+            executable.write_bytes(b"MZ" + bytes(256))
+            signature = hashlib.sha256(executable.read_bytes()).hexdigest()
+            output = root / "private"
+
+            def fake_import(archive: Path, project: Path, assets: Path) -> None:
+                self.assertEqual(archive, zip_path)
+                engine = assets / "lib/libdespicablemefree.so"
+                engine.parent.mkdir(parents=True)
+                engine.write_bytes(b"synthetic ELF")
+
+            def fake_run(command, **kwargs):
+                self.assertEqual(Path(command[0]), executable)
+                self.assertEqual(Path(command[1]).name, "libdespicablemefree.so")
+                for name, path in zip(AOT_PRODUCTS, command[2:]):
+                    self.assertEqual(Path(path).name, name)
+                    Path(path).write_bytes(name.encode("ascii"))
+                return subprocess.CompletedProcess(command, 0)
+
+            with (mock.patch("prepare_native_aot.install_release", fake_import),
+                  mock.patch("prepare_native_aot.subprocess.run", fake_run),
+                  mock.patch("prepare_native_aot.shutil.copy2",
+                             side_effect=AssertionError("do not duplicate the kit executable")),
+                  mock.patch("prepare_native_aot.compile_host_compiler",
+                             side_effect=AssertionError("do not build a new executable"))):
+                result = prepare(zip_path, output, prebuilt_compiler=executable,
+                                 compiler_sha256=signature)
+            self.assertEqual(set(result["products_sha256"]), set(AOT_PRODUCTS))
+            self.assertEqual(executable.read_bytes(), b"MZ" + bytes(256))
+            self.assertFalse(any(child.suffix == ".exe" for child in output.rglob("*")))
+            self.assertTrue((output / "compiled/minion_code.bin").is_file())
+            self.assertTrue((output / "aot-manifest.json").is_file())
 
     def test_failed_conversion_does_not_leave_partial_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

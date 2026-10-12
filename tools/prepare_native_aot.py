@@ -81,24 +81,30 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
     with tempfile.TemporaryDirectory(prefix=".mr-private-", dir=destination.parent) as directory:
         staging = Path(directory)
         assets = staging / "assets"
-        compiler = staging / ("a64-compiler.exe" if os.name == "nt" else "a64-compiler")
-        print("Building host-native ARM32-to-ARM64 translator", flush=True)
-        if prebuilt_compiler is None:
+        owned_compiler = prebuilt_compiler is None
+        if owned_compiler:
             if compiler_sha256 is not None:
                 raise ValueError("unexpected compiler SHA-256 without a prebuilt compiler")
+            compiler = staging / ("a64-compiler.exe" if os.name == "nt" else "a64-compiler")
+            print("Building host-native ARM32-to-ARM64 translator", flush=True)
             compile_host_compiler(compiler, cc=cc)
         else:
             if (not compiler_sha256 or len(compiler_sha256) != 64
                     or any(char not in "0123456789abcdef" for char in compiler_sha256)):
                 raise ValueError("prebuilt compiler requires a lowercase SHA-256 digest")
-            external = prebuilt_compiler.resolve(strict=True)
-            if not external.is_file():
+            compiler = prebuilt_compiler.resolve(strict=True)
+            if not compiler.is_file():
                 raise ValueError("prebuilt compiler is missing")
-            with external.open("rb") as stream:
+            with compiler.open("rb") as stream:
                 actual = hashlib.file_digest(stream, "sha256").hexdigest()
             if actual != compiler_sha256:
                 raise ValueError("prebuilt compiler checksum mismatch")
-            shutil.copy2(external, compiler)
+            # Run the verified executable in-place. Windows may retain an image
+            # section handle after subprocess.run() returns (WinError 5), so a
+            # transient copy in the private output staging directory cannot
+            # reliably be unlinked. The kit executable is never overwritten,
+            # copied, or deleted here.
+            print("Using verified prebuilt native ARM32-to-ARM64 translator", flush=True)
         print("Validating and importing original ZIP locally", flush=True)
         with open(os.devnull, "w", encoding="utf-8") as sink:
             with contextlib.redirect_stdout(sink):
@@ -114,8 +120,11 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
         for name in AOT_PRODUCTS:
             if not (compiled / name).is_file() or not (compiled / name).stat().st_size:
                 raise ValueError(f"AOT translator failed to create: {name}")
-        # The compiler executable is not needed after translation.
-        compiler.unlink()
+        # Only a host-compiled, staging-owned executable is ephemeral.
+        # A verified prebuilt compiler belongs to the kit and must not be
+        # removed, particularly on Windows with executable image locks.
+        if owned_compiler:
+            compiler.unlink()
         sizes = {name: (compiled / name).stat().st_size for name in AOT_PRODUCTS}
         checksums = {}
         for name in AOT_PRODUCTS:
