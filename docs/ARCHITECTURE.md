@@ -54,9 +54,15 @@ Signing-input validation shares `tools/signing.py` and the UI contract's rules.
 The public UI contract is documented in `docs/INSTALLER.md`.
 `installer_protocol.py` owns JSON Lines events, complete operation logs, and
 workspace locking; `ipa_archive.py` atomically packages signed apps for export.
-Windows installation uses the external Sideloadly application, not a second
-project backend. It is neither bundled nor integrated with account handling.
-The private IPA workflow is documented in `docs/INSTALLER_WINDOWS.md`.
+Windows IPA creation uses `windows_native_gui.ps1` as a local Windows Forms
+client of `windows_native_package.py`. The GUI accepts a single release ZIP,
+a user-chosen output path, and displays streamed backend messages; it does not
+implement translation or IPA assembly itself. A dedicated temporary directory
+holds private scratch files and is removed on success, failure or cancellation.
+The independent Sideloadly application handles signing and installation;
+it is neither bundled nor integrated with account handling. The private IPA
+workflow is documented in `docs/NATIVE_WINDOWS.md` and
+`docs/INSTALLER_WINDOWS.md`.
 
 | Module | Responsibility |
 |---|---|
