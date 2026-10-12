@@ -23,7 +23,7 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
 ## Coding rules
 
 - The portable core is C11, Apple platform code is Objective-C with ARC, and
-  tools use Swift, Python 3, or Bash.
+  tools use Swift, Python 3, Bash, or Windows PowerShell 5.1.
 - Use English for source identifiers, comments, user-facing tool output, and
   documentation.
 - Keep maintained text files ASCII. Use Unicode escapes in tests and code when
@@ -35,6 +35,12 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
   paths, signing data, or device identifiers.
 - Add every maintained text file to the sorted `config/source_manifest.txt`.
 - Extend a shared implementation instead of adding a parallel copy.
+
+Windows GUI changes must keep the ZIP/AOT/IPA logic in
+`tools/windows_native_package.py`. Do not add a second build pipeline in the
+UI. Keep dialog actions responsive, avoid storing private paths or data in
+source control, and run the PowerShell parser in Windows CI. Native Windows
+kit distribution remains blocked until `docs/LEGAL.md` release checks pass.
 
 ## Validation
 
