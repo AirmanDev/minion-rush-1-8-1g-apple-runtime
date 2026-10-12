@@ -113,13 +113,25 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
                 install_release(zip_path, ROOT, assets)
         # Use the same XLIFF, font and formatter compiler as the normal Mac
         # build. The original ZIP has no community translation by itself.
-        print("Preparing configured localizations", flush=True)
-        locale_header = staging / "localization_config.h"
-        enabled = prepare_localizations(ROOT, assets, locale_header,
-                                        translations_root=translations_root)
-        if not enabled:
-            raise ValueError("no configured localization was generated")
-        print("Localizations:", ", ".join(item.code for item in enabled), flush=True)
+        # Language catalogs are private add-ons, not part of the original ZIP.
+        # An absent translation must not prevent native builds in English.
+        if translations_root is None:
+            local = ROOT / "localizations"
+            if local.is_dir() and not local.is_symlink():
+                translations_root = local
+        if translations_root is not None:
+            print("Preparing configured localizations", flush=True)
+            locale_header = staging / "localization_config.h"
+            enabled = prepare_localizations(
+                ROOT, assets, locale_header, translations_root=translations_root
+            )
+            print(
+                "Localizations:", ", ".join(item.code for item in enabled) or "none",
+                flush=True,
+            )
+        else:
+            print("No optional translation catalog; using original game languages.",
+                  flush=True)
         print("Generating native ARM64 blocks", flush=True)
         compiled = staging / "compiled"
         compiled.mkdir()

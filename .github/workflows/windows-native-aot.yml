@@ -49,10 +49,18 @@ jobs:
           $compiler = Join-Path $temp 'a64-compiler.exe'
           clang -std=c11 -O2 -D_CRT_SECURE_NO_WARNINGS -DMR_ELF_BUILD_TOOLS -Isrc/native -o $compiler src/native/a64_compiler.c src/native/elf_loader.c
           if ($LASTEXITCODE -ne 0) { throw 'Windows AOT compiler build failed' }
+          $gui = Join-Path $temp 'MinionRush Builder.exe'
+          $vswhere = Join-Path (Join-Path $env:SystemDrive 'Program Files (x86)') 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'Visual Studio C toolchain not found' }
+          $vsdevcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
+          $command = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $gui + '" src\windows\ipa_builder.c /link /SUBSYSTEM:WINDOWS ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
+          & cmd.exe /d /s /c $command
+          if ($LASTEXITCODE -ne 0) { throw 'Windows GUI C build failed' }
           $template = Join-Path $temp 'unsigned-test-template.zip'
           [System.IO.File]::WriteAllBytes($template, [byte[]](1, 2, 3))
           $kit = Join-Path $temp 'kit'
-          python tools/build_windows_kit.py --python-embed-zip $pyzip --compiler $compiler --template $template --output $kit
+          python tools/build_windows_kit.py --python-embed-zip $pyzip --compiler $compiler --gui-exe $gui --template $template --output $kit
           if ($LASTEXITCODE -ne 0) { throw 'Portable kit assembly failed' }
           $exe = Join-Path $kit 'python\python.exe'
           & $exe -c 'import windows_native_package; import prepare_native_aot; import native_ipa; print("Embedded runtime imports: PASS")'
@@ -60,3 +68,5 @@ jobs:
           $toolScript = Join-Path (Join-Path (Join-Path $kit 'runtime') 'tools') 'windows_native_package.py'
           & $exe $toolScript --help
           if ($LASTEXITCODE -ne 0) { throw 'Portable Windows CLI startup failed' }
+          & (Join-Path $kit 'MinionRush Builder.exe') --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows GUI startup check failed' }

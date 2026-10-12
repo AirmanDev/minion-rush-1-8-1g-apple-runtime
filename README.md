@@ -84,14 +84,18 @@ It includes no game assets. See [installer setup and distribution](docs/INSTALLE
 for signing, free-account limits, test coverage, and the shared UI contract.
 ### Additional Windows support (experimental)
 
-A [portable native Windows IPA builder](docs/NATIVE_WINDOWS.md) now supports
-preparing a private, **unsigned** IPA from the user's own unmodified 1.8.1g
-release ZIP and separately supplied community-language catalogs, with
-**native ARM64 code** compiled entirely on Windows.
-The Windows package uses an independently prepared, asset-free iOS executable
-template, the verified Windows AOT translator, and a portable Python runtime.
-No Mac, Xcode, JIT, Android emulator, or third-party game assets are needed
-on the end-user's Windows machine once a vetted template/kit is distributed.
+The [Windows native IPA builder](docs/NATIVE_WINDOWS.md) is a portable
+graphical Windows x64 app, also usable on Windows 11 ARM through x64 emulation.
+Drop your original 1.8.1g ZIP onto its window or use Browse, choose
+a new IPA save location, and select Create IPA. The optional Hungarian
+hu.xlf must be provided privately; it is neither in the original ZIP nor
+included in public release artifacts. The completed IPA requires signing
+with a separate sideloading tool before installation.
+
+The Windows kit includes an asset-free iOS template, the native GUI,
+a verified ARM64 AOT compiler and an isolated Python runtime. End users
+do not need Xcode, a Mac or an installed Python environment. The Mac
+installer and iOS builds remain fully maintained and unchanged.
 
 The Mac native build, Mac installer, iOS device build, and IPA export remain
 fully maintained and have **not** been replaced. The Windows-generated IPA
@@ -102,7 +106,7 @@ iPhone running iOS 27. The user also confirmed sound, saved progress,
 Hungarian text, and the original ZIP-derived app icon. This is a verified
 user test, not a guarantee of compatibility across all Windows PCs/devices.
 Do not publish the template/kit as a release until legal review and remaining
-release tests are complete. See the
+Windows GUI/signing tests are complete. See the
 [Windows install and signing guide](docs/INSTALLER_WINDOWS.md).
 Never publish finished IPAs or original game files.
 

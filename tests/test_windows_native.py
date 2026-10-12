@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import struct
 import sys
 import tempfile
 import unittest
@@ -17,6 +18,7 @@ sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
 import build_windows_kit
+from package_windows_release import package_windows_candidate
 from windows_native_package import (_utm_http_stream, _utm_webdav_url,
                                     _needs_local_archive_copy,
                                     _stage_source_archive, create_unsigned_ipa,
@@ -34,24 +36,36 @@ class WindowsKitTests(unittest.TestCase):
                 archive.writestr(name, b"synthetic test fixture")
         compiler = root / "a64-compiler.exe"
         compiler.write_bytes(b"MZ" + b"\x00" * 250)
+        gui = root / "MinionRush Builder.exe"
+        pe = bytearray(512)
+        pe[:2] = b"MZ"
+        struct.pack_into("<I", pe, 60, 128)
+        pe[128:132] = b"PE\0\0"
+        struct.pack_into("<H", pe, 132, 0x8664)
+        struct.pack_into("<H", pe, 148, 240)
+        struct.pack_into("<H", pe, 152, 0x20B)
+        struct.pack_into("<H", pe, 220, 2)
+        gui.write_bytes(pe)
         template = root / "unsigned-template.zip"
         template.write_bytes(b"unsigned template fixture")
         output = root / "kit"
         checksum = hashlib.sha256(python_zip.read_bytes()).hexdigest()
         with mock.patch.object(build_windows_kit, "PYTHON_3147_EMBED_AMD64_SHA256", checksum):
-            build_windows_kit.build_kit(python_zip, compiler, template, output)
+            build_windows_kit.build_kit(python_zip, compiler, template, gui, output)
         return output
 
     def test_kit_contains_only_expected_public_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
             kit = self.fixture(Path(directory))
             config = self.validate(kit)
-            self.assertEqual(config["version"], 1)
+            self.assertEqual(config["version"], 2)
             self.assertFalse((kit / "assets").exists())
             self.assertFalse((kit / "runtime/assets").exists())
             self.assertFalse((kit / "runtime/build").exists())
             self.assertTrue((kit / "python/LICENSE.txt").exists())
-            self.assertIn(b"\r\n", (kit / "run-native-ipa.cmd").read_bytes())
+            self.assertTrue((kit / "MinionRush Builder.exe").is_file())
+            self.assertFalse((kit / "run-native-ipa.cmd").exists())
+            self.assertFalse((kit / "run-native-ipa.ps1").exists())
             self.assertEqual(
                 (kit / "python/python314._pth").read_bytes(),
                 b"python314.zip\n.\n..\\runtime\\tools\n",
@@ -60,12 +74,32 @@ class WindowsKitTests(unittest.TestCase):
             self.assertTrue((kit / "python-file-hashes.json").is_file())
 
 
+    def test_packaged_gui_release_contains_no_private_game_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kit = self.fixture(root)
+            output = root / "Windows-GUI-candidate.zip"
+            digest = package_windows_candidate(kit, output)
+            self.assertEqual(hashlib.sha256(output.read_bytes()).hexdigest(), digest)
+            with zipfile.ZipFile(output) as archive:
+                self.assertIsNone(archive.testzip())
+                contents = archive.namelist()
+                self.assertIn(
+                    "MinionRush-Portable-Windows/MinionRush Builder.exe", contents)
+                self.assertNotIn(
+                    "MinionRush-Portable-Windows/original-1.8.1g-PRIVATE.zip", contents)
+                self.assertFalse(any(name.endswith((".ipa", ".xlf", ".so"))
+                                     for name in contents))
+            with self.assertRaisesRegex(ValueError, "new .zip"):
+                package_windows_candidate(kit, output)
+
     def test_rejects_changed_template_compiler_and_runtime_file(self):
         with tempfile.TemporaryDirectory() as directory:
             kit = self.fixture(Path(directory))
             for path, data in (
                 (kit / "MinionRush-native-template-unsigned.zip", b"corrupted"),
                 (kit / "a64-compiler.exe", b"corrupted"),
+                (kit / "MinionRush Builder.exe", b"corrupted"),
                 (kit / "runtime/tools/native_ipa.py", b"corrupted"),
             ):
                 original = path.read_bytes()
@@ -75,14 +109,14 @@ class WindowsKitTests(unittest.TestCase):
                         self.validate(kit)
                 finally:
                     path.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 1)
+            self.assertEqual(self.validate(kit)["version"], 2)
             tamper = kit / "python/python314._pth"
             original = tamper.read_bytes()
             tamper.write_bytes(b"import site\n")
             with self.assertRaisesRegex(ValueError, "integrity"):
                 self.validate(kit)
             tamper.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 1)
+            self.assertEqual(self.validate(kit)["version"], 2)
             (kit / "runtime/tools/untrusted.py").write_text("print('bad')")
             with self.assertRaisesRegex(ValueError, "extra files"):
                 self.validate(kit)
@@ -221,6 +255,62 @@ class WindowsKitTests(unittest.TestCase):
                 _utm_webdav_url(PureWindowsPath(r"Z:\original-1.8.1g-PRIVATE.zip")),
                 "http://127.0.0.1:9843/original-1.8.1g-PRIVATE.zip",
             )
+
+    def test_builder_allows_original_zip_without_optional_language(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic source")
+            kit = root / "kit"
+            kit.mkdir()
+            output = root / "result.ipa"
+            def capture(archive, destination, **kwargs):
+                self.assertIsNone(kwargs["translations_root"])
+            def assemble(template, folder, destination):
+                destination.write_bytes(b"unsigned synthetic IPA")
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package.prepare", capture),
+                  mock.patch("windows_native_package.assemble_unsigned_ipa", assemble)):
+                create_unsigned_ipa(source, kit, output)
+            self.assertEqual(output.read_bytes(), b"unsigned synthetic IPA")
+
+    def test_builder_places_temporary_data_in_selected_scratch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"private archive fixture")
+            kit = root / "kit"
+            kit.mkdir()
+            scratch = root / "scratch"
+            scratch.mkdir()
+            output = root / "result.ipa"
+            def check_prepare(zip_path, output_path, **kwargs):
+                self.assertEqual(output_path.parent.parent, scratch)
+            def assemble(template, private, outfile):
+                outfile.write_bytes(b"unsigned fixture")
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package.prepare", check_prepare),
+                  mock.patch("windows_native_package.assemble_unsigned_ipa", assemble)):
+                create_unsigned_ipa(source, kit, output, scratch_root=scratch)
+            self.assertEqual(output.read_bytes(), b"unsigned fixture")
+            self.assertEqual(list(scratch.iterdir()), [])
+
+    def test_builder_rejects_untrusted_translation_filename(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / "original.zip"
+            archive.write_bytes(b"original")
+            selected = root / "not-hu.xlf"
+            selected.write_text("invalid selection")
+            kit = root / "kit"
+            kit.mkdir()
+            with mock.patch("windows_native_package.validate_kit",
+                            return_value={"compiler_sha256": "0" * 64}):
+                with self.assertRaisesRegex(ValueError, "private, regular hu.xlf"):
+                    create_unsigned_ipa(archive, kit, root / "result.ipa",
+                                        hungarian_xlf=selected)
 
     def test_rejects_unverified_python_distribution(self):
         with tempfile.TemporaryDirectory() as directory:

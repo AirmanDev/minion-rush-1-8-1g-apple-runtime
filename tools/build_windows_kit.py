@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import struct
 import shutil
 import stat
 import sys
@@ -58,15 +59,40 @@ def _unpack_verified_python(source: Path, target: Path) -> None:
                 shutil.copyfileobj(stream, output, length=1024*1024)
 
 
-def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path) -> None:
+def validate_gui_executable(source: Path) -> None:
+    """Require a 64-bit Windows graphical PE image, never an arbitrary file."""
+    with source.open("rb") as file:
+        dos = file.read(64)
+        if len(dos) != 64 or dos[:2] != b"MZ":
+            raise ValueError("Windows GUI does not have a valid DOS header")
+        offset = struct.unpack_from("<I", dos, 60)[0]
+        if not 64 <= offset < 4096:
+            raise ValueError("invalid Windows GUI PE offset")
+        file.seek(offset)
+        pe = file.read(128)
+        if len(pe) != 128 or pe[:4] != b"PE\0\0":
+            raise ValueError("invalid Windows GUI PE signature")
+        machine = struct.unpack_from("<H", pe, 4)[0]
+        optional_header_size = struct.unpack_from("<H", pe, 20)[0]
+        if machine != 0x8664 or optional_header_size < 72:
+            raise ValueError("GUI must target Windows x64")
+        if struct.unpack_from("<H", pe, 24)[0] != 0x20B:
+            raise ValueError("GUI executable must be PE32+")
+        if struct.unpack_from("<H", pe, 24+68)[0] != 2:
+            raise ValueError("GUI executable must be a Windows graphical app")
+
+
+def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
+              gui_exe: Path, target: Path) -> None:
     if target.exists() or target.is_symlink():
         raise ValueError("Windows kit output must be a new directory")
     if not target.parent.is_dir():
         raise ValueError("Windows kit output parent does not exist")
     if target.resolve().is_relative_to(ROOT) and not target.resolve().is_relative_to(ROOT / "build"):
         raise ValueError("Windows kit output cannot be inside the public source tree")
-    if not compiler_exe.is_file() or not template.is_file():
-        raise ValueError("compiler or unsigned template is missing")
+    if not compiler_exe.is_file() or not template.is_file() or not gui_exe.is_file():
+        raise ValueError("compiler, GUI or unsigned template is missing")
+    validate_gui_executable(gui_exe)
     with compiler_exe.open("rb") as stream:
         header = stream.read(512)
     if header[:2] != b"MZ":
@@ -75,6 +101,7 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path
         staged = Path(directory) / "kit"
         staged.mkdir()
         shutil.copyfile(compiler_exe, staged / "a64-compiler.exe")
+        shutil.copyfile(gui_exe, staged / "MinionRush Builder.exe")
         shutil.copyfile(template, staged / "MinionRush-native-template-unsigned.zip")
         _unpack_verified_python(python_zip, staged / "python")
         # The official embedded interpreter deliberately excludes the script
@@ -90,13 +117,18 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path
             dest = runtime / path.relative_to(ROOT)
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, dest)
-        # The primary entry point and PowerShell runner are source-controlled,
-        # not forked per release.
-        for name in ("run-native-ipa.cmd", "run-native-ipa.ps1"):
-            data = (ROOT / "tools" / name).read_bytes()
-            if name.endswith(".cmd"):
-                data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
-            (staged / name).write_bytes(data)
+        (staged / "README-WINDOWS.txt").write_text(
+            "Minion Rush - native IPA builder\n"
+            "================================\n"
+            "Open MinionRush Builder.exe. Drag your original 1.8.1g ZIP onto the\n"
+            "window or choose it with Browse. Select a new .ipa save path.\n"
+            "The optional Hungarian hu.xlf can be selected separately.\n"
+            "The output is unsigned. Sign it with Sideloadly before installing.\n"
+            "The original game ZIP and final IPA are private. Do not publish them.\n"
+            "This package includes the original-game-free iOS template.\n"
+            "The application is not an Apple product or official game release.\n",
+            encoding="ascii",
+        )
         runtime_hashes = {
             path.relative_to(runtime).as_posix(): file_sha256(path)
             for path in public_files(runtime)
@@ -115,10 +147,11 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path, target: Path
             encoding="utf-8"
         )
         config = {
-            "version": 1,
+            "version": 2,
             "engine_sha256": OFFICIAL_ENGINE_SHA256,
             "template_sha256": file_sha256(staged / "MinionRush-native-template-unsigned.zip"),
             "compiler_sha256": file_sha256(staged / "a64-compiler.exe"),
+            "gui_sha256": file_sha256(staged / "MinionRush Builder.exe"),
             "runtime_manifest_sha256": file_sha256(runtime / "config/source_manifest.txt"),
             "runtime_files_sha256": file_sha256(staged / "runtime-file-hashes.json"),
             "python_zip_sha256": file_sha256(staged / "python/python314.zip"),
@@ -134,11 +167,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--python-embed-zip", type=Path, required=True)
     parser.add_argument("--compiler", type=Path, required=True)
+    parser.add_argument("--gui-exe", type=Path, required=True)
     parser.add_argument("--template", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     options = parser.parse_args()
     try:
-        build_kit(options.python_embed_zip, options.compiler, options.template, options.output)
+        build_kit(options.python_embed_zip, options.compiler, options.template,
+                  options.gui_exe, options.output)
     except (ValueError, OSError, zipfile.BadZipFile) as exc:
         print("Windows kit assembly failed:", exc, file=sys.stderr)
         return 1

@@ -46,40 +46,52 @@ images locked briefly after the child exits (WinError 5). This also avoids
 an unnecessary executable copy. The private output contains only original
 assets, generated ARM64 data and the AOT manifest.
 
-## For users of an authorized, reviewed Windows kit
+## Windows GUI release workflow
 
-1. Extract the provided portable Windows kit to a private directory.
-2. Double-click run-native-ipa.cmd.
-3. For Hungarian, place the private hu.xlf catalog in
-   MinionRush-Private-Languages/hu.xlf next to the portable Windows kit.
-   The original game ZIP does not contain this separate community translation,
-   and the public repository does not distribute it. A missing catalog fails
-   the build rather than silently producing question-mark labels.
-4. Choose the lawfully obtained original unmodified 1.8.1g ZIP in the file
-   selection dialog. On UTM, the original ZIP may stay in the Mac shared
-   folder: the builder automatically stages a private copy into Windows TEMP.
-   For the default UTM SPICE WebDAV share, the input is retrieved through the
-   VM's loopback-only HTTP endpoint (127.0.0.1:9843), not the mapped Windows
-   WebDAV drive, which can refuse to open a ZIP larger than 50 MB.
-   There is no manual copying or need to change registry/WebClient limits.
-5. Wait for the local ZIP verification, full AOT translation, and IPA assembly.
-6. The resulting MinionRush-unsigned-*.ipa is written to the Windows
-   Downloads directory (on the local Windows disk for better performance).
-   The lightweight windows-native-ipa-report.txt is written to the kit
-   directory so it can also be read through an UTM shared folder. The IPA
-   is **unsigned** and contains copyrighted game files. Do NOT publish it.
-7. Sign it with a compatible trusted external Apple sideloading tool using
-   your own signing identity, and install it on your iPhone/iPad.
+1. Download the Windows ZIP from the project's official GitHub Release after
+   legal approval. Compare its SHA-256 to the published checksum and extract
+   the complete folder. Do not run the EXE inside a ZIP preview.
+2. Open MinionRush-Portable-Windows/MinionRush Builder.exe.
+3. Drop one original 1.8.1g ZIP onto the window or select Browse ZIP.
+4. Select Save As and choose a writable folder and a new filename ending
+   in .ipa. Existing IPA files are never overwritten.
+5. Optionally select a private Hungarian hu.xlf catalog. This translation is
+   not part of the original game ZIP. The builder can also use
+   MinionRush-Private-Languages/hu.xlf next to the portable kit. Without a
+   catalog, original language data is imported without the extra translation.
+6. Select Create IPA. Progress, errors, and compiler output appear in the
+   window without freezing the user interface. Cancel terminates the child
+   build process group; its private scratch directory is cleaned afterwards.
+7. Open the chosen output folder. The IPA is unsigned, contains copyrighted
+   game assets from your own ZIP, and is for private use only.
+8. Sign and install it with a trusted external tool such as Sideloadly.
+   The GUI does not collect Apple account credentials or sign IPA files.
 
-There are no embedded private game data, Apple SDK files, Apple certificates,
-provisioning profiles, or developer secrets in the portable kit. Python is
-included as the official embeddable distribution (PSF license included).
-No installer/GUI in this project handles Apple account passwords.
+The kit contains an unsigned game-asset-free iOS template, the native
+Windows EXE, and a private Python runtime plus AOT compiler. Game assets,
+original icon and ARM64 machine instructions are generated only after
+the user imports their own original ZIP. No compiler, Python or Xcode
+installation is required by the Windows user.
 
-**Sideloadly successfully signed and installed a Windows-generated unsigned
-IPA in the 2026-10-12 user test on an iPhone running iOS 27. Signing refresh,
-long-duration stability, and additional Windows/iOS combinations have not
-been validated. No App Store submission is planned.**
+The former batch and PowerShell startup wrappers were removed. The GUI
+starts the existing offline build engine with an explicit source ZIP,
+chosen destination, and optional language catalog; there is only one
+translation and IPA assembly implementation.
+
+Windows UTM shared ZIPs are read using the VM's loopback-only SPICE WebDAV
+endpoint at 127.0.0.1:9843 to avoid Windows WebClient large-file limits.
+Local archives use normal file I/O. GUI builds use private per-job Windows
+temporary folders, cleaned after success, failure, or cancellation.
+
+An x64 Win32 GUI can run on x64 Windows and on Windows 11 ARM through
+Windows x64 compatibility. No administrator privileges are required.
+Unsigned Windows EXEs can trigger SmartScreen warnings. Prefer a verified
+code signing certificate and published checksums for final releases.
+
+The previous command-line pipeline was verified by the user on an iPhone
+running iOS 27 with original app icon, Hungarian localization, gameplay,
+sound and saves. The new GUI and cancellation lifecycle need an additional
+interactive Windows test before publishing it to all users.
 
 ## Developer: build the unsigned template on a Mac
 
@@ -115,36 +127,47 @@ review; no legal conclusion is implied by these technical checks.
 ## Developer: build a portable Windows kit
 
 The build host needs the unsigned template from the preceding step, a
-previously verified Windows x64 offline AOT compiler executable, and the
+verified Windows x64 offline AOT executable, a native GUI EXE, and the
 official Python 3.14.7 Windows x64 embeddable ZIP. The latter is downloaded
 directly from python.org and pinned to SHA-256:
 
 d297e5ff019966817ad8502465176139f2d3d840fa4ed84b13bed399a6ab1f15
 
-Then run:
+First build the native Windows x64 GUI on a Mac with MinGW-w64:
+
+    ./tools/build_windows_gui.sh
+
+Then assemble the kit with the GUI, runtime and unsigned template:
 
     python3 tools/build_windows_kit.py \
       --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
       --compiler /private/a64-compiler.exe \
+      --gui-exe build/windows/MinionRush\ Builder.exe \
       --template build/native-template/MinionRush-native-template-unsigned.zip \
       --output /private/MinionRush-Portable-Windows
 
-The kit includes a Python 3.14.7 embeddable interpreter, the locally
-compiled x64 AOT executable, this project's public source tree, and the
-developer-built unsigned iPhone application template. The portable Python
+Create a private ZIP candidate and checksum (no upload or GitHub release):
+
+    python3 tools/package_windows_release.py \
+      --kit /private/MinionRush-Portable-Windows \
+      --output /private/MinionRush-Windows-Builder-candidate.zip
+
+The kit includes the native Win32 GUI, an isolated Python 3.14.7 runtime,
+the verified x64 AOT translator, public runtime source, and the developer-built
+unsigned iPhone application template. The portable Python
 python314._pth uses isolated module loading, explicitly permitting only
 python314.zip, the interpreter directory, and the kit's runtime/tools directory.
 No site import or system-wide PYTHONPATH is enabled. The full extracted
 Python interpreter and native-extension files have an additional SHA-256
 inventory; this prevents accidental file mismatches relative to the kit's
-manifest, but does not replace an independently authenticated release signature. Windows users require
-neither Xcode, a Mac, a Python installation nor a C compiler. The input ZIP and optional community-language catalogs must be
+manifest, but does not replace an independently authenticated release signature. Windows users require neither Xcode, a Mac, an installed Python runtime
+nor a C compiler. The input ZIP and optional community-language catalogs must be
 provided privately by the end user. The original game ZIP provides the
 launcher icon, but not the Hungarian translation.
 
 A source-manifest-based inventory protects the local runtime copy against
 accidental content mismatches. SHA-256 of the downloaded Python embeddable ZIP
-is pinned at kit creation. The compiler and template have hashes recorded in
+is pinned at kit creation. The GUI, compiler and template have hashes recorded in
 kit-manifest.json. The runtime verifies hashes again when launched.
 
 ## Automated safety boundaries

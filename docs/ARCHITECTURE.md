@@ -348,6 +348,9 @@ by the application.
 | iOS package | `./tools/package_ios.sh` | Device build, opaque white app-icon rendering, private staging, assets, and signing |
 | iOS Simulator | `./tools/test_ios_simulator.sh` | Clean iPhone SE and iPad landscape intro entry, language-menu UI, Hungarian startup, portrait framebuffer, and gameplay orientation policy on both devices |
 | iOS device | `./tools/deploy_ios.sh` | Installation on paired physical devices |
+| Windows GUI | Native Win32 x64 EXE | Browse or drop input, Save As, progress, cancellation and log |
+| Windows runtime kit | Python kit builder | Asset-free iOS template, verified translator, portable interpreter |
+| Windows ZIP candidate | Local package builder | Reproducible inventory and SHA-256; no automatic publication |
 
 ### Simulator compatibility
 

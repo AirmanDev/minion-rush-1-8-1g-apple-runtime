@@ -36,14 +36,14 @@ def validate_kit(kit: Path) -> dict:
         raise ValueError("Windows kit manifest is missing or invalid")
     config = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(config, dict) or set(config) != {
-        "version", "engine_sha256", "template_sha256", "compiler_sha256",
+        "version", "engine_sha256", "template_sha256", "compiler_sha256", "gui_sha256",
         "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
         "python_files_sha256",
-    } or config["version"] != 1:
+    } or config["version"] != 2:
         raise ValueError("Windows kit manifest format is invalid")
     if config["engine_sha256"] != OFFICIAL_ENGINE_SHA256:
         raise ValueError("Windows kit targets the wrong game engine")
-    for label in ("template_sha256", "compiler_sha256",
+    for label in ("template_sha256", "compiler_sha256", "gui_sha256",
                   "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
                   "python_files_sha256"):
         digest = config[label]
@@ -56,6 +56,7 @@ def validate_kit(kit: Path) -> dict:
     paths = {
         "template_sha256": kit / "MinionRush-native-template-unsigned.zip",
         "compiler_sha256": kit / "a64-compiler.exe",
+        "gui_sha256": kit / "MinionRush Builder.exe",
         "runtime_manifest_sha256": runtime_root / "config/source_manifest.txt",
         "runtime_files_sha256": kit / "runtime-file-hashes.json",
         "python_zip_sha256": kit / "python/python314.zip",
@@ -223,22 +224,32 @@ def _stage_source_archive(source: Path, temporary: Path) -> Path:
     print("Original ZIP staged privately; validating official game contents.", flush=True)
     return destination
 
-def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path) -> None:
+def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
+                        hungarian_xlf: Path | None = None,
+                        scratch_root: Path | None = None) -> None:
     if output.exists() or output.is_symlink():
         raise ValueError("refusing to overwrite an existing unsigned IPA")
     if not output.is_absolute() or not output.parent.is_dir():
         raise ValueError("output must be in an existing absolute directory")
     kit = kit.resolve(strict=True)
     config = validate_kit(kit)
-    translations_root = kit.parent / "MinionRush-Private-Languages"
-    if translations_root.is_symlink() or not translations_root.is_dir():
-        raise ValueError(
-            "private Hungarian catalog is missing: supply "
-            "MinionRush-Private-Languages/hu.xlf next to the Windows kit"
-        )
-    if not (translations_root / "hu.xlf").is_file():
-        raise ValueError("private hu.xlf localization catalog is missing")
-    with tempfile.TemporaryDirectory(prefix="minion-rush-private-", dir=None) as tmp:
+    translations_root = None
+    if hungarian_xlf is not None:
+        selected = hungarian_xlf
+        if (selected.name.lower() != "hu.xlf" or not selected.is_file()
+                or selected.is_symlink()):
+            raise ValueError("expected a private, regular hu.xlf catalog")
+        translations_root = selected.parent
+    else:
+        optional = kit.parent / "MinionRush-Private-Languages" / "hu.xlf"
+        if optional.is_file() and not optional.is_symlink():
+            translations_root = optional.parent
+    if scratch_root is not None:
+        if (not scratch_root.is_absolute() or scratch_root.is_symlink()
+                or not scratch_root.is_dir()):
+            raise ValueError("invalid private scratch directory")
+    with tempfile.TemporaryDirectory(prefix="minion-rush-private-",
+                                     dir=scratch_root) as tmp:
         temporary = Path(tmp)
         private = temporary / "private-AOT"
         print("1/3: Validate your own 1.8.1g ZIP and prepare native ARM64 blocks.", flush=True)
@@ -264,9 +275,15 @@ def main() -> int:
     parser.add_argument("source_zip", type=Path, help="your own original 1.8.1g ZIP")
     parser.add_argument("--kit", type=Path, required=True, help="portable Windows kit folder")
     parser.add_argument("--output", type=Path, required=True, help="new unsigned IPA")
+    parser.add_argument("--hungarian-xlf", type=Path,
+                        help="optional private hu.xlf translation catalog")
+    parser.add_argument("--scratch-root", type=Path,
+                        help="private per-job directory managed by the graphical launcher")
     args = parser.parse_args()
     try:
-        create_unsigned_ipa(args.source_zip, args.kit, args.output)
+        create_unsigned_ipa(args.source_zip, args.kit, args.output,
+                            hungarian_xlf=args.hungarian_xlf,
+                            scratch_root=args.scratch_root)
     except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as exc:
         print("Windows native IPA build failed:", exc, file=sys.stderr)
         return 1

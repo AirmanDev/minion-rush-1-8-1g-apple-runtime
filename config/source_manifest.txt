@@ -94,6 +94,7 @@ src/native/shim_zlib.c
 src/native/window_ios.h
 src/native/window_ios.m
 src/native/window_macos.m
+src/windows/ipa_builder.c
 test.sh
 tests/InstallerTests.swift
 tests/InstallerViewTests.swift
@@ -108,6 +109,7 @@ tools/asset_contract.py
 tools/build_installer.sh
 tools/build_ios.sh
 tools/build_ios_template.sh
+tools/build_windows_gui.sh
 tools/build_windows_kit.py
 tools/common.py
 tools/configure_graphics.py
@@ -124,12 +126,11 @@ tools/native_ipa.py
 tools/native_macho.py
 tools/package_installer.sh
 tools/package_ios.sh
+tools/package_windows_release.py
 tools/prepare_app_icon.swift
 tools/prepare_installer_icon.swift
 tools/prepare_native_aot.py
 tools/project_common.sh
-tools/run-native-ipa.cmd
-tools/run-native-ipa.ps1
 tools/run_with_timeout.py
 tools/select_ios_simulators.py
 tools/signing.py

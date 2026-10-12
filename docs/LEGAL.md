@@ -33,3 +33,25 @@ Users construct the ignored `assets` directory locally from their own lawfully
 obtained 1.8.1g release. `.gitignore` excludes this directory and all build
 products. Repository owners must review their own legal position before
 publication. This document is not legal advice.
+
+## Windows GUI and release rights
+
+The Windows application package contains an unsigned, asset-free iOS template,
+not a playable IPA. The user privately imports the original game ZIP. Private
+translations are optional and are not distributed with the public kit.
+
+The asset-free template nevertheless contains source-derived block maps
+and binding addresses. These may still raise copyright or contractual
+questions. Permission or an independent legal assessment is required
+before public redistribution. Gameloft's terms restrict copying,
+modification, derivative works and distribution of protected materials.
+The project's Apache-2.0 license does not override those restrictions.
+
+A public Windows Release additionally needs Windows GUI testing, a release
+integrity review and an appropriate Windows executable signing approach.
+Windows SmartScreen may warn about an unsigned application. The private
+ZIP, generated IPA, community translation catalogs and Apple credentials
+must not be uploaded to the release.
+
+Gameloft: https://www.gameloft.com/en/conditions-of-use
+Microsoft SmartScreen: https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation

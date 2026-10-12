@@ -12,9 +12,12 @@ Two separate IPA preparation paths are supported in the source tree:
   See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
   IPA** and does not install or sign itself.
 
-To use the Mac path, export the IPA locally and transfer it privately. To use
-the Windows experimental kit, launch the included run-native-ipa.cmd, choose
-the original ZIP, and wait for the unsigned IPA in the kit folder.
+To use the Mac path, export the IPA locally and transfer it privately.
+The Windows portable kit contains MinionRush Builder.exe. Extract all files,
+launch the GUI, drag an original ZIP onto the window or use Browse, select
+Save As to choose a new output IPA path, and select Create IPA. A private
+Hungarian hu.xlf can be selected optionally. The GUI shows the current step
+and error log, never overwrites an existing IPA and never signs automatically.
 
 Use the independent [Sideloadly application](https://sideloadly.io/) to sign
 and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
