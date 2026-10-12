@@ -20,9 +20,7 @@ from windows_native_package import validate_kit
 
 class WindowsKitTests(unittest.TestCase):
     def validate(self, kit: Path):
-        # In production ROOT resolves to the bundled runtime/ tree.
-        with mock.patch("windows_native_package.ROOT", kit / "runtime"):
-            return validate_kit(kit)
+        return validate_kit(kit)
 
     def fixture(self, root: Path):
         python_zip = root / "python-embed.zip"

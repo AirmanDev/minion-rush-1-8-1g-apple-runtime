@@ -57,5 +57,6 @@ jobs:
           $exe = Join-Path $kit 'python\python.exe'
           & $exe -c 'import windows_native_package; import prepare_native_aot; import native_ipa; print("Embedded runtime imports: PASS")'
           if ($LASTEXITCODE -ne 0) { throw 'Embedded Python import failed' }
-          & $exe (Join-Path $kit 'runtime	ools\windows_native_package.py') --help
+          $toolScript = Join-Path (Join-Path (Join-Path $kit 'runtime') 'tools') 'windows_native_package.py'
+          & $exe $toolScript --help
           if ($LASTEXITCODE -ne 0) { throw 'Portable Windows CLI startup failed' }

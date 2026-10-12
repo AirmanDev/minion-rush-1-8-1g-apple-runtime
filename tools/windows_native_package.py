@@ -15,7 +15,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 from asset_contract import OFFICIAL_ENGINE_SHA256
-from common import ROOT, public_files
+from common import public_files
 from native_ipa import assemble_unsigned_ipa
 from native_macho import file_sha256
 from prepare_native_aot import prepare
@@ -43,7 +43,9 @@ def validate_kit(kit: Path) -> dict:
         if (not isinstance(digest, str) or len(digest) != 64
                 or any(char not in "0123456789abcdef" for char in digest)):
             raise ValueError("invalid Windows kit checksum")
-    runtime_root = ROOT.resolve()
+    if (kit / "runtime").is_symlink():
+        raise ValueError("linked Windows runtime directory")
+    runtime_root = (kit / "runtime").resolve()
     paths = {
         "template_sha256": kit / "MinionRush-native-template-unsigned.zip",
         "compiler_sha256": kit / "a64-compiler.exe",

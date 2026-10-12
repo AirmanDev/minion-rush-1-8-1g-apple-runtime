@@ -107,7 +107,13 @@ Then run:
 
 The kit includes a Python 3.14.7 embeddable interpreter, the locally
 compiled x64 AOT executable, this project's public source tree, and the
-developer-built unsigned iPhone application template. Windows users require
+developer-built unsigned iPhone application template. The portable Python
+python314._pth uses isolated module loading, explicitly permitting only
+python314.zip, the interpreter directory, and the kit's runtime/tools directory.
+No site import or system-wide PYTHONPATH is enabled. The full extracted
+Python interpreter and native-extension files have an additional SHA-256
+inventory; this prevents accidental file mismatches relative to the kit's
+manifest, but does not replace an independently authenticated release signature. Windows users require
 neither Xcode, a Mac, a Python installation nor a C compiler. The input ZIP
 must be provided privately by the end user.
 
