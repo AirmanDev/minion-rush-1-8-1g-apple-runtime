@@ -25,6 +25,7 @@ docs/INSTALLER_DOWNLOAD.md
 docs/INSTALLER_WINDOWS.md
 docs/LEGAL.md
 docs/LOCALIZATION.md
+docs/NATIVE_WINDOWS.md
 docs/TECHNICAL_SOURCES.md
 installer/BackendProcess.swift
 installer/Info.plist
@@ -67,6 +68,7 @@ src/native/guest_runtime.c
 src/native/guest_runtime.h
 src/native/guest_threads.c
 src/native/guest_threads.h
+src/native/host_pages.h
 src/native/host_time.h
 src/native/jni_bridge.c
 src/native/jni_bridge.h
@@ -98,6 +100,7 @@ tests/InstallerViewTests.swift
 tests/safe_area_test.c
 tests/test_installer.py
 tests/test_ipa_archive.py
+tests/test_native_aot.py
 tests/test_tools.py
 tools/asset_contract.py
 tools/build_installer.sh
@@ -116,6 +119,7 @@ tools/package_installer.sh
 tools/package_ios.sh
 tools/prepare_app_icon.swift
 tools/prepare_installer_icon.swift
+tools/prepare_native_aot.py
 tools/project_common.sh
 tools/run_with_timeout.py
 tools/select_ios_simulators.py

@@ -5,7 +5,9 @@ This project does not provide a Windows installer. Use the independent
 exported IPA on an iPhone or iPad. Sideloadly is not bundled with this project
 and is not maintained by its contributors.
 
-Windows cannot build this runtime from the original release ZIP. The Mac
+Windows cannot yet generate an installable IPA from the original release ZIP.
+An [experimental native AOT preparer](NATIVE_WINDOWS.md) can generate private
+ARM64 blocks and assets on Windows, but not a complete signed IPA. The Mac
 installer's **Export IPA** action still requires Apple Silicon, macOS 26.6+,
 Xcode 27, an Apple Account configured in Xcode, and a connected target device.
 The game requires iOS or iPadOS 17 or later; changing an IPA's minimum OS does

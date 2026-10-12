@@ -79,9 +79,13 @@ and installs on one selected, paired iPhone or iPad. The installer requires
 Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
 It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
 for signing, free-account limits, test coverage, and the shared UI contract.
+A [Windows native AOT preparation prototype](docs/NATIVE_WINDOWS.md) can privately
+prepare ARM64 translation from a user-owned original ZIP, but it is not yet
+an IPA builder. The supported Mac installer remains unchanged.
+
 For Windows, use [Sideloadly](https://sideloadly.io/) to re-sign and install an IPA
 created with **Export IPA** on the Mac. There is no project-maintained Windows
-app or Windows ZIP-build workflow. Follow the [Windows guide](docs/INSTALLER_WINDOWS.md)
+app or Windows ZIP-to-IPA build workflow. Follow the [Windows guide](docs/INSTALLER_WINDOWS.md)
 for Apple's iTunes/iCloud prerequisites, account signing, and expiration limits.
 Keep exported IPAs private; they include proprietary game assets. The Sideloadly
 workflow has not been physically tested for this project.

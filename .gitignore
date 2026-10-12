@@ -17,3 +17,6 @@
 __MACOSX/
 __pycache__/
 xcuserdata/
+
+# User-supplied proprietary source archive; never commit.
+/1.8.1g.zip

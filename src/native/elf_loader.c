@@ -1,13 +1,15 @@
 
 #include "elf_loader.h"
 
+#include "host_pages.h"
+#ifndef _WIN32
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #define PAGE_DOWN(x, p) ((x) & ~((uint32_t)(p) - 1))
 #define PAGE_UP(x, p) (((x) + (uint32_t)(p) - 1) & ~((uint32_t)(p) - 1))
@@ -41,6 +43,40 @@ static const char *dyn_str(const mr_elf_image *img, uint32_t off) {
 int mr_elf_load(const char *path, mr_elf_image *img, uint32_t extra_bytes) {
     memset(img, 0, sizeof(*img));
 
+#ifdef _WIN32
+    FILE *input = fopen(path, "rb");
+    if (!input) {
+        err(img, "cannot open: %s", path);
+        return -1;
+    }
+    // The only supported engine is fingerprint-verified and well below 64 MiB.
+    if (fseek(input, 0, SEEK_END) != 0) {
+        fclose(input);
+        err(img, "cannot measure ELF file");
+        return -1;
+    }
+    long measured = ftell(input);
+    if (measured < (long)sizeof(Elf32_Ehdr) || measured > 64L * 1024L * 1024L ||
+        fseek(input, 0, SEEK_SET) != 0) {
+        fclose(input);
+        err(img, "invalid ELF file size");
+        return -1;
+    }
+    size_t fsize = (size_t)measured;
+    void *file = malloc(fsize);
+    if (!file) {
+        fclose(input);
+        err(img, "cannot allocate ELF file buffer");
+        return -1;
+    }
+    size_t count = fread(file, 1, fsize, input);
+    int close_failed = fclose(input) != 0;
+    if (count != fsize || close_failed) {
+        free(file);
+        err(img, "cannot read ELF file");
+        return -1;
+    }
+#else
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
         err(img, "cannot open: %s", path);
@@ -66,6 +102,8 @@ int mr_elf_load(const char *path, mr_elf_image *img, uint32_t extra_bytes) {
         err(img, "file cannot be mapped");
         return -1;
     }
+
+#endif
 
     int rc = -1;
     const Elf32_Ehdr *eh = (const Elf32_Ehdr *)file;
@@ -130,7 +168,7 @@ int mr_elf_load(const char *path, mr_elf_image *img, uint32_t extra_bytes) {
         }
     }
 
-    long page_size = sysconf(_SC_PAGESIZE);
+    long page_size = mr_host_page_size();
     if (page_size <= 0 || (uint64_t)page_size > UINT32_MAX ||
         ((uint32_t)page_size & ((uint32_t)page_size - 1u)) != 0) {
         err(img, "invalid system page size: %ld", page_size);
@@ -152,8 +190,8 @@ int mr_elf_load(const char *path, mr_elf_image *img, uint32_t extra_bytes) {
     img->span = img->image_span + extra_span;
 
     // Host mapping location does not affect guest addresses.
-    void *base = mmap(NULL, img->span, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (base == MAP_FAILED) {
+    void *base = mr_host_pages(img->span);
+    if (!base) {
         err(img, "cannot allocate guest region (%zu bytes)", img->span);
         goto done;
     }
@@ -295,9 +333,13 @@ int mr_elf_load(const char *path, mr_elf_image *img, uint32_t extra_bytes) {
     rc = 0;
 
 done:
+#ifdef _WIN32
+    free(file);
+#else
     munmap(file, fsize);
+#endif
     if (rc != 0 && img->host_base) {
-        munmap(img->host_base, img->span);
+        mr_host_pages_free(img->host_base, img->span);
         img->host_base = NULL;
     }
     return rc;
@@ -474,6 +516,6 @@ void mr_elf_each_code_pointer(const mr_elf_image *img, mr_elf_func_cb cb, void *
 
 void mr_elf_free(mr_elf_image *img) {
     free(img->resolved_imports);
-    if (img->host_base) munmap(img->host_base, img->span);
+    if (img->host_base) mr_host_pages_free(img->host_base, img->span);
     memset(img, 0, sizeof(*img));
 }

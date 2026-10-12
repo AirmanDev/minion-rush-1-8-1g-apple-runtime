@@ -12,8 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#include "host_pages.h"
 
 #define CODE_CAPACITY (256u * 1024u * 1024u)
 #define BLOCK_ROOM 16384u
@@ -2802,10 +2801,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    J.code = mmap(NULL, CODE_CAPACITY, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    J.code = mr_host_pages(CODE_CAPACITY);
     J.capacity = CODE_CAPACITY;
     J.used = 0;
-    if (J.code == MAP_FAILED) {
+    if (!J.code) {
         J.code = NULL;
         fprintf(stderr, "cannot allocate code-image memory\n");
         mr_elf_free(&image);
@@ -2843,7 +2842,7 @@ int main(int argc, char **argv) {
                (double)(VENEER_CAPACITY * VENEER_WORDS * sizeof(uint32_t)) / 1024.0);
     }
 
-    munmap(J.code, CODE_CAPACITY);
+    mr_host_pages_free(J.code, CODE_CAPACITY);
     free(J.blocks);
     free(J.thumb_blocks);
     free(A32_SEEN);
