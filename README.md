@@ -101,6 +101,11 @@ Sideloadly signing and installation, and successful gameplay on a physical
 iPhone running iOS 27. The user also confirmed sound, saved progress,
 Hungarian text, and the original ZIP-derived app icon. This is a verified
 user test, not a guarantee of compatibility across all Windows PCs/devices.
+The Windows kit now includes a local GUI opened by run-native-ipa.cmd. It accepts
+ZIP drag-and-drop or a file chooser, lets the user select the destination,
+shows build activity and supports cancellation. run-native-ipa.ps1 remains the
+CLI route. This GUI addition has not yet passed physical Windows acceptance
+or iPhone retesting; the previously verified CLI pipeline is unchanged.
 Do not publish the template/kit as a release until legal review and remaining
 release tests are complete. See the
 [Windows install and signing guide](docs/INSTALLER_WINDOWS.md).
