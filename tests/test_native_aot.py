@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import contextlib
+import io
+import json
 import os
 import shutil
 import subprocess
@@ -18,10 +21,38 @@ sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
 from prepare_native_aot import (AOT_PRODUCTS, check_destination,
-                                compile_host_compiler, prepare)
+                                compile_host_compiler, prepare, run_logged_process)
 
 
 class NativeAotTests(unittest.TestCase):
+    def test_translator_output_is_forwarded_through_backend_log_protocol(self) -> None:
+        from installer_protocol import LogStream
+        import installer_protocol as protocol
+
+        messages = io.StringIO()
+        script = (
+            "import sys; print('discovery: 10 A32 blocks', flush=True); "
+            "print('translator diagnostics', file=sys.stderr, flush=True)"
+        )
+        with (mock.patch.object(protocol, "PROTOCOL_OUTPUT", messages),
+              contextlib.redirect_stdout(LogStream())):
+            run_logged_process([sys.executable, "-c", script], timeout=10)
+        events = [json.loads(line) for line in messages.getvalue().splitlines()]
+        self.assertEqual([event["type"] for event in events], ["log", "log"])
+        self.assertIn("discovery:", events[0]["message"])
+        self.assertIn("translator diagnostics", events[1]["message"])
+
+    def test_translator_failure_preserves_diagnostics_and_exit_status(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            with self.assertRaises(subprocess.CalledProcessError) as failure:
+                run_logged_process(
+                    [sys.executable, "-c", "print('invalid fixture'); raise SystemExit(7)"],
+                    timeout=10,
+                )
+        self.assertEqual(failure.exception.returncode, 7)
+        self.assertIn("invalid fixture", output.getvalue())
+
     def test_host_compiler_builds_and_rejects_invalid_elf(self) -> None:
         if not shutil.which("clang"):
             self.skipTest("Host Clang not installed")

@@ -34,6 +34,9 @@ and does not authorize otherwise restricted copying or adaptation. See
 
 The [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
 include the standalone Mac and Windows Builders from v1.2.3 onward.
+Version 1.2.6 prevents the AOT compiler's normal diagnostic output from
+being misinterpreted as a Mac UI protocol error. It does not change generated
+ARM64 instructions, game assets or installed save data.
 Version 1.2.5 fixes the native macOS device and signing team dropdown
 appearance in system Dark Mode without changing game conversion.
 Version 1.2.4 makes the shared app version visible in both desktop interfaces,
@@ -133,12 +136,12 @@ the native ARM64 code, block map, engine bindings, and game assets locally.
 The phone reads a validated address profile and executes the already compiled
 ARM64 blocks; it never translates or JIT-compiles original instructions.
 
-**Mac portable Builder (1.2.5):** self-contained, ad hoc signed arm64
+**Mac portable Builder (1.2.6):** self-contained, ad hoc signed arm64
 `.app` with SwiftUI, pinned Python, host AOT compiler and unsigned generic
 iOS template. No Xcode is required to make an unsigned IPA. The optional
 Xcode signing/install route is separate. See [Mac Builder](docs/INSTALLER.md).
 
-**Windows portable Builder (1.2.5):** self-contained Windows x64 `.exe`
+**Windows portable Builder (1.2.6):** self-contained Windows x64 `.exe`
 with native Win32 UI, embedded Python, host AOT compiler and the same
 unsigned generic iOS template. Windows 11 ARM uses x64 emulation. Sign the
 result with a separately installed signing tool. See
