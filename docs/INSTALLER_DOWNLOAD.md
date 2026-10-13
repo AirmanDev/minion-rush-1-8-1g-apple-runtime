@@ -1,6 +1,9 @@
 # Minion Rush Installer 1.1.0 RC1 (macOS)
 
-This public download is an asset-free Mac installer. It imports a lawfully
+This public download is the limited Xcode-based Mac installer, not the
+full portable Builder. The full Mac and Windows Builder binaries are not
+public release assets pending separate distribution-rights review.
+This is an asset-free Mac installer. It imports a lawfully
 obtained original Minion Rush 1.8.1g ZIP, signs the iOS app using the owner's
 Xcode setup, and installs it on a connected device or exports a signed IPA.
 It does not contain the original game, an Apple account, signing credentials,

@@ -34,7 +34,8 @@ contain an asset-free Mac application for the **Xcode signing/import route**.
 The standalone unsigned-IPA Builders are maintained and tested privately but
 are not public downloads: their prepared iOS template contains source-derived
 game metadata, and the bundled Hungarian catalog may contain protected text.
-See [legal and distribution scope](docs/LEGAL.md).
+See [release scope and requirements](docs/RELEASE_SCOPE.md) and
+[legal context](docs/LEGAL.md).
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,

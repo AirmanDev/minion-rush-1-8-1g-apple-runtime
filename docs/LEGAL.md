@@ -140,6 +140,11 @@ References:
 - https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation
 - https://sideloadly.io/
 
+A detailed inventory of the current Mac/Windows private packages and
+the two options for a public full Builder release are maintained in
+[RELEASE_SCOPE.md](RELEASE_SCOPE.md). The private packages were built and
+tested locally; readiness to run does not establish distribution rights.
+
 ## Release decision
 
 The public GitHub release may include the project source and the asset-free,

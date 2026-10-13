@@ -27,6 +27,7 @@ docs/INSTALLER_WINDOWS.md
 docs/LEGAL.md
 docs/LOCALIZATION.md
 docs/NATIVE_WINDOWS.md
+docs/RELEASE_SCOPE.md
 docs/TECHNICAL_SOURCES.md
 installer/BackendProcess.swift
 installer/BuilderPalette.swift
@@ -114,6 +115,7 @@ tests/test_native_aot.py
 tests/test_native_ipa.py
 tests/test_native_ipa_output.py
 tests/test_native_macos_package.py
+tests/test_package_private_builders.py
 tests/test_tools.py
 tests/test_windows_icon.py
 tests/test_windows_native.py
@@ -145,6 +147,7 @@ tools/native_macho.py
 tools/native_macos_package.py
 tools/package_installer.sh
 tools/package_ios.sh
+tools/package_private_builders.py
 tools/package_windows_release.py
 tools/prepare_app_icon.swift
 tools/prepare_installer_icon.swift
