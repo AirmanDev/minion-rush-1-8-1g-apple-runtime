@@ -32,35 +32,22 @@ and does not authorize otherwise restricted copying or adaptation. See
 - Source development and native Apple signing still require the appropriate
   SDK, developer tools and local Python interpreter.
 
-The [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
-include the standalone Mac and Windows Builders from v1.2.3 onward.
-Version 1.2.8 corrects the Mac activity-log header so the title and
-Follow output switch stay readable while the log action buttons share a
-separate two-column toolbar. The game compiler and device installation
-logic are unchanged.
-Version 1.2.7 makes the Mac workflow device-first: choose an original
-ZIP and a paired iPhone or iPad, then use Install Game to assemble the native
-IPA locally, sign it using an already configured compatible provisioning
-profile, and install without a second import or Xcode build. Save IPA remains
-optional for creating a standalone unsigned package. The log viewer wraps
-long lines instead of scrolling horizontally. Windows retains its normal
-Create IPA workflow because desktop Windows cannot use local Xcode signing.
-Version 1.2.6 prevents the AOT compiler's normal diagnostic output from
-being misinterpreted as a Mac UI protocol error. It does not change generated
-ARM64 instructions, game assets or installed save data.
-Version 1.2.5 fixes the native macOS device and signing team dropdown
-appearance in system Dark Mode without changing game conversion.
-Version 1.2.4 makes the shared app version visible in both desktop interfaces,
-improves paired-device selection and refresh on Mac, and preserves the
-optional Magyar pack. The 1.1.0 Xcode-only importer remains a separate release.
-Its generic unsigned iOS template is compiled without the original game,
-precomputed game address tables, game assets, or the private Hungarian XLIFF.
-A separate target-only Hungarian JSON pack is included, with no original
-English source strings, and is compiled using the user's original ZIP.
-The desktop Builder generates the entire user-specific AOT profile and code
-before assembling the unsigned IPA. This reduces risks associated with
-distributing game-derived data but does not grant rights to a game's port.
-See [release scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
+The [GitHub Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
+page provides the initial public distribution of **Unofficial IPA Builder v1.2.8**.
+It includes the complete portable Mac ARM64 application, the Windows x64
+executable and a SHA-256 checksum file. Only these two desktop Builders are
+provided; no original game ZIP or generated IPA is distributed.
+
+The Mac Builder accepts an original ZIP and a selected Xcode-paired device.
+**Install Game** assembles the native game once, signs it with an existing
+matching local development profile and installs it directly. **Save IPA**
+exports an unsigned IPA instead. Windows builds the unsigned IPA for signing
+with a separately installed tool. Both include optional additional Hungarian
+text, compiled with the user's original game data at build time.
+
+See [Mac instructions](docs/INSTALLER.md),
+[Windows instructions](docs/INSTALLER_WINDOWS.md),
+[distribution scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
 
 ## Runtime test status
 
@@ -71,26 +58,19 @@ can explicitly approve the application in Privacy & Security; managed
 systems may prevent it. Signing an iOS IPA for device installation is
 separate and still required.
 
-Version 1.2.3 finalizes third-party notices, independent desktop branding
-and bundled source-stripped language packs. It does not modify the iOS engine,
-loading overlay or ARM64 compiler.
-The portable application is titled "Unofficial IPA Builder", with Minion Rush
-1.8.1g named solely as the supported original game. Source-controlled and
-bundled MinGW-w64, Python and GCC runtime notices are checksum-checked. The 1.2.2 working baseline
-remains available privately for comparison.
+The desktop packages pass source integrity, bundled runtime notices,
+checksum validation and Windows virtual-machine self-tests. A native Mac
+Builder built and signed an IPA using a privately supplied original ZIP;
+the owner also confirmed a successful direct installation and gameplay
+on a physical iPhone, including working audio and retained save data.
+This does not establish compatibility with all devices or iOS versions.
 
-Version 1.2.1 fixed a black screen caused by the missing
-`MR_RUNTIME_PROFILE` setting in the iOS entry point. The owner confirmed that an IPA built with
-1.2.1 started on a physical iPhone.
-
-Version 1.2.2 adds a startup overlay with game-data, graphics and engine
-initialization messages. It closes after the first rendered frame rather
-than a fixed delay. The overlay and gameplay rendering were tested on the
-iOS 27.0 Simulator; the profile-based runtime was also tested on iOS 18.6.
-The owner confirmed the 1.2.2 loading overlay and gameplay on an iPhone.
-The owner additionally confirmed gameplay, audio and preserved saves on an
-iPhone 17 Pro. Clean-device installation and broader device/OS coverage remain
-separate tests.
+The Builder displays an independent product title, uses a project-owned icon
+and identifies Minion Rush 1.8.1g only to describe compatible input.
+Mac and Windows include the applicable Python, GCC and other inventoried
+third-party notices. Original game files and the private editable XLIFF
+are excluded. The translated Hungarian target-only pack may separately
+require appropriate rights; see [legal context](docs/LEGAL.md).
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -142,7 +122,7 @@ game data. The complete smoke test fails if a final network guard is reached.
 
 The Mac and Windows applications share the desktop-only ARM32/Thumb to
 ARM64 compiler and the generic iOS template ABI. A user supplies their own
-original ZIP and selects an unsigned IPA destination. The Builder generates
+original ZIP and chooses installation or an optional unsigned IPA export. The Builder generates
 the native ARM64 code, block map, engine bindings, and game assets locally.
 The phone reads a validated address profile and executes the already compiled
 ARM64 blocks; it never translates or JIT-compiles original instructions.
@@ -166,25 +146,16 @@ language table using the user's own source ZIP. Additional community packs
 use the same framework. The rights to redistribute third-party translations
 must be considered separately from the original game binaries.
 
-The previously published 1.1.0 Xcode-only Mac application remains a separate
-download. Build the asset-free Mac installer with `./tools/package_installer.sh`;
-the full portable Mac Builder is packaged using
-`tools/build_portable_mac_builder.py`. Unsigned IPA creation is disabled
-in the separate asset-free Xcode-only installer.
+This is the sole public Builder release. The source repository retains the
+development and test history, but older internal package versions are not
+distributed. The source-only Xcode importer is a developer tool, not an
+additional release download.
 
-The 1.2.3 Mac and Windows Builders passed unsigned IPA creation from the
-original ZIP. The Windows test used the native GUI in a Windows 11 ARM VM
-with x64 emulation. IPA contents and checksums were checked separately.
-See [release scope](docs/RELEASE_SCOPE.md) for the test record.
-
-The identified Python components and GCC runtime-license texts are included
-in the candidate and checked against pinned digests. Residual user-side
-transformation rights and release-decision considerations are tracked in
-[third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
-
-The 1.2.3 binaries must not be described as legally cleared or fully
-device-tested until the outstanding rights and physical-device checks
-described in [release scope](docs/RELEASE_SCOPE.md) are complete.
+Third-party runtime notices are included and validated. Game adaptation,
+trademark and translation rights remain separate issues; publishing the
+tool is not an endorsement by Gameloft or permission to distribute a game
+archive. The current limitations are recorded in
+[third-party and distribution notes](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
 
 For the command-line workflow, create the ignored `assets` directory:
 
