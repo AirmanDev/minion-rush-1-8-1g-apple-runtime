@@ -39,6 +39,16 @@ without confirmation and never signs automatically. Tab and Shift+Tab move betwe
 fields and buttons, Enter presses the focused button, and the window scales
 with the display's DPI setting.
 
+The Windows Builder GUI and portable EXE share the same original
+blue-and-gold icon at 16, 24, 32, 48, 64, 128 and 256 px. Both executables
+contain a Windows icon resource, so Explorer, the taskbar and the window
+title bar use the application icon without sidecar assets. The icon is
+generated from project-owned artwork, not original game images.
+
+Completed-build diagnostics now refresh before the success dialog opens;
+the diagnostic status therefore shows Completed rather than Running while
+the success dialog is displayed.
+
 The preferred Windows user-facing package is now a single portable EXE.
 It unpacks a verified temporary copy of the runtime (the embedded Python,
 native converter, unsigned iOS template and the privately provided language

@@ -16,10 +16,13 @@ if [[ "$mode" == "utm-test" ]]; then
   target="$OUT/windows/utm-test/MinionRush Builder.exe"
   define=-DMR_UTM_TEST
 fi
+x86_64-w64-mingw32-windres -i "$PROJECT_ROOT/src/windows/builder.rc" \
+  -o "$OUT/windows/builder_icon.o" -O coff
 x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror \
   -municode -mwindows -D_WIN32_WINNT=0x0A00 "$define" \
   -Wl,--dynamicbase,--nxcompat,--high-entropy-va \
   -o "$target" "$PROJECT_ROOT/src/windows/ipa_builder.c" \
+  "$OUT/windows/builder_icon.o" \
   -lole32 -luuid -lcomctl32 -lshell32 -lgdi32 -lcomdlg32
 python3 - "$target" <<'PY'
 import sys
@@ -36,6 +39,7 @@ if [[ "$mode" == "release" ]]; then
     -Wl,--dynamicbase,--nxcompat,--high-entropy-va \
     -o "$OUT/windows/MinionRush Portable.exe" \
     "$PROJECT_ROOT/src/windows/onefile_launcher.c" \
+    "$OUT/windows/builder_icon.o" \
     -lole32 -lshell32 -luser32 -ladvapi32
   python3 - "$OUT/windows/MinionRush Portable.exe" <<'PYLAUNCH'
 import sys

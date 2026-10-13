@@ -1490,13 +1490,12 @@ static void finish_build(DWORD exit_code) {
     }
     set_busy(FALSE);
     if (detail_dirty) show_detail(pending_detail);
-    if (exit_code == 0 && regular_file(last_output)) {
+    BOOL completed = exit_code == 0 && regular_file(last_output);
+    if (completed) {
         set_status(STATE_OK, L"Unsigned IPA created. Sign with Sideloadly before installing.");
         show_detail(last_output);
         EnableWindow(ctl[ID_OPEN_FOLDER], TRUE);
         SetFocus(ctl[ID_OPEN_FOLDER]);
-        MessageBoxW(main_window, tr(L"Unsigned IPA created successfully. It is ready for signing with Sideloadly."),
-                    tr(L"Build complete"), MB_OK | MB_ICONINFORMATION);
     } else if (aborted) {
         set_status(STATE_STOPPED, L"Build cancelled.");
     } else {
@@ -1505,7 +1504,12 @@ static void finish_build(DWORD exit_code) {
                     GetFileAttributesW(last_scratch) != INVALID_FILE_ATTRIBUTES);
         set_log_visible(TRUE);
     }
+    /* The success dialog pumps its own event loop. Publish the final
+       diagnostic state before showing it, not when the dialog closes. */
     refresh_diagnostics();
+    if (completed)
+        MessageBoxW(main_window, tr(L"Unsigned IPA created successfully. It is ready for signing with Sideloadly."),
+                    tr(L"Build complete"), MB_OK | MB_ICONINFORMATION);
 }
 
 static void pick_into(int target, BOOL is_save) {
@@ -1726,8 +1730,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE unused, PWSTR arguments, int s
     cls.lpfnWndProc = window_proc;
     cls.lpszClassName = L"MinionRushNativeIpaBuilder";
     cls.hCursor = LoadCursorW(NULL, IDC_ARROW);
-    cls.hIcon = LoadIconW(NULL, IDI_APPLICATION);
-    if (!RegisterClassExW(&cls)) return 1;
+    cls.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(101));
+    cls.hIconSm = (HICON)LoadImageW(instance, MAKEINTRESOURCEW(101),
+                                    IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+                                    GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+    if (!cls.hIcon || !cls.hIconSm || !RegisterClassExW(&cls)) return 1;
 #ifdef MR_UTM_TEST
     LPCWSTR title = L"Minion Rush IPA Builder - UTM test build";
 #else

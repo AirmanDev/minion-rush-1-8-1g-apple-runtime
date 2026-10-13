@@ -55,17 +55,23 @@ jobs:
           $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (-not $vs) { throw 'Visual Studio C toolchain not found' }
           $vsdevcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
-          $command = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $gui + '" src\windows\ipa_builder.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
+          $resource = Join-Path $temp 'MinionRush-builder-icon.res'
+          $rcCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && rc /nologo /fo"' + $resource + '" src\windows\builder.rc'
+          & cmd.exe /d /s /c $rcCommand
+          if ($LASTEXITCODE -ne 0) { throw 'Windows icon resource build failed' }
+          $command = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $gui + '" src\windows\ipa_builder.c "' + $resource + '" /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
           & cmd.exe /d /s /c $command
           if ($LASTEXITCODE -ne 0) { throw 'Windows GUI C build failed' }
           $testGui = Join-Path $temp 'MinionRush Builder UTM test.exe'
-          $testCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /DMR_UTM_TEST /D_WIN32_WINNT=0x0A00 /Fe:"' + $testGui + '" src\windows\ipa_builder.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
+          $testCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /DMR_UTM_TEST /D_WIN32_WINNT=0x0A00 /Fe:"' + $testGui + '" src\windows\ipa_builder.c "' + $resource + '" /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
           & cmd.exe /d /s /c $testCommand
           if ($LASTEXITCODE -ne 0) { throw 'Windows UTM test GUI C build failed' }
           $launcher = Join-Path $temp 'MinionRush Portable.exe'
-          $launcherCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /D_CRT_SECURE_NO_WARNINGS /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $launcher + '" src\windows\onefile_launcher.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib shell32.lib advapi32.lib'
+          $launcherCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /D_CRT_SECURE_NO_WARNINGS /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $launcher + '" src\windows\onefile_launcher.c "' + $resource + '" /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib shell32.lib advapi32.lib'
           & cmd.exe /d /s /c $launcherCommand
           if ($LASTEXITCODE -ne 0) { throw 'Windows one-file launcher build failed' }
+          python tools/verify_windows_icon.py --ico src/windows/builder.ico $gui $testGui $launcher
+          if ($LASTEXITCODE -ne 0) { throw 'Windows application icon verification failed' }
           $template = Join-Path $temp 'unsigned-test-template.zip'
           [System.IO.File]::WriteAllBytes($template, [byte[]](1, 2, 3))
           $kit = Join-Path $temp 'kit'

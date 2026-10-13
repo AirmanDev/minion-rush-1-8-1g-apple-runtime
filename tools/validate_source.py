@@ -121,6 +121,14 @@ def read_tree() -> dict[str, str]:
         if path.is_symlink():
             raise SystemExit(f"symbolic link in source tree: {relative}")
         blob = path.read_bytes()
+        if relative == "src/windows/builder.ico":
+            # The application icon is the only binary resource tracked by
+            # this source manifest. Check its header and keep its filename
+            # visible to the missing/unexpected-file checks.
+            if not blob.startswith(b"\x00\x00\x01\x00") or not (128 < len(blob) < 65536):
+                raise SystemExit("invalid Windows application icon")
+            tree[relative] = "[verified binary Windows icon]"
+            continue
         try:
             tree[relative] = blob.decode("utf-8")
         except UnicodeDecodeError as exc:

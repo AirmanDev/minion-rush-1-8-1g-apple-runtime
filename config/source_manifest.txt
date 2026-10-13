@@ -94,6 +94,8 @@ src/native/shim_zlib.c
 src/native/window_ios.h
 src/native/window_ios.m
 src/native/window_macos.m
+src/windows/builder.ico
+src/windows/builder.rc
 src/windows/ipa_builder.c
 src/windows/onefile_launcher.c
 test.sh
@@ -106,12 +108,14 @@ tests/test_localization_optional.py
 tests/test_native_aot.py
 tests/test_native_ipa.py
 tests/test_tools.py
+tests/test_windows_icon.py
 tests/test_windows_native.py
 tools/asset_contract.py
 tools/build_installer.sh
 tools/build_ios.sh
 tools/build_ios_template.sh
 tools/build_windows_gui.sh
+tools/build_windows_icon.py
 tools/build_windows_kit.py
 tools/build_windows_onefile.py
 tools/common.py
@@ -143,5 +147,6 @@ tools/validate_assets.py
 tools/validate_installer.py
 tools/validate_source.py
 tools/verify_ios_startup.py
+tools/verify_windows_icon.py
 tools/windows_native_package.py
 tools/windows_utm_transport.py
