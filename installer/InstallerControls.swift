@@ -166,8 +166,8 @@ struct BuilderButtonStyle: ButtonStyle {
     return configuration.label
       .font(.system(size: 14, weight: .semibold))
       .foregroundStyle(primary ? BuilderPalette.navy : BuilderPalette.text)
-      .frame(minHeight: 40)
-      .padding(.horizontal, 15)
+      .frame(minWidth: 128, minHeight: 42)
+      .padding(.horizontal, 12)
       .background(
         enabled
           ? (primary

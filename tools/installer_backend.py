@@ -230,12 +230,39 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
                 build_unsigned(args.archive, args.destination, args.native_kit,
                                hungarian=not args.no_hungarian, overwrite=args.overwrite)
             return {"ipa_path": str(args.destination)}
-        if args.command == "devices":
+        if args.command == "build-install":
+            from native_device_install import sign_and_install, signing_material
+            from native_macos_package import build_unsigned
+            signing_settings(args.team, args.bundle)
             chain = toolchain()
-            return {
-                "toolchain": chain["version"],
-                "devices": query_devices(command_environment(chain["developer"])),
-            }
+            environment = command_environment(chain["developer"])
+            devices = query_devices(environment)
+            selected = next((item for item in devices if item["id"] == args.device), None)
+            if selected is None:
+                raise ValueError("Selected device is not reachable. Refresh the device list.")
+            material = signing_material(selected, args.team, args.bundle,
+                                        environment, run_command)
+            with tempfile.TemporaryDirectory(prefix="minion-rush-private-install-") as tmp:
+                ipa = Path(tmp) / "unsigned.ipa"
+                emit("progress", message="Building native game IPA")
+                with contextlib.redirect_stdout(LogStream()):
+                    build_unsigned(args.archive, ipa, args.native_kit,
+                                   hungarian=not args.no_hungarian)
+                sign_and_install(ipa, selected, args.team, args.bundle,
+                                 environment, run_command, emit, material)
+            return {"installed": True, "device": args.device}
+        if args.command in ("devices", "status"):
+            result: dict[str, object] = {}
+            try:
+                chain = toolchain()
+                environment = command_environment(chain["developer"])
+                result["toolchain"] = chain["version"]
+                result["devices"] = query_devices(environment)
+                result["teams"] = discover_teams(environment)
+            except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                result["toolchain_error"] = str(exc)
+                result["devices"] = []
+            return result
         emit("progress", message="Preparing runtime")
         runtime = prepare_runtime(source, workspace)
         assets = workspace / "assets"
@@ -246,22 +273,6 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             with contextlib.redirect_stdout(LogStream()):
                 report = install_release(args.archive, runtime, assets)
             return {"assets": asdict(report)}
-        if args.command == "status":
-            result: dict[str, object] = {}
-            try:
-                result["assets"] = asdict(inspect_assets(runtime, assets))
-            except (OSError, ValueError) as exc:
-                result["asset_error"] = str(exc)
-            try:
-                chain = toolchain()
-                result["toolchain"] = chain["version"]
-                environment = command_environment(chain["developer"])
-                result["devices"] = query_devices(environment)
-                result["teams"] = discover_teams(environment)
-            except (OSError, ValueError, subprocess.SubprocessError) as exc:
-                result["toolchain_error"] = str(exc)
-                result["devices"] = []
-            return result
         chain = toolchain()
         emit("log", message=chain["version"])
         environment = command_environment(chain["developer"])
@@ -291,6 +302,14 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
     commands.add_parser("devices")
+    direct = commands.add_parser("build-install")
+    direct.add_argument("--archive", type=Path, required=True)
+    direct.add_argument("--native-kit", type=Path, required=True)
+    direct.add_argument("--device", required=True)
+    direct.add_argument("--team", required=True)
+    direct.add_argument("--bundle", required=True)
+    direct.add_argument("--no-additional-languages", "--no-hungarian",
+                        dest="no_hungarian", action="store_true")
     importer = commands.add_parser("import")
     importer.add_argument("archive", type=Path)
     native = commands.add_parser("build-native")

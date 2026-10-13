@@ -162,6 +162,9 @@ struct InstallerTests {
     defer { defaults.removePersistentDomain(forName: suite) }
     let model = try InstallerModel(resources: resources, workspace: temporary, defaults: defaults)
     try require(!model.canInstall, "Initial Install must be disabled")
+    try require(!model.canInstallGame, "Game installation requires the portable native kit")
+    try require(model.text("installGame") == "Install Game", "Primary action label")
+
     model.interfaceLanguage = "hu"
     try require(
       model.text("buildIPA") == "IPA k\u{00e9}sz\u{00ed}t\u{00e9}se",

@@ -118,6 +118,7 @@ tests/test_ipa_archive.py
 tests/test_localization_optional.py
 tests/test_mac_portable_runtime.py
 tests/test_native_aot.py
+tests/test_native_device_install.py
 tests/test_native_ipa.py
 tests/test_native_ipa_output.py
 tests/test_native_macos_package.py
@@ -160,6 +161,7 @@ tools/ipa_archive.py
 tools/list_ios_devices.py
 tools/localize.py
 tools/mac_portable_runtime.py
+tools/native_device_install.py
 tools/native_ipa.py
 tools/native_ipa_output.py
 tools/native_macho.py

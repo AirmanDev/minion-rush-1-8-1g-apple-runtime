@@ -31,6 +31,30 @@ request explicit approval if the app carries download quarantine.
 macOS 26.6 or later is required.
 This does not change the game executable's macOS 14 deployment minimum.
 
+### One-step game installation
+
+On Mac v1.2.7 or later, choose the original ZIP, select the connected
+iPhone or iPad and press Install Game. The same local AOT assembler creates
+an ephemeral unsigned IPA, then the Builder signs its app with a matching
+locally available Apple development profile and installs it using devicectl.
+The signing settings can be expanded if the default Team or bundle identifier
+requires correction. Keep the same bundle identifier when updating a game to
+preserve its on-device save container.
+
+If Xcode has not created a development provisioning profile covering the
+selected device and identifier, configure automatic signing in Xcode first.
+The Builder does not distribute or create developer certificates, and never
+uploads the user's original game data. The exported IPA is optional; use
+Save IPA to create an unsigned file for later private signing elsewhere.
+An IPA built for someone else will require their own appropriate signature
+before installation.
+
+The log area wraps long compiler lines and automatically follows vertical
+progress only. Any unsuccessful signing or installation is reported as a
+failure; the temporary source and signing material are cleared afterward.
+Windows remains a Create IPA-only application because it does not have
+Apple's local Xcode installation and device signing integration.
+
 ### Compiler logs and application status
 
 Native AOT compiler diagnostics are logged through the same typed JSON
@@ -97,67 +121,38 @@ which is kept as a developer-side build input. The portable app is about
 51 MB, and its unsigned IPA workflow does not create redundant cached
 public source snapshots. The Xcode signing path retains source validation.
 
-The separate public Xcode-only app is built without game assets or a native iOS template.
-Its **Create IPA** action is therefore disabled; it supports the existing
-Xcode-based import, signed IPA export, and device installation instead.
-The separately built portable app includes a verified game-independent iOS
-template, the native ARM64 translator, and an embedded Python runtime.
-No translated game text or precomputed engine-derived metadata is bundled.
-It does not embed the original game ZIP. In the private app, select your ZIP
-and use **Create IPA** for unsigned output. For Xcode signing, choose
-**Import ZIP for signed installation**. Existing assets are replaced only after
-the entire candidate passes the shared engine, icon, game-data, and integrity
-checks. Rejected imports and cancellation before the commit leave the previous
-assets intact. Once committed, the new validated asset tree remains installed.
+The complete portable Builder embeds a verified generic template, host AOT
+compiler and Python runtime. The source-only Xcode importer does not include
+the native kit. Use the portable Mac Builder for this maintained workflow.
 
-Connect the device, unlock it, trust the Mac, and enable Developer Mode. Choose
-the device and enter its signing details. The installer discovers Team IDs
-from local Xcode provisioning profiles when available; these are suggestions,
-not proof that a certificate or account is currently usable. The user can
-always enter a Team ID manually. The installer does not collect Apple Account
-passwords or export private signing keys.
+Connect the device, unlock it, trust the Mac, and enable Developer Mode.
+Choose the original ZIP, select a device and press **Install Game**.
+The ZIP is validated locally and native ARM64 game code is generated once.
+A matching existing Xcode provisioning profile and local development
+certificate are checked *before* compilation. The locally built unsigned
+IPA is then unpacked, signed and installed on the selected device. No second
+ZIP import or Xcode game build is performed. On success the temporary IPA
+and signed staging files are removed. The app is not uninstalled during
+updates, so keep the previously used bundle identifier to retain its save
+container.
 
-For a new Personal Team with no cached profile, run a small iOS app once from
-Xcode on your device, selecting your team in Signing & Capabilities. Xcode
-creates the development profile. Return to the installer and choose Refresh
-to discover that Team ID; no manual project-file editing is required.
+**Signing settings** contains the detected local Team and the bundle
+identifier. These options are normally left unchanged. If no profile
+covers the selected device and identifier, use Xcode automatic signing once
+to register the device and refresh the Builder. Free Personal Team profiles
+normally expire after seven days and have a limit on installed apps.
 
-Use your own bundle identifier for a new installation. Keep the same signing
-team and bundle identifier when updating an existing game. The installer never
-uninstalls the existing app; changing its identifier creates a separate app
-with a separate data container. A free Personal Team allows at most three
-installed apps per device. Its profiles expire after seven days. If three
-free-signed apps are already installed, remove one yourself before adding a
-separate app, or update a matching existing app instead. The installer does
-not remove apps or change their identifiers automatically.
+**Save IPA...** creates an optional unsigned IPA at a chosen location
+without signing or installing it. This is useful for a private handoff to
+someone who can sign the IPA for their own device. Do not distribute the
+original game ZIP or generated IPA publicly without appropriate rights.
+Replacement of an existing export requires confirmation.
 
-**Install** becomes available after import, device selection, toolchain checks,
-and signing-input validation. It builds, signs, installs, and verifies startup
-through `tools/deploy_ios.sh`. Apple may still reject provisioning, or ask the
-user to unlock or approve something on the device. The activity log opens for
-import, export, installation, and failures, not for a successful routine refresh.
-It streams ZIP extraction, APK verification, asset copying
-and validation, build output, signing, installation, and startup checks. Each
-operation also saves a complete private log; **Open full log** opens the current
-file. **Follow output** can be disabled to inspect earlier lines. The UI keeps
-a bounded recent tail rather than rendering an unlimited build transcript.
-No device is installed automatically on app launch or archive import.
-
-**Export IPA** uses the same build, signing, and packaging steps, but stops before
-device installation. Choose a save location in the native save dialog. The selected
-device must already be connected so Xcode can register it in the profile. The
-resulting IPA includes private assets and device-bound signing material; never
-publish it or commit it to Git. Transfer it privately for installation with
-[Sideloadly on Windows](INSTALLER_WINDOWS.md). Sideloadly's Apple ID mode can
-re-sign the IPA for another device or renew an expired profile; installation
-without re-signing still requires a valid profile for that exact device.
-Failed archive writes preserve an existing IPA. The destination cannot be inside
-the signed app bundle, because creating an archive there would modify that bundle.
-
-**Cancel** stops the worker and its deployment process group. A device install
-is not reversible: cancellation during that phase may leave an installed app.
-It never deletes the existing app or its data. Quitting during an operation
-requires confirmation and waits for cancellation cleanup.
+**Cancel** interrupts the current process; it does not uninstall or erase
+existing game data. Cancellation during an active installation cannot
+necessarily reverse that installation. The full activity log remains
+available locally for troubleshooting. Long compiler lines wrap at the
+left edge, with vertical following only.
 
 ## Data and architecture
 
@@ -215,15 +210,13 @@ and trailing newlines cannot pass one layer and fail another.
 
 ## Native Mac and Windows consistency
 
-The portable Mac Builder offers the same primary workflow as Windows:
-choose the original ZIP and unsigned IPA destination, create the IPA and
-inspect the detailed log. Xcode signing and device selection are optional.
-The Device Refresh control runs a standalone Xcode device query without
-reimporting the game or rechecking the entire runtime. Paired iPhones and
-iPads are selectable when Xcode reports them. If a device is paired but not
-currently reachable, unlock it, reconnect it and refresh; this does not
-change any installed game or save file. The optional game-language toggle is enabled
-by the included Hungarian target-only translation pack.
+The Mac and Windows Builders use the same host ARM64 translator, source
+validation, optional Hungarian language pack, theme and release version.
+Windows creates an unsigned IPA for separate signing. Mac additionally
+offers direct installation to a paired iPhone or iPad, using a compatible
+local Apple development identity and provisioning profile. The Mac app
+also has optional Save IPA, without a mandatory output destination.
+Its device Refresh button checks Xcode directly without reimporting assets.
 English and Magyar switch the Builder interface independently of the
 game's language resources.
 The primary action is gold; selected language indicators are solid green,

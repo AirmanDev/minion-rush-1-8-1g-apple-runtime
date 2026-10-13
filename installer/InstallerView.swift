@@ -7,7 +7,7 @@ struct InstallerView: View {
   @State private var choosingArchive = false
   @State private var showLog = false
   @State private var followLog = true
-  @State private var showSigned = true
+  @State private var showSigningSettings = false
   @State private var confirmReplace = false
   @State private var dropTarget = false
 
@@ -21,10 +21,11 @@ struct InstallerView: View {
         ScrollView {
           VStack(alignment: .leading, spacing: 18) {
             buildCard
+            InstallerCard(title: text("device")) { deviceSection }
+            signingSettings
             actionRow
             statusCard
             activityLog.id("activityLog")
-            signedSection
           }
           .padding(28)
         }
@@ -119,15 +120,6 @@ struct InstallerView: View {
           .font(.caption).foregroundStyle(BuilderPalette.success)
         }
 
-        BuilderInputRow(
-          title: text("outputLabel"),
-          value: model.outputURL.path,
-          button: text("saveAs"),
-          identifier: "installer.saveAs"
-        ) {
-          chooseOutput()
-        }.disabled(model.busy)
-
         VStack(alignment: .leading, spacing: 9) {
           HStack {
             Text(text("languageTitle")).font(.system(size: 15, weight: .semibold))
@@ -176,16 +168,14 @@ struct InstallerView: View {
 
   private var actionRow: some View {
     HStack(spacing: 12) {
-      Button(text("buildIPA")) {
-        if FileManager.default.fileExists(atPath: model.outputURL.path) {
-          confirmReplace = true
-        } else {
-          model.buildNative(overwrite: false)
-        }
-      }
-      .buttonStyle(BuilderButtonStyle(role: .primary))
-      .disabled(!model.canBuildIPA)
-      .accessibilityIdentifier("installer.buildIPA")
+      Button(text("installGame")) { model.installGame() }
+        .buttonStyle(BuilderButtonStyle(role: .primary))
+        .disabled(!model.canInstallGame)
+        .accessibilityIdentifier("installer.installGame")
+      Button(text("saveIPA")) { chooseOutput() }
+        .buttonStyle(BuilderButtonStyle(role: .secondary))
+        .disabled(!model.canBuildIPA)
+        .accessibilityIdentifier("installer.saveIPA")
       Button(text("cancel")) { model.cancel() }
         .buttonStyle(BuilderButtonStyle(role: .secondary))
         .disabled(!model.busy || model.cancelling)
@@ -196,6 +186,27 @@ struct InstallerView: View {
       }
       .buttonStyle(BuilderButtonStyle(role: .secondary))
       .disabled(model.unsignedIPA == nil)
+    }
+  }
+
+  private var signingSettings: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Button {
+        showSigningSettings.toggle()
+      } label: {
+        HStack {
+          Text(text("signingSettings")).font(.subheadline.weight(.semibold))
+          Image(systemName: showSigningSettings ? "chevron.up" : "chevron.down")
+        }
+        .foregroundStyle(BuilderPalette.navy)
+      }
+      .buttonStyle(.plain)
+      .accessibilityIdentifier("installer.signingSettings")
+      if showSigningSettings {
+        InstallerCard(title: text("signingSettings")) { signingSection }
+      } else if !model.validSigning {
+        Text(text("signingNeeded")).font(.caption).foregroundStyle(BuilderPalette.muted)
+      }
     }
   }
 
@@ -266,12 +277,14 @@ struct InstallerView: View {
                 .foregroundStyle(BuilderPalette.text)
             }
             ScrollViewReader { reader in
-              ScrollView([.horizontal, .vertical]) {
+              ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                   Text(model.log.isEmpty ? text("emptyLog") : model.log)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(BuilderPalette.text)
                     .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                   Color.clear.frame(height: 1).id("logEnd")
                 }.frame(maxWidth: .infinity, alignment: .leading)
               }
@@ -284,47 +297,6 @@ struct InstallerView: View {
               }
             }
           }
-        }
-      }
-    }
-  }
-
-  private var signedSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Button {
-        showSigned.toggle()
-      } label: {
-        HStack {
-          Text(text("signedSection")).font(.headline)
-          Spacer()
-          Image(systemName: showSigned ? "chevron.up" : "chevron.down")
-        }
-        .foregroundStyle(BuilderPalette.text)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      Text(text("signedHelp")).font(.caption).foregroundStyle(BuilderPalette.muted)
-      if showSigned {
-        if model.assets == nil {
-          Button(text("importForSigning")) { model.importArchiveForSigning() }
-            .buttonStyle(BuilderButtonStyle(role: .secondary))
-            .disabled(model.busy || model.archiveURL == nil)
-            .accessibilityIdentifier("installer.importForSigning")
-        }
-        InstallerCard(title: text("device")) { deviceSection }
-        InstallerCard(title: text("signedSection")) { signingSection }
-        HStack(spacing: 12) {
-          Button(text("exportIPA")) { chooseSignedExport() }
-            .buttonStyle(BuilderButtonStyle(role: .secondary))
-            .disabled(!model.canInstall)
-            .accessibilityIdentifier("installer.exportIPA")
-          Button(text("install")) { model.install() }
-            .buttonStyle(BuilderButtonStyle(role: .primary))
-            .disabled(!model.canInstall)
-            .accessibilityIdentifier("installer.install")
-          Spacer()
-          Button(text("workspace")) { NSWorkspace.shared.open(model.workspace) }
-            .buttonStyle(BuilderButtonStyle(role: .secondary))
         }
       }
     }
@@ -415,19 +387,14 @@ struct InstallerView: View {
     panel.allowedContentTypes = [UTType(filenameExtension: "ipa") ?? .zip]
     panel.canCreateDirectories = true
     panel.begin { response in
-      if response == .OK, let url = panel.url { model.outputURL = url }
-    }
-  }
-
-  private func chooseSignedExport() {
-    let panel = NSSavePanel()
-    panel.title = text("exportIPA")
-    panel.message = text("exportHelp")
-    panel.nameFieldStringValue = "MinionRush-signed.ipa"
-    panel.allowedContentTypes = [UTType(filenameExtension: "ipa") ?? .zip]
-    panel.canCreateDirectories = true
-    panel.begin { response in
-      if response == .OK, let url = panel.url { model.exportIPA(to: url) }
+      if response == .OK, let url = panel.url {
+        model.outputURL = url
+        if FileManager.default.fileExists(atPath: url.path) {
+          confirmReplace = true
+        } else {
+          model.buildNative(overwrite: false)
+        }
+      }
     }
   }
 
