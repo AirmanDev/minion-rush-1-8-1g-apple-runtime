@@ -121,6 +121,12 @@ enum InstallerViewTests {
     model.error = nil
     model.busy = true
     model.phase = "Building signed application"
+    model.operation = .installGame
+    model.log = """
+      discovery: 151650 -> 939997 A32, 3350 -> 4187 Thumb entry points
+      rejected static candidates: 1440, report: /private/var/folders/sample/long/path
+      938598 A32 + 4146 Thumb blocks, 156.7 MB machine code
+      """
     settle()
     try InstallerTests.require(!device.isEnabled, "Busy selector is disabled")
     try InstallerTests.require(!model.canInstall, "Busy Install is disabled")

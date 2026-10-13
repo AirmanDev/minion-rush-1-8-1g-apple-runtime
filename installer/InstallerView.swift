@@ -255,26 +255,37 @@ struct InstallerView: View {
       if showLog {
         BuilderPanel {
           VStack(alignment: .leading, spacing: 14) {
-            HStack {
-              Text(text("diagnostics")).font(.headline).foregroundStyle(BuilderPalette.text)
-              Spacer()
-              Button(text("copyError")) {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(model.error ?? model.status, forType: .string)
-              }
-              .buttonStyle(BuilderButtonStyle(role: .secondary))
-              .disabled(model.error == nil)
-              Button(text("copyLog")) { copyLog() }
-                .buttonStyle(BuilderButtonStyle(role: .secondary))
-              Button(text("saveLog")) { saveLog() }
-                .buttonStyle(BuilderButtonStyle(role: .secondary))
-              Button(text("openLog")) {
-                if let file = model.logFile { NSWorkspace.shared.open(file) }
-              }
-              .buttonStyle(BuilderButtonStyle(role: .secondary))
-              .disabled(model.logFile == nil)
-              Toggle(text("followLog"), isOn: $followLog).toggleStyle(.checkbox)
+            HStack(spacing: 12) {
+              Text(text("diagnostics"))
+                .font(.headline)
                 .foregroundStyle(BuilderPalette.text)
+                .fixedSize(horizontal: true, vertical: false)
+              Spacer(minLength: 12)
+              Toggle(text("followLog"), isOn: $followLog)
+                .toggleStyle(.checkbox)
+                .foregroundStyle(BuilderPalette.text)
+                .fixedSize(horizontal: true, vertical: false)
+            }
+            VStack(spacing: 8) {
+              HStack(spacing: 8) {
+                Button(text("copyError")) {
+                  NSPasteboard.general.clearContents()
+                  NSPasteboard.general.setString(model.error ?? model.status, forType: .string)
+                }
+                .buttonStyle(BuilderButtonStyle(role: .secondary, fillsWidth: true))
+                .disabled(model.error == nil)
+                Button(text("copyLog")) { copyLog() }
+                  .buttonStyle(BuilderButtonStyle(role: .secondary, fillsWidth: true))
+              }
+              HStack(spacing: 8) {
+                Button(text("saveLog")) { saveLog() }
+                  .buttonStyle(BuilderButtonStyle(role: .secondary, fillsWidth: true))
+                Button(text("openLog")) {
+                  if let file = model.logFile { NSWorkspace.shared.open(file) }
+                }
+                .buttonStyle(BuilderButtonStyle(role: .secondary, fillsWidth: true))
+                .disabled(model.logFile == nil)
+              }
             }
             ScrollViewReader { reader in
               ScrollView(.vertical) {
