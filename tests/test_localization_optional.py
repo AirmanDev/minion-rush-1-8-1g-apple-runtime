@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
 
 class OptionalLocaleTests(unittest.TestCase):
     def test_runtime_only_lists_packaged_languages(self):
+        if os.name == "nt":
+            self.skipTest("The iOS/macOS localization runtime uses POSIX APIs")
         compiler = shutil.which("clang") or shutil.which("gcc")
         if not compiler:
             self.skipTest("C compiler unavailable")
