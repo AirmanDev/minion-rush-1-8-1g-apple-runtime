@@ -248,9 +248,11 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
         if (not scratch_root.is_absolute() or scratch_root.is_symlink()
                 or not scratch_root.is_dir()):
             raise ValueError("invalid private scratch directory")
-    with tempfile.TemporaryDirectory(prefix="minion-rush-private-",
-                                     dir=scratch_root) as tmp:
-        temporary = Path(tmp)
+    # Keep the staged source and generated files on GUI failures only. In
+    # normal CLI mode, cleanup is unconditional, including on exceptions.
+    temporary = Path(tempfile.mkdtemp(prefix="mr-", dir=scratch_root))
+    completed = False
+    try:
         private = temporary / "private-AOT"
         print("1/3: Validate your own 1.8.1g ZIP and prepare native ARM64 blocks.", flush=True)
         local_zip = _stage_source_archive(zip_path, temporary)
@@ -264,6 +266,12 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
         assemble_unsigned_ipa(
             kit / "MinionRush-native-template-unsigned.zip", private, output
         )
+        completed = True
+    finally:
+        if completed or scratch_root is None:
+            shutil.rmtree(temporary)
+        else:
+            print("Private diagnostic files retained in:", temporary, flush=True)
     print("3/3: Native unsigned IPA assembled and verified.", flush=True)
     print("File:", output, flush=True)
     print("IMPORTANT: The IPA must be signed and installed with a compatible", flush=True)

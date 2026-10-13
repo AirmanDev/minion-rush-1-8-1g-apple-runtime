@@ -297,6 +297,55 @@ class WindowsKitTests(unittest.TestCase):
             self.assertEqual(output.read_bytes(), b"unsigned fixture")
             self.assertEqual(list(scratch.iterdir()), [])
 
+    def test_builder_retains_private_files_on_gui_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic test bytes")
+            kit = root / "kit"
+            kit.mkdir()
+            scratch = root / "scratch"
+            scratch.mkdir()
+            output = root / "failed.ipa"
+
+            def fail_after_staging(archive, destination, **kwargs):
+                self.assertEqual(archive.name, "original-private-source.zip")
+                self.assertEqual(archive.read_bytes(), source.read_bytes())
+                raise FileNotFoundError("synthetic missing file")
+
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package._needs_local_archive_copy",
+                             return_value=True),
+                  mock.patch("windows_native_package.prepare", fail_after_staging)):
+                with self.assertRaisesRegex(FileNotFoundError, "synthetic missing"):
+                    create_unsigned_ipa(source, kit, output, scratch_root=scratch)
+
+            folders = list(scratch.iterdir())
+            self.assertEqual(len(folders), 1)
+            self.assertEqual((folders[0] / "original-private-source.zip").read_bytes(),
+                             source.read_bytes())
+            self.assertFalse(output.exists())
+
+    def test_builder_cleans_private_files_on_cli_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic test bytes")
+            kit = root / "kit"
+            kit.mkdir()
+            created = []
+            def fail_and_capture(archive, destination, **kwargs):
+                created.append(destination.parent)
+                raise FileNotFoundError("synthetic missing")
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package.prepare", fail_and_capture)):
+                with self.assertRaises(FileNotFoundError):
+                    create_unsigned_ipa(source, kit, root / "failed.ipa")
+            self.assertEqual(len(created), 1)
+            self.assertFalse(created[0].exists())
+
     def test_builder_rejects_untrusted_translation_filename(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
