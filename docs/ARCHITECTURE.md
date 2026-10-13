@@ -44,6 +44,34 @@ family arguments fail when any requested runtime is missing. Exact version
 arguments select the version advertised by `simctl`; result labels include that
 version so two releases in one family cannot overwrite each other's artifacts.
 
+## Native IPA Builders
+
+The Windows Win32 GUI and the macOS SwiftUI Builder are separate native
+presentations of the same user workflow: original ZIP, unsigned IPA
+destination, optional built-in Hungarian text, progress, and diagnostics.
+Both use `prepare_native_aot.py` and `native_ipa.py` for translation and
+archive assembly, and `native_ipa_output.py` for destination validation,
+temporary construction, and atomic final replacement. The Mac path is
+`native_macos_package.py`; Windows adds its verified kit and optional
+test-only UTM source transport in `windows_native_package.py`.
+
+Both platforms derive all UI colors from `config/builder_theme.json` using
+`tools/build_builder_palette.py`. It generates the maintained
+`installer/BuilderPalette.swift` and `src/windows/builder_palette.h`.
+The checked-in files are verified before either native build, and CI
+rejects any drift. Platform layout and event handling remain native.
+Both executables share the project icon from `prepare_installer_icon.swift`.
+
+The Windows portable release is a self-extracting EXE with an embedded
+Python runtime, translator, unsigned template and optional private catalog.
+The separately compiled UTM test build retains SPICE/WebDAV handling; the
+release build has none. The private Mac .app similarly embeds a pinned
+arm64 Python runtime, native translator, unsigned template and catalog;
+its bundle is ad-hoc signed. Neither includes the original game ZIP or
+signing credentials. The optional Mac Xcode signing/device installation
+path remains separate from unsigned IPA creation. Neither private
+artifact is cleared for public redistribution.
+
 ## Module ownership
 
 The native macOS installer is a client of the build and asset tools, not another

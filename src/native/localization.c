@@ -76,11 +76,10 @@ void mr_localization_init(const char *pack_root, const char *data_root, const ch
         char text_path[LOCALIZATION_PATH_CAPACITY];
         char runtime_path[LOCALIZATION_PATH_CAPACITY];
         if (!PACK_ROOT[0] ||
-            snprintf(text_path, sizeof text_path, "%s/../game/files/text/%s.texts",
-                     PACK_ROOT, code) >= (int)sizeof text_path ||
-            snprintf(runtime_path, sizeof runtime_path,
-                     "%s/runtime/localizationText/langs.json", PACK_ROOT) >=
-                         (int)sizeof runtime_path)
+            snprintf(text_path, sizeof text_path, "%s/../game/files/text/%s.texts", PACK_ROOT,
+                     code) >= (int)sizeof text_path ||
+            snprintf(runtime_path, sizeof runtime_path, "%s/runtime/localizationText/langs.json",
+                     PACK_ROOT) >= (int)sizeof runtime_path)
             continue;
         if (access(text_path, R_OK) == 0 && access(runtime_path, R_OK) == 0)
             AVAILABLE[AVAILABLE_COUNT++] = index;

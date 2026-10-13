@@ -30,6 +30,7 @@ jobs:
         shell: pwsh
         run: |
           clang --version
+          python tools/build_builder_palette.py --check
           python -m unittest discover -s tests -p test_native_aot.py -v
           python -m unittest discover -s tests -p test_native_ipa.py -v
           python -m unittest discover -s tests -p test_windows_native.py -v

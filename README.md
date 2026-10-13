@@ -19,7 +19,9 @@ release 1.8.1g. See `docs/LEGAL.md`.
 - Apple Silicon Mac running macOS 14 or later
 - Xcode 27 or later with the matching iOS SDK (local builds require macOS 26.6+)
 - ARM64 iPhone or iPad running iOS or iPadOS 17 or later
-- Python 3 and the Xcode command-line tools
+- Python 3 and Xcode command-line tools for source development; the two
+  private portable Builders bundle their Python runtimes and do not require
+  Xcode for unsigned IPA creation
 - Optional, still experimental: Windows 11 ARM or x64 for the private native
   IPA builder. Once a signed-off portable kit is available, Windows users
   will not need a Mac, Xcode, Clang, or a separate Python installation.
@@ -62,6 +64,7 @@ game data. The complete smoke test fails if a final network guard is reached.
 | `assets/lib` | Validated 1.8.1g ARM32 engine, stored locally only |
 | `assets/game` | Original game data, stored locally only |
 | `config/graphics.json` | Single graphics configuration |
+| `config/builder_theme.json` | Shared Mac/Windows Builder color palette |
 | `config/localizations` | Public metadata for optional community languages |
 | `localizations` | Local XLIFF 2.1 translations, excluded from Git |
 | `config/source_manifest.txt` | Manifest of maintained public text files |

@@ -63,8 +63,9 @@ struct InstallerTests {
     try FileManager.default.setAttributes(
       [.posixPermissions: 0o755], ofItemAtPath: runtimeBinary.path)
     let selectedPython = try BackendProcess.pythonExecutable(source: privateSource)
-    try require(selectedPython == runtimeBinary,
-                "Private Builder must use its own bundled Python")
+    try require(
+      selectedPython == runtimeBinary,
+      "Private Builder must use its own bundled Python")
     let recorder = EventRecorder()
     let runner = BackendProcess()
     let status = try runner.run(
@@ -162,7 +163,9 @@ struct InstallerTests {
     let model = try InstallerModel(resources: resources, workspace: temporary, defaults: defaults)
     try require(!model.canInstall, "Initial Install must be disabled")
     model.interfaceLanguage = "hu"
-    try require(model.text("buildIPA") == "IPA k\u{00e9}sz\u{00ed}t\u{00e9}se", "Hungarian builder localization")
+    try require(
+      model.text("buildIPA") == "IPA k\u{00e9}sz\u{00ed}t\u{00e9}se",
+      "Hungarian builder localization")
     model.interfaceLanguage = "en"
     try require(model.text("buildIPA") == "Create IPA", "English builder localization")
     let selectedArchive = temporary.appendingPathComponent("original.zip")

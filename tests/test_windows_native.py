@@ -418,7 +418,7 @@ class WindowsKitTests(unittest.TestCase):
             self.assertEqual(len(calls), 1)
             self.assertEqual(target.read_bytes(), b"new unsigned IPA")
             self.assertFalse(calls[0].exists())
-            self.assertFalse(any(p.name.startswith(".mr-replace-") for p in root.iterdir()))
+            self.assertFalse(any(p.name.startswith(".mr-ipa-") for p in root.iterdir()))
 
     def test_failed_overwrite_preserves_original_and_cleans_staged_output(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -444,7 +444,7 @@ class WindowsKitTests(unittest.TestCase):
                     create_unsigned_ipa(source, kit, target, overwrite=True)
 
             self.assertEqual(target.read_bytes(), original)
-            self.assertFalse(any(p.name.startswith(".mr-replace-") for p in root.iterdir()))
+            self.assertFalse(any(p.name.startswith(".mr-ipa-") for p in root.iterdir()))
 
     def test_overwrite_rejects_changed_or_disappearing_destination(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -469,7 +469,7 @@ class WindowsKitTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "changed during build"):
                     create_unsigned_ipa(source, kit, target, overwrite=True)
             self.assertEqual(target.read_bytes(), b"different outside edit")
-            self.assertFalse(any(p.name.startswith(".mr-replace-") for p in root.iterdir()))
+            self.assertFalse(any(p.name.startswith(".mr-ipa-") for p in root.iterdir()))
             target.unlink()
             with self.assertRaisesRegex(ValueError, "has disappeared"):
                 create_unsigned_ipa(source, kit, target, overwrite=True)

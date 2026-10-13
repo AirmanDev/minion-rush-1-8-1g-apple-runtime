@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from native_ipa import assemble_unsigned_ipa
-from native_ipa_output import assemble_output
+from native_ipa_output import assemble_output, validate_output_destination
 from prepare_native_aot import prepare
 from native_macho import file_sha256
 
@@ -51,6 +51,7 @@ def validate_native_kit(directory: Path) -> dict:
 
 def build_unsigned(source: Path, destination: Path, kit: Path, *,
                    hungarian: bool = True, overwrite: bool = False) -> None:
+    validate_output_destination(destination, overwrite=overwrite)
     config = validate_native_kit(kit)
     if not source.is_file() or source.is_symlink() or source.suffix.lower() != ".zip":
         raise ValueError("choose an original local 1.8.1g ZIP")

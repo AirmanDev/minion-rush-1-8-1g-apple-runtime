@@ -4,6 +4,55 @@ Review date: 2026-09-27. Scope: the maintained public source, native runtime,
 Apple platform layers, installer, build and packaging tools, tests, and docs.
 Private assets were validated locally but are not part of the public repository.
 
+## Builder audit - 2026-10-13
+
+Scope: all maintained sources in the public manifest (164 entries at this
+review), Mac SwiftUI/Windows Win32 interfaces, translator, iOS/macOS runtime,
+Python tooling, shell pipelines, tests, build outputs, and relevant docs.
+Private original ZIPs and translations were not modified.
+
+- The Mac and Windows IPA flows share `prepare_native_aot.py`,
+  `native_ipa.py` and `native_ipa_output.py`. The duplicate Windows
+  destination-and-replacement implementation was removed. Both validate
+  destinations before compilation, assemble into a temporary sibling, reject
+  links or changed targets, and preserve earlier output after failures.
+- Native color tokens now have one source, `config/builder_theme.json`.
+  The checked-in Swift/C definitions are generated and checked by both
+  native build scripts and CI. The project icon remains generated from the
+  same Mac artwork on both platforms.
+- Native Mac unsigned IPA creation now bypasses unnecessary public-source
+  workspace snapshots. The legacy Xcode signed-device path still validates
+  and caches those sources.
+- The Mac private .app uses the SHA-256-pinned ARM64 CPython runtime with
+  unused Tcl/Tk, pip, IDLE and developer-only components excluded. The
+  bundled interpreter still builds the same valid Hungarian IPA as the
+  earlier full runtime. The size decreased from about 74 MB to 56 MB.
+- The maintained source and native Swift files were checked with the
+  project formatters; a previous C-localization formatting issue and
+  SwiftUI/test layout violations were corrected. C/SWIFT presentation
+  remains platform native rather than duplicated UI implementation.
+- The canonical generated unsigned iOS template is kept under a single
+  filename, `build/native-template/MinionRush-native-template-unsigned.zip`.
+  Versioned portable Builder staging outputs and obsolete derived test
+  artifacts were identified for removal. The current portable Mac .app,
+  Windows EXEs, verified compilers, source ZIPs, private translation and
+  reproducible toolchain archives are preserved.
+
+Validation: 147 Python unit tests (146 passed, one Windows-only UTM
+drive-mapping test skipped on macOS), native SwiftUI selector/model/layout
+tests, source-tree validation, `bash -n`, native Mac and both Windows GUI
+builds, `clang-format` and `swift-format` checks, and a complete
+portable-Mac original-ZIP-to-IPA run without external Python/Homebrew.
+The generated IPA contains 1371 verified ZIP members including Hungarian
+text resources. Windows CI also compiles and self-tests both Win32 GUI
+variants and the embedded one-file launcher.
+
+Not claimed: independent legal redistribution clearance, exhaustive
+pixel-by-pixel visual approval, complete absence of semantic duplication,
+or an exhaustive device/OS performance and security certification.
+Window screenshot automation was blocked by the remote macOS WindowServer;
+the SwiftUI functional/layout tests passed without screenshots.
+
 ## Corrections
 
 | Finding | Correction |

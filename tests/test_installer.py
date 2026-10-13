@@ -262,6 +262,26 @@ class InstallerBackendTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Cached runtime"):
                     backend.prepare_runtime(TOOLS.parent, workspace)
 
+    def test_unsigned_ipa_does_not_create_redundant_source_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            source = root / "source"
+            source.mkdir()
+            args = argparse.Namespace(
+                command="build-native", source=source, workspace=workspace,
+                archive=root / "original.zip", destination=root / "output.ipa",
+                native_kit=root / "NativeKit", no_hungarian=False, overwrite=False,
+            )
+            with (mock.patch.object(backend, "prepare_runtime",
+                                    side_effect=AssertionError("unused snapshot")),
+                  mock.patch("native_macos_package.build_unsigned") as build):
+                result = backend.execute(args)
+            self.assertEqual(result, {"ipa_path": str(args.destination)})
+            build.assert_called_once_with(args.archive, args.destination, args.native_kit,
+                                          hungarian=True, overwrite=False)
+            self.assertFalse((workspace / "runtimes").exists())
+
     def test_workspace_lock_rejects_concurrent_operations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary)

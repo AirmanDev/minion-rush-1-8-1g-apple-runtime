@@ -137,19 +137,6 @@ struct InstallerField: View {
   }
 }
 
-enum BuilderPalette {
-  static let navy = Color(red: 15 / 255, green: 27 / 255, blue: 45 / 255)
-  static let background = Color(red: 243 / 255, green: 246 / 255, blue: 250 / 255)
-  static let card = Color.white
-  static let border = Color(red: 221 / 255, green: 227 / 255, blue: 236 / 255)
-  static let field = Color(red: 247 / 255, green: 249 / 255, blue: 252 / 255)
-  static let text = Color(red: 26 / 255, green: 37 / 255, blue: 56 / 255)
-  static let muted = Color(red: 92 / 255, green: 104 / 255, blue: 124 / 255)
-  static let gold = Color(red: 245 / 255, green: 184 / 255, blue: 28 / 255)
-  static let success = Color(red: 28 / 255, green: 148 / 255, blue: 92 / 255)
-  static let failure = Color(red: 205 / 255, green: 62 / 255, blue: 58 / 255)
-}
-
 struct BuilderButtonStyle: ButtonStyle {
   enum Role {
     case primary
@@ -180,8 +167,9 @@ struct BuilderButtonStyle: ButtonStyle {
       .padding(.horizontal, 15)
       .background(
         enabled
-          ? (primary ? BuilderPalette.gold.opacity(configuration.isPressed ? 0.83 : 1)
-                     : BuilderPalette.card)
+          ? (primary
+            ? BuilderPalette.gold.opacity(configuration.isPressed ? 0.83 : 1)
+            : BuilderPalette.card)
           : BuilderPalette.field,
         in: RoundedRectangle(cornerRadius: 9)
       )

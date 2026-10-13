@@ -26,5 +26,7 @@ jobs:
         run: bash -n ./*.sh tools/*.sh
       - name: Run tool tests
         run: python3 -m unittest discover -s tests -v
+      - name: Validate shared native color palette
+        run: python3 tools/build_builder_palette.py --check
       - name: Validate repository structure
         run: python3 tools/validate_source.py

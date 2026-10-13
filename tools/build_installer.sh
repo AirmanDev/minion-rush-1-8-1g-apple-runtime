@@ -13,6 +13,7 @@ if (( $# )); then
 fi
 project_use_full_xcode
 project_require_command python3
+python3 tools/build_builder_palette.py --check
 python3 tools/validate_source.py
 minimum="$(plutil -extract LSMinimumSystemVersion raw -o - installer/Info.plist)"
 version="$(xcrun xcodebuild -version)"

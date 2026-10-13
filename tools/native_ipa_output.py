@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Callable
 
 
-def assemble_output(destination: Path, assemble: Callable[[Path], None], *,
-                    overwrite: bool = False) -> None:
+def validate_output_destination(destination: Path, *, overwrite: bool = False):
+    """Check the requested destination before expensive compilation."""
     if not destination.is_absolute() or destination.suffix.lower() != ".ipa":
         raise ValueError("destination must be an absolute .ipa path")
     if not destination.parent.is_dir() or destination.parent.is_symlink():
@@ -19,10 +19,15 @@ def assemble_output(destination: Path, assemble: Callable[[Path], None], *,
         raise ValueError("linked output is not allowed")
     existing = destination.exists()
     if existing and (not overwrite or not destination.is_file()):
-        raise ValueError("existing IPA requires an explicit overwrite confirmation")
+        raise ValueError("existing IPA requires confirmation; refusing overwrite without approval")
     if overwrite and not existing:
-        raise ValueError("approved output has disappeared")
-    old = destination.stat() if existing else None
+        raise ValueError("approved output has disappeared; choose the destination again")
+    return destination.stat() if existing else None
+
+
+def assemble_output(destination: Path, assemble: Callable[[Path], None], *,
+                    overwrite: bool = False) -> None:
+    old = validate_output_destination(destination, overwrite=overwrite)
     with tempfile.TemporaryDirectory(prefix=".mr-ipa-", dir=destination.parent) as temporary:
         candidate = Path(temporary) / destination.name
         assemble(candidate)

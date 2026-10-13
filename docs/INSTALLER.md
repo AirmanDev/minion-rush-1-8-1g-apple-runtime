@@ -32,7 +32,7 @@ This does not change the game executable's macOS 14 deployment minimum.
 ./tools/build_installer.sh
 ./tools/test_installer.sh
 python3 tools/build_private_mac_builder.py --app "build/installer/Minion Rush Installer.app" \
-  --template "build/native-template/MinionRush-native-template-language-toggle.zip" \
+  --template "build/native-template/MinionRush-native-template-unsigned.zip" \
   --hungarian-xlf "localizations/hu.xlf" \
   --python-runtime-archive "build/private-runtime-cache/cpython-3.14.8-aarch64-macos.tar.gz" \
   --output "build/private/Minion Rush IPA Builder.app"
@@ -48,6 +48,12 @@ The packager checks its SHA-256 against
 before embedding the runtime. CPython and dependency licenses are retained
 in the embedded library. The private .app uses the embedded Python directly
 and refuses to run without it, rather than silently using the user's Python.
+Only the standard library modules required by the Builder are packaged:
+unused Tcl/Tk, pip, IDLE, `ensurepip`, and their development files are
+excluded. Their removal does not modify the verified upstream archive,
+which is kept as a developer-side build input. The private app is about
+56 MB, and its unsigned IPA workflow does not create redundant cached
+public source snapshots. The Xcode signing path retains source validation.
 
 The public app is built without private assets; the private package adds the
 prepared unsigned template and locally supplied language data. It does not
@@ -167,8 +173,11 @@ the original ZIP, select the IPA destination, toggle the included Hungarian
 language, create an unsigned IPA and inspect the detailed log. English and
 Magyar switch the builder interface separately from the IPA's languages.
 The primary action is gold; selected language indicators are solid green,
-with no tick. Both apps use the same icon source. Navy, card backgrounds,
-corner radii, margin rhythm and disabled states follow the same design.
+with no tick. Both apps use the same icon source. The shared palette is
+`config/builder_theme.json`, which generates native C and Swift color
+definitions through `tools/build_builder_palette.py`. Build scripts and
+CI verify that both platform definitions match this file. Cards, margin
+rhythm and disabled-state behavior remain native to each OS.
 
 The Mac UI is still native SwiftUI; its common controls and theme are in
 installer/InstallerControls.swift. The existing signing/team/device options
@@ -180,7 +189,7 @@ overwrite-confirmation behavior. Logs can be copied, opened and exported.
 The private Mac .app is built after the public app:
   python3 tools/build_private_mac_builder.py --app
   "build/installer/Minion Rush Installer.app" --template
-  "build/native-template/MinionRush-native-template-language-toggle.zip"
+  "build/native-template/MinionRush-native-template-unsigned.zip"
   --hungarian-xlf "localizations/hu.xlf" --output
   "build/private/Minion Rush Installer.app"
 

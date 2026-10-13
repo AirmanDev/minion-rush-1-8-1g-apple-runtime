@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from mac_portable_runtime import ARCHIVE_SHA256, PYTHON_VERSION, install_runtime
+from mac_portable_runtime import (ARCHIVE_SHA256, PYTHON_VERSION, install_runtime,
+                                  SKIP_ROOTS, SKIP_STDLIB)
 
 
 class PortableMacRuntimeTests(unittest.TestCase):
@@ -30,6 +31,13 @@ class PortableMacRuntimeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "checksum"):
                 install_runtime(archive, destination)
             self.assertFalse(destination.exists())
+
+    def test_nonruntime_python_modules_are_excluded(self):
+        self.assertIn("tkinter", SKIP_STDLIB)
+        self.assertIn("site-packages", SKIP_STDLIB)
+        self.assertIn("ensurepip", SKIP_STDLIB)
+        self.assertIn("tk9.0", SKIP_ROOTS)
+        self.assertNotIn("encodings", SKIP_STDLIB)
 
     def test_private_mac_app_must_select_own_interpreter(self):
         backend = (ROOT / "installer/BackendProcess.swift").read_text()

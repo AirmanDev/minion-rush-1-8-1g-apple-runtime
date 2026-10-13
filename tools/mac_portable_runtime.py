@@ -16,6 +16,18 @@ ARCHIVE_NAME = "cpython-3.14.8-aarch64-macos.tar.gz"
 ORIGIN = ("astral-sh/python-build-standalone release 20261003, "
           "cpython-3.14.8+20261003-aarch64-apple-darwin-install_only_stripped.tar.gz")
 MAGIC_ARM64 = b"\xcf\xfa\xed\xfe"
+# Non-runtime developer tools and Tcl/Tk are not used by the SwiftUI Builder.
+# The pinned archive remains untouched for reproducibility and licenses.
+SKIP_ROOTS = frozenset({
+    "tcl9.0", "tcl9", "tk9.0", "itcl4.3.8", "thread3.0.6", "pkgconfig",
+})
+SKIP_LIBRARIES = frozenset({
+    "libtcl9.0.dylib", "libtcl9tk9.0.dylib",
+})
+SKIP_STDLIB = frozenset({
+    "idlelib", "ensurepip", "tkinter", "site-packages",
+    "turtledemo", "pydoc_data",
+})
 
 
 def install_runtime(archive: Path, destination: Path) -> None:
@@ -37,6 +49,16 @@ def install_runtime(archive: Path, destination: Path) -> None:
                     continue
                 if not (parts == ("bin", "python3.14") or parts[0] == "lib"):
                     continue
+                if parts[0] == "lib":
+                    if len(parts) > 1 and (parts[1] in SKIP_ROOTS or
+                                           parts[1] in SKIP_LIBRARIES):
+                        continue
+                    if len(parts) > 2 and parts[1] == "python3.14":
+                        if parts[2] in SKIP_STDLIB:
+                            continue
+                        if (parts[2] == "lib-dynload" and len(parts) > 3 and
+                                parts[3].startswith("_tkinter.")):
+                            continue
                 if any(part in ("", ".", "..") for part in parts):
                     raise ValueError("unsafe portable Python archive path")
                 # Metadata pkgconfig symlinks are for development, not the app.

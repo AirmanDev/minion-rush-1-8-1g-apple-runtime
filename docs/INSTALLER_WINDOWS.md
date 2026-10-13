@@ -2,13 +2,13 @@
 
 Two separate IPA preparation paths are supported in the source tree:
 
-- **Mac (maintained):** The native installer exports a signed IPA using Xcode
-  and the owner's Apple signing account. See [INSTALLER.md](INSTALLER.md).
+- **Mac (maintained):** The portable SwiftUI Builder creates an unsigned
+  IPA without Xcode, and optionally signs/installs via Xcode and the owner's
+  Apple signing account. See [INSTALLER.md](INSTALLER.md).
 - **Windows (experimental, not publicly released):** A portable builder takes
   the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
   blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
-  packages the original assets. A private Hungarian hu.xlf catalog is needed
-  for Hungarian; the original launcher icon comes directly from the ZIP. No Mac is required *for this local build*.
+  packages the original assets. The private builder embeds the optional Hungarian catalog; the original launcher icon comes directly from the ZIP. No Mac is required *for this local build*.
   See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
   IPA** and does not install or sign itself.
 
@@ -22,7 +22,8 @@ it. The new IPA is assembled in a private folder on the same volume and
 replaces the old file only after successful verification. Build failures do
 not destroy the previous IPA.
 
-The bundled Magyar option is a checkbox, enabled by default when its
+The bundled Magyar option is a solid-green selection square, enabled by default
+when its
 private catalog is present. Uncheck it to exclude Hungarian resources from
 that IPA; the original game's languages are always included. There is no
 separate language-file picker. The game lists only installed language packs

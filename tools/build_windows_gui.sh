@@ -7,6 +7,7 @@ mode="${1:-release}"
   printf 'Usage: ./tools/build_windows_gui.sh [release|utm-test]\n' >&2
   exit 2
 }
+python3 tools/build_builder_palette.py --check
 project_require_command x86_64-w64-mingw32-gcc
 mkdir -p "$OUT/windows"
 target="$OUT/windows/MinionRush Builder.exe"

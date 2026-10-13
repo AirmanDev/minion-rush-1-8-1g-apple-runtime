@@ -20,6 +20,7 @@ from asset_contract import OFFICIAL_ENGINE_SHA256
 from install_assets import MAX_ARCHIVE_BYTES
 from common import public_files
 from native_ipa import assemble_unsigned_ipa
+from native_ipa_output import assemble_output, validate_output_destination
 from native_macho import file_sha256
 from prepare_native_aot import prepare
 
@@ -178,18 +179,7 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
                         scratch_root: Path | None = None,
                         include_hungarian: bool = True,
                         overwrite: bool = False) -> None:
-    if not output.is_absolute() or not output.parent.is_dir() or output.parent.is_symlink():
-        raise ValueError("output must be in an existing regular absolute directory")
-    if output.suffix.lower() != ".ipa":
-        raise ValueError("output filename must end in .ipa")
-    if output.is_symlink():
-        raise ValueError("cannot overwrite a linked output")
-    existing = output.exists()
-    if existing and (not overwrite or not output.is_file()):
-        raise ValueError("refusing to overwrite an existing unsigned IPA without approval")
-    if overwrite and not existing:
-        raise ValueError("approved output has disappeared; choose the destination again")
-    original_stat = output.stat() if existing else None
+    validate_output_destination(output, overwrite=overwrite)
     kit = kit.resolve(strict=True)
     config = validate_kit(kit)
     translations_root = None
@@ -230,19 +220,10 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
         )
         print("2/3: Assemble the unsigned IPA and embed original game data.", flush=True)
         template = kit / "MinionRush-native-template-unsigned.zip"
-        if overwrite:
-            # Assemble beside the destination, on the same volume. Preserve the
-            # existing IPA until the new archive has passed all build checks.
-            with tempfile.TemporaryDirectory(prefix=".mr-replace-", dir=output.parent) as folder:
-                replacement = Path(folder) / output.name
-                assemble_unsigned_ipa(template, private, replacement)
-                if (output.is_symlink() or not output.is_file() or
-                        (output.stat().st_size, output.stat().st_mtime_ns) !=
-                        (original_stat.st_size, original_stat.st_mtime_ns)):
-                    raise ValueError("destination changed during build; original IPA was preserved")
-                os.replace(replacement, output)
-        else:
-            assemble_unsigned_ipa(template, private, output)
+        assemble_output(
+            output, lambda candidate: assemble_unsigned_ipa(template, private, candidate),
+            overwrite=overwrite,
+        )
         completed = True
     finally:
         if completed or scratch_root is None:

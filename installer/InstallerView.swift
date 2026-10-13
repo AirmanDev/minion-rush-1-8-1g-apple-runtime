@@ -91,20 +91,24 @@ struct InstallerView: View {
         .disabled(model.busy)
         .dropDestination(for: URL.self) { urls, _ in
           guard !model.busy, urls.count == 1,
-                let file = urls.first, file.isFileURL,
-                file.pathExtension.lowercased() == "zip"
+            let file = urls.first, file.isFileURL,
+            file.pathExtension.lowercased() == "zip"
           else {
             model.error = text("invalidDrop")
             return false
           }
           model.selectArchive(file)
           return true
-        } isTargeted: { dropTarget = $0 }
+        } isTargeted: {
+          dropTarget = $0
+        }
         .background(dropTarget ? BuilderPalette.gold.opacity(0.15) : Color.clear)
         if let summary = model.assets {
-          Text("\(text("assetsReady")) - "
-               + ByteCountFormatter.string(fromByteCount: summary.bytes, countStyle: .file))
-            .font(.caption).foregroundStyle(BuilderPalette.success)
+          Text(
+            "\(text("assetsReady")) - "
+              + ByteCountFormatter.string(fromByteCount: summary.bytes, countStyle: .file)
+          )
+          .font(.caption).foregroundStyle(BuilderPalette.success)
         }
 
         BuilderInputRow(
@@ -127,13 +131,16 @@ struct InstallerView: View {
           } label: {
             HStack(spacing: 12) {
               RoundedRectangle(cornerRadius: 5)
-                .fill(model.includeHungarian && model.bundledHungarian
-                      ? BuilderPalette.success : BuilderPalette.card)
+                .fill(
+                  model.includeHungarian && model.bundledHungarian
+                    ? BuilderPalette.success : BuilderPalette.card
+                )
                 .frame(width: 23, height: 23)
                 .overlay {
                   RoundedRectangle(cornerRadius: 5)
-                    .strokeBorder(model.includeHungarian && model.bundledHungarian
-                                  ? BuilderPalette.success : BuilderPalette.border)
+                    .strokeBorder(
+                      model.includeHungarian && model.bundledHungarian
+                        ? BuilderPalette.success : BuilderPalette.border)
                 }
               Text(text("hungarian"))
                 .font(.system(size: 14, weight: .semibold))
@@ -185,33 +192,39 @@ struct InstallerView: View {
   private var statusCard: some View {
     BuilderPanel {
       VStack(alignment: .leading, spacing: 12) {
-      HStack(spacing: 12) {
-        Circle()
-          .fill(model.error != nil ? BuilderPalette.failure
+        HStack(spacing: 12) {
+          Circle()
+            .fill(
+              model.error != nil
+                ? BuilderPalette.failure
                 : model.unsignedIPA != nil || model.installed || model.exportedIPA != nil
-                ? BuilderPalette.success
-                : model.busy ? BuilderPalette.gold : BuilderPalette.muted)
-          .frame(width: 13, height: 13)
-        Text(model.status)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(BuilderPalette.text)
-          .accessibilityIdentifier("installer.status")
-          .textSelection(.enabled)
-        Spacer(minLength: 8)
-        Button(text(showLog ? "hideDetails" : "showDetails")) { showLog.toggle() }
-          .buttonStyle(.plain)
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(BuilderPalette.navy)
-          .accessibilityIdentifier("installer.logDisclosure")
-      }
-      ProgressView(value: model.busy ? nil : 1)
-        .tint(model.error != nil ? BuilderPalette.failure
-              : model.busy ? BuilderPalette.gold : BuilderPalette.success)
-        .frame(height: 7)
-      if let path = model.unsignedIPA ?? model.exportedIPA {
-        Text(path.path).font(.system(size: 12)).foregroundStyle(BuilderPalette.muted)
-          .textSelection(.enabled).lineLimit(2).truncationMode(.middle)
-      }
+                  ? BuilderPalette.success
+                  : model.busy ? BuilderPalette.gold : BuilderPalette.muted
+            )
+            .frame(width: 13, height: 13)
+          Text(model.status)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(BuilderPalette.text)
+            .accessibilityIdentifier("installer.status")
+            .textSelection(.enabled)
+          Spacer(minLength: 8)
+          Button(text(showLog ? "hideDetails" : "showDetails")) { showLog.toggle() }
+            .buttonStyle(.plain)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(BuilderPalette.navy)
+            .accessibilityIdentifier("installer.logDisclosure")
+        }
+        ProgressView(value: model.busy ? nil : 1)
+          .tint(
+            model.error != nil
+              ? BuilderPalette.failure
+              : model.busy ? BuilderPalette.gold : BuilderPalette.success
+          )
+          .frame(height: 7)
+        if let path = model.unsignedIPA ?? model.exportedIPA {
+          Text(path.path).font(.system(size: 12)).foregroundStyle(BuilderPalette.muted)
+            .textSelection(.enabled).lineLimit(2).truncationMode(.middle)
+        }
       }
     }
   }
@@ -221,45 +234,45 @@ struct InstallerView: View {
       if showLog {
         BuilderPanel {
           VStack(alignment: .leading, spacing: 14) {
-          HStack {
-            Text(text("diagnostics")).font(.headline).foregroundStyle(BuilderPalette.text)
-            Spacer()
-            Button(text("copyError")) {
-              NSPasteboard.general.clearContents()
-              NSPasteboard.general.setString(model.error ?? model.status, forType: .string)
-            }
-            .buttonStyle(BuilderButtonStyle(role: .secondary))
-            .disabled(model.error == nil)
-            Button(text("copyLog")) { copyLog() }
+            HStack {
+              Text(text("diagnostics")).font(.headline).foregroundStyle(BuilderPalette.text)
+              Spacer()
+              Button(text("copyError")) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(model.error ?? model.status, forType: .string)
+              }
               .buttonStyle(BuilderButtonStyle(role: .secondary))
-            Button(text("saveLog")) { saveLog() }
+              .disabled(model.error == nil)
+              Button(text("copyLog")) { copyLog() }
+                .buttonStyle(BuilderButtonStyle(role: .secondary))
+              Button(text("saveLog")) { saveLog() }
+                .buttonStyle(BuilderButtonStyle(role: .secondary))
+              Button(text("openLog")) {
+                if let file = model.logFile { NSWorkspace.shared.open(file) }
+              }
               .buttonStyle(BuilderButtonStyle(role: .secondary))
-            Button(text("openLog")) {
-              if let file = model.logFile { NSWorkspace.shared.open(file) }
+              .disabled(model.logFile == nil)
+              Toggle(text("followLog"), isOn: $followLog).toggleStyle(.checkbox)
+                .foregroundStyle(BuilderPalette.text)
             }
-            .buttonStyle(BuilderButtonStyle(role: .secondary))
-            .disabled(model.logFile == nil)
-            Toggle(text("followLog"), isOn: $followLog).toggleStyle(.checkbox)
-              .foregroundStyle(BuilderPalette.text)
-          }
-          ScrollViewReader { reader in
-            ScrollView([.horizontal, .vertical]) {
-              VStack(alignment: .leading, spacing: 0) {
-                Text(model.log.isEmpty ? text("emptyLog") : model.log)
-                  .font(.system(size: 12, design: .monospaced))
-                  .foregroundStyle(BuilderPalette.text)
-                  .textSelection(.enabled)
-                Color.clear.frame(height: 1).id("logEnd")
-              }.frame(maxWidth: .infinity, alignment: .leading)
+            ScrollViewReader { reader in
+              ScrollView([.horizontal, .vertical]) {
+                VStack(alignment: .leading, spacing: 0) {
+                  Text(model.log.isEmpty ? text("emptyLog") : model.log)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(BuilderPalette.text)
+                    .textSelection(.enabled)
+                  Color.clear.frame(height: 1).id("logEnd")
+                }.frame(maxWidth: .infinity, alignment: .leading)
+              }
+              .frame(height: 195)
+              .padding(12)
+              .background(BuilderPalette.field, in: RoundedRectangle(cornerRadius: 9))
+              .onAppear { if followLog { reader.scrollTo("logEnd", anchor: .bottom) } }
+              .onChange(of: model.log) {
+                if followLog { reader.scrollTo("logEnd", anchor: .bottom) }
+              }
             }
-            .frame(height: 195)
-            .padding(12)
-            .background(BuilderPalette.field, in: RoundedRectangle(cornerRadius: 9))
-            .onAppear { if followLog { reader.scrollTo("logEnd", anchor: .bottom) } }
-            .onChange(of: model.log) {
-              if followLog { reader.scrollTo("logEnd", anchor: .bottom) }
-            }
-          }
           }
         }
       }
@@ -312,8 +325,11 @@ struct InstallerView: View {
       HStack(alignment: .bottom, spacing: 12) {
         InstallerSelection(
           title: text("device"),
-          options: [InstallerOption(id: "",
-                     label: text(model.devices.isEmpty ? "noDevices" : "selectDevice"))]
+          options: [
+            InstallerOption(
+              id: "",
+              label: text(model.devices.isEmpty ? "noDevices" : "selectDevice"))
+          ]
             + model.devices.map { InstallerOption(id: $0.id, label: $0.name + " - " + $0.os) },
           selection: $model.selectedDevice, identifier: "installer.device"
         )
@@ -331,35 +347,43 @@ struct InstallerView: View {
       if !model.teams.isEmpty {
         InstallerSelection(
           title: text("savedTeam"),
-          options: [InstallerOption(
-            id: model.teams.contains(where: { $0.id == model.team }) ? "" : model.team,
-            label: text("manualTeam")
-          )] + model.teams.map { InstallerOption(id: $0.id, label: $0.name + " - " + $0.id) },
+          options: [
+            InstallerOption(
+              id: model.teams.contains(where: { $0.id == model.team }) ? "" : model.team,
+              label: text("manualTeam")
+            )
+          ] + model.teams.map { InstallerOption(id: $0.id, label: $0.name + " - " + $0.id) },
           selection: $model.team, identifier: "installer.savedTeam"
         )
       }
       HStack(spacing: 14) {
-        InstallerField(title: text("team"), value: $model.team,
-                       prompt: text("teamPlaceholder"),
-                       problem: model.team.isEmpty || model.validTeam ? nil : text("invalidTeam"))
-          .frame(width: 180)
-        InstallerField(title: text("bundle"), value: $model.bundleID,
-                       problem: model.bundleID.isEmpty || model.validBundle
-                                ? nil : text("invalidBundle"))
+        InstallerField(
+          title: text("team"), value: $model.team,
+          prompt: text("teamPlaceholder"),
+          problem: model.team.isEmpty || model.validTeam ? nil : text("invalidTeam")
+        )
+        .frame(width: 180)
+        InstallerField(
+          title: text("bundle"), value: $model.bundleID,
+          problem: model.bundleID.isEmpty || model.validBundle
+            ? nil : text("invalidBundle"))
       }
       helpText("signingHelp")
       helpText("personalTeam")
       HStack(spacing: 12) {
         Button(text("openXcode")) {
           if let url = NSWorkspace.shared.urlForApplication(
-            withBundleIdentifier: "com.apple.dt.Xcode") {
+            withBundleIdentifier: "com.apple.dt.Xcode")
+          {
             NSWorkspace.shared.openApplication(
               at: url, configuration: NSWorkspace.OpenConfiguration())
           }
         }.buttonStyle(BuilderButtonStyle(role: .secondary))
-        Link(text("accountHelp"),
-             destination: URL(string:
-               "https://developer.apple.com/help/account/basics/about-your-developer-account")!)
+        Link(
+          text("accountHelp"),
+          destination: URL(
+            string:
+              "https://developer.apple.com/help/account/basics/about-your-developer-account")!)
       }
     }.disabled(model.busy)
   }

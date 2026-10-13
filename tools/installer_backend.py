@@ -220,6 +220,16 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     source = args.source.resolve()
     workspace = args.workspace.resolve()
     with workspace_lock(args.workspace):
+        # Native unsigned builds operate directly on the signed app's
+        # bundled tools and verified private kit. No workspace source
+        # snapshot is needed; keep snapshots for the Xcode signing route.
+        if args.command == "build-native":
+            from native_macos_package import build_unsigned
+            emit("progress", message="Building native unsigned IPA")
+            with contextlib.redirect_stdout(LogStream()):
+                build_unsigned(args.archive, args.destination, args.native_kit,
+                               hungarian=not args.no_hungarian, overwrite=args.overwrite)
+            return {"ipa_path": str(args.destination)}
         emit("progress", message="Preparing runtime")
         runtime = prepare_runtime(source, workspace)
         assets = workspace / "assets"
@@ -230,13 +240,6 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             with contextlib.redirect_stdout(LogStream()):
                 report = install_release(args.archive, runtime, assets)
             return {"assets": asdict(report)}
-        if args.command == "build-native":
-            from native_macos_package import build_unsigned
-            emit("progress", message="Building native unsigned IPA")
-            with contextlib.redirect_stdout(LogStream()):
-                build_unsigned(args.archive, args.destination, args.native_kit,
-                               hungarian=not args.no_hungarian, overwrite=args.overwrite)
-            return {"ipa_path": str(args.destination)}
         if args.command == "status":
             result: dict[str, object] = {}
             try:

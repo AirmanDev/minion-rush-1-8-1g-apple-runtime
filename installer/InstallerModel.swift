@@ -67,8 +67,9 @@ final class InstallerModel {
     FileManager.default.fileExists(atPath: nativeKit.appendingPathComponent("manifest.json").path)
   }
   var bundledHungarian: Bool {
-    nativeKitAvailable && FileManager.default.fileExists(
-      atPath: nativeKit.appendingPathComponent("hu.xlf").path)
+    nativeKitAvailable
+      && FileManager.default.fileExists(
+        atPath: nativeKit.appendingPathComponent("hu.xlf").path)
   }
   var canBuildIPA: Bool { !busy && archiveURL != nil && nativeKitAvailable }
   var textLanguage: String { interfaceLanguage == "hu" ? "hu" : "en" }
@@ -85,7 +86,8 @@ final class InstallerModel {
     archiveName = defaults.string(forKey: "releaseArchiveName")
     source = resources.appendingPathComponent("Runtime")
     nativeKit = resources.appendingPathComponent("NativeKit")
-    interfaceLanguage = defaults.string(forKey: "builderInterfaceLanguage")
+    interfaceLanguage =
+      defaults.string(forKey: "builderInterfaceLanguage")
       ?? (Locale.current.language.languageCode?.identifier == "hu" ? "hu" : "en")
     includeHungarian = defaults.object(forKey: "builderIncludeHungarian") as? Bool ?? true
     outputURL = FileManager.default.homeDirectoryForCurrentUser
@@ -146,10 +148,12 @@ final class InstallerModel {
   func buildNative(overwrite: Bool) {
     guard canBuildIPA, let archive = archiveURL else { return }
     start(
-      ["build-native", "--archive", archive.path,
-       "--destination", outputURL.path, "--native-kit", nativeKit.path]
-       + (includeHungarian && bundledHungarian ? [] : ["--no-hungarian"])
-       + (overwrite ? ["--overwrite"] : []),
+      [
+        "build-native", "--archive", archive.path,
+        "--destination", outputURL.path, "--native-kit", nativeKit.path,
+      ]
+        + (includeHungarian && bundledHungarian ? [] : ["--no-hungarian"])
+        + (overwrite ? ["--overwrite"] : []),
       phase: text("working"), operation: .buildNative
     )
   }
@@ -253,8 +257,7 @@ final class InstallerModel {
       installed = item.installed == true
       if let path = item.ipaPath {
         let value = URL(fileURLWithPath: path)
-        if operation == .buildNative { unsignedIPA = value }
-        else { exportedIPA = value }
+        if operation == .buildNative { unsignedIPA = value } else { exportedIPA = value }
       }
     default: error = "Unsupported installer response."
     }
