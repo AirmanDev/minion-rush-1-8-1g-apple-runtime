@@ -102,6 +102,7 @@ src/native/window_ios.m
 src/native/window_macos.m
 src/windows/builder.ico
 src/windows/builder.rc
+src/windows/builder_args.h
 src/windows/builder_palette.h
 src/windows/ipa_builder.c
 src/windows/onefile_launcher.c

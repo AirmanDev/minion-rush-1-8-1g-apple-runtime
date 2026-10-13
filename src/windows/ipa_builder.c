@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
+#include "builder_args.h"
 #include <shobjidl.h>
 #include <strsafe.h>
 #include <stdio.h>
@@ -1686,7 +1687,9 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE unused, PWSTR arguments, int show) {
     (void)unused;
-    BOOL self_test = wcscmp(arguments, L"--self-test") == 0;
+    (void)arguments;
+    BOOL self_test = FALSE;
+    if (!mr_builder_parse_args(&self_test)) return 2;
     if (!GetModuleFileNameW(NULL, kit_path, MAX_PATH * 4)) return 1;
     WCHAR *separator = wcsrchr(kit_path, L'\\');
     if (!separator) return 1;

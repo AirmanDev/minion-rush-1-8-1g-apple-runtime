@@ -3,6 +3,7 @@
 #include <objbase.h>
 #include <wincrypt.h>
 #include <shellapi.h>
+#include "builder_args.h"
 #include <strsafe.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -115,8 +116,9 @@ static BOOL remove_directory_tree(LPCWSTR path) {
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR arguments, int display) {
-    (void)instance; (void)previous; (void)display;
-    if (arguments[0] && wcscmp(arguments, L"--self-test") != 0) {
+    (void)instance; (void)previous; (void)arguments; (void)display;
+    BOOL self_test = FALSE;
+    if (!mr_builder_parse_args(&self_test)) {
         error_message(L"Unsupported command-line arguments.");
         return 2;
     }
@@ -179,7 +181,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR arguments, int
         *last_slash = 0;
         SetEnvironmentVariableW(L"MR_SOURCE_DIR", application);
     }
-    launched = run_child(inner, arguments, kit, &exit_code);
+    launched = run_child(inner, self_test ? L"--self-test" : L"", kit, &exit_code);
     if (!launched) goto failure;
     goto done;
 

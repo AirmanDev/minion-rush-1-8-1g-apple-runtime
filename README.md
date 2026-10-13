@@ -119,6 +119,12 @@ the full portable Mac Builder is packaged using
 `tools/build_portable_mac_builder.py`. Unsigned IPA creation is disabled
 in the separate asset-free Xcode-only installer.
 
+Both 1.2.0 portable candidates have passed original-ZIP to native IPA
+conversion, including a native Windows 11 ARM GUI test with the exact
+portable EXE. The IPA contents and compression have been inspected on
+both platforms. This establishes desktop packaging correctness, not
+signed on-device gameplay compatibility.
+
 The 1.2.0 binaries must not be described as legally cleared or fully
 device-tested until the outstanding rights and physical-device checks
 described in [release scope](docs/RELEASE_SCOPE.md) are complete.

@@ -66,6 +66,11 @@ The checked-in files are verified before either native build, and CI
 rejects any drift. Platform layout and event handling remain native.
 Both executables share the project icon from `prepare_installer_icon.swift`.
 
+The Windows launcher and native GUI share `builder_args.h`, which parses
+the Windows command line with `CommandLineToArgvW` rather than comparing
+raw `wWinMain` text: Windows may append whitespace to that text, even
+when `--self-test` is the only argument.
+
 The Windows portable release is a self-extracting EXE with an embedded
 Python runtime, translator and generic unsigned template, without game-derived data.
 The separately compiled UTM test build retains SPICE/WebDAV handling; the

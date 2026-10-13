@@ -112,12 +112,29 @@ generated v3 profile and patched ARM64 code. Native output is assembled
 atomically. The VM-only network import is distinct from the standard
 filesystem import path.
 
-The generic v3 Mac Builder has completed an original-ZIP-to-unsigned-IPA
-test. The 1.2 Windows EXE has been cross-compiled and its bundled kit
-validated, but a fresh Windows 11 GUI end-to-end test and physical iOS
-gameplay regression remain release gates. Earlier Windows 11 ARM/Sideloadly
-results belong to the historical 1.1.0 private build and do not establish
-1.2.0 device compatibility.
+The generic v3 Mac and Windows portable Builders both passed native
+original-ZIP-to-unsigned-IPA tests. On Windows 11 ARM in UTM, the x64
+self-extracting EXE passed its embedded-kit integrity and self-test, started
+a responsive native GUI in the interactive desktop session, and built an
+unsigned IPA through Create IPA using the user's locally staged original
+ZIP. The checked 1.2.0 GUI result contains 1,369 entries, 942,744 AOT
+blocks and no bundled Hungarian game translation. The generated file
+passes an independent full ZIP integrity and profile parse check.
+
+Windows' mapped UTM WebDAV drive cannot directly read this 454 MB ZIP.
+For this private UTM test, the ZIP was first copied through UTM's
+localhost-only WebDAV server onto the guest's local disk and checked using
+its original SHA-256. This is a VM transport limitation, not a requirement
+for users with ordinary local ZIP files.
+
+The shared IPA writer uses ZIP deflate level 3 to balance the large native
+payload size with short host-side assembly time. On the test source, the
+Windows IPA shrank from 447,936,121 to 367,832,694 bytes after this change.
+
+A signed physical iOS gameplay, audio, safe-area and save-state regression
+is still outstanding. Earlier Windows 11 ARM/Sideloadly iPhone results
+belong to the historical 1.1.0 build and do not establish 1.2.0 device
+compatibility.
 
 The Windows candidate is not Authenticode signed. Apple-side code signing
 or sideloading requires the user's own account; the Builder does not sign.
