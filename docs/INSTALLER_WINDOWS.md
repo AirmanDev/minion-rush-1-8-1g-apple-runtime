@@ -1,5 +1,8 @@
 # Windows IPA installation with Sideloadly
 
+The desktop tool is "Unofficial IPA Builder", an independent utility
+compatible with Minion Rush 1.8.1g. It is not endorsed by Gameloft.
+
 Two separate IPA preparation paths are supported in the source tree:
 
 - **Mac (maintained):** The portable SwiftUI Builder creates an unsigned

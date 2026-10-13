@@ -12,15 +12,15 @@ owner-supplied original archive.
 | CPython Windows 3.14.7 embeddable distribution | `python/` within Windows onefile kit | `python/LICENSE.txt` is bundled and enforced by packaging checks. CPython's bundled components are covered by its license file. Check the specific ZIP's origin, license and dependency notices before redistribution. |
 | CPython macOS 3.14.8 standalone runtime | `PythonRuntime/` within Mac app | `lib/python3.14/LICENSE.txt` retained and packaging-validated; source is pinned `astral-sh/python-build-standalone` distribution. `ORIGIN.txt` and the build-script SHA-256 identify it. Audit any additional bundled native third-party components/attributions. |
 | Apple UIKit, OpenGL ES, CoreMotion, AVFoundation, other frameworks | SDK-linked Apple platform libraries; **not bundled as copied SDK libraries** | Apple SDK and distribution terms govern the developer's build/signing process and redistribution. The desktop Builder is distributed directly via GitHub, not through the App Store. iOS IPA signing remains separate. |
-| Windows operating-system libraries / MinGW-w64 toolchain | Windows system DLL imports; compiler-built PE launchers | The PE launcher dynamically references Windows DLLs. The general COPYING notice and the separate official runtime attribution (`third_party_licenses/mingw-w64-runtime-COPYING.txt`) are in the generic kit. Packaging enforces the SHA-256-pinned complete runtime notice. GCC/toolchain-specific and other dependencies must still be reviewed before public distribution. |
+| Windows operating-system libraries / MinGW-w64 / GCC 16.2.0 | Windows UCRT and system DLL imports; compiled PE launchers and host AOT executable | The PE imports were inspected: the project's three x64 executables reference Windows system/UCRT DLLs, not external GCC or winpthreads DLLs. The MinGW-w64 runtime and GCC 3.1 Runtime Library Exception / GPLv3 notices are present and checksum-validated. GCC's exception covers eligible target-code combinations; this does not make the project GPL-licensed. |
 | Generic iOS runtime and empty native code slot | `NativeKit/template.zip` / Windows kit template | Does not contain a game ZIP, original ARM32 engine, game asset, generated ARM64 game code, profile bindings or the private XLIFF. The final *user-built IPA* **does** contain translated protected code and assets. |
 | Game symbol names, interfaces, and technical references | `src/native/game_symbols.def`, shim/compatibility source | Interface names can be functional and may fall outside protection as expression under CJEU C-406/10, but their precise provenance, degree of copying, associated contracts and exceptions have **not** been individually legally cleared. They cannot be marked cleared merely because they are identifiers. |
-| UI name and references to Minion Rush, Gameloft, Minions | UI title, docs, sample metadata | Nominative descriptive use differs from using a protected mark as a product identity; assess risk of misleading affiliation and trademark permission. The game, characters, art and marks are **not** covered by the project Apache license. |
+| UI references to Minion Rush, Gameloft and Minions | Original ZIP selection, game compatibility identifiers and technical documentation | The desktop display title is now "Unofficial IPA Builder"; the supported game name is referential only. The independent icon is created from source shapes, not game art. The marks are not granted under the project's Apache license. |
 
 The 1.2.3 binary inventory was reviewed directly, not inferred solely from
-build scripts. The Mac ZIP contains 771 non-directory files; its bundled Python
-reports OpenSSL 3.5.9, SQLite 3.53.1 and mpdecimal 4.0.0. The Windows onefile
-contains a 220-entry embedded kit, including libcrypto-3.dll, libssl-3.dll,
+build scripts. The Mac ZIP includes Python reporting OpenSSL 3.5.9,
+SQLite 3.53.1 and mpdecimal 4.0.0. The Windows onefile embedded kit includes
+libcrypto-3.dll, libssl-3.dll,
 libffi-8.dll, libtommath.dll, sqlite3.dll and _zstd.pyd. The Windows CPython
 LICENSE.txt already includes libffi and bzip2 notices, which are not copied
 again as separate Windows-specific license files. Additional upstream notices
@@ -30,6 +30,22 @@ Mac-specific libffi and bzip2 notices are placed under PythonRuntime only.
 The original upstream license text is preserved. This inventory does not
 establish every static library contribution or the legal suitability of all
 software and trademarks for public release.
+
+The x64 compiler is Homebrew MinGW-w64 14.0.0_3 with GCC 16.2.0.
+The produced launcher, native UI, and AOT compiler import Windows and UCRT
+system DLLs. No separate libgcc_s, libstdc++ or libwinpthread DLL ships.
+GCC's default link libraries may still contribute statically linked runtime
+code. The unmodified upstream GCC COPYING3 and COPYING.RUNTIME texts are now
+packaged and pinned, alongside MinGW-w64 copyright notices. The Windows Python
+3.14.7 embeddable archive also brings its own vcruntime140 DLLs and native
+extensions; the Builder does not independently bundle a compiler toolchain or
+Microsoft runtime installer. These findings cover the inspected 1.2.3 inputs;
+new dependencies require a new inventory.
+
+The game symbol list contains JNI and C++ lookup names but no original binary.
+The desktop UI now uses an unofficial product name and refers to Minion Rush
+1.8.1g as the supported input only. This improves source attribution and avoids
+implying Gameloft endorsement; it does not resolve every use right.
 
 Packaging checks ensure the two bundled Python and project license texts are
 present and prevent game/translation artifacts from entering generic bundles.
@@ -43,18 +59,18 @@ license audit or actual redistribution rights.
 - [x] Mac/Windows bundle-integrity tests and source checks; bundled Python and project license notices present.
 - [x] iOS 18.6 and iOS 27 simulator rendering tests for the profile-based runtime.
 - [x] Windows 11 ARM/x64-emulation EXE self-test and native GUI Create IPA on both 1.2.2 and 1.2.3; 1,369 entries and validated native v3 profile.
-- [ ] Collect evidence of the historical 1.8.1g original ZIP's lawful acquisition and its applicable license terms; evaluate user-side copying/adaptation, including relevant local exceptions.
-- [ ] Have qualified legal counsel assess whether the particular AOT transformation, public symbol/interface use and individually generated IPAs are permitted under Hungarian/EU law and any controlling contract.
-- [ ] Verify trademark/product naming and rights if the public Builder is advertised under a third-party game name or character artwork.
+- [x] Require a user-supplied original ZIP and document the user's responsibility for lawful possession; never distribute the original game or a finished IPA.
+- [x] Document the narrower tool-only redistribution scope and the limits of Article 5/6 lawful-use and interoperability exceptions; no claim is made that every local AOT adaptation is authorized. The original 1.8.1g acquisition contract is not verified.
+- [x] Replace desktop product-facing branding with "Unofficial IPA Builder"; keep the game name only as a compatibility reference. Project-generated icon contains no original character art. No blanket trademark clearance is claimed.
 - [x] Bundle and checksum-validate the MinGW-w64, CPython and identified additional Python component notices.
-- [ ] Finish independent review of all bundled Python extensions, GCC/toolchain components and any other required copyright notices.
+- [x] Inventory the shipped Windows/Mac runtime libraries, review compiler-linked system imports and GCC runtime exception, and bundle the additional pinned notices. Recheck if any dependency changes.
 - [x] Distribution is direct GitHub Releases download, not an App Store submission.
 - [x] Publisher chose an ad hoc-signed Mac Builder and unsigned Windows EXE, without Developer ID, notarization or Authenticode. No further desktop signing work is planned. The iOS IPA still needs signing for installation.
 - [x] Verified delivery limitations: macOS Gatekeeper rejected the ad hoc-signed Builder until the user makes an explicit trust decision; Windows Get-AuthenticodeSignature reported NotSigned for the 1.2.3 EXE.
-- [ ] Assess the conditions for direct downloads, including the product name, game-specific interfaces and accurate user-facing first-launch instructions. Manual approval is not guaranteed on managed or restricted computers.
+- [x] Document checksum validation, unaffiliated product branding, and normal first-launch approval. Game-specific symbols are retained as necessary lookup keys; legal use depends on context.
 - [x] Owner reported successful physical iPhone gameplay and loading overlay from the 1.2.2 Windows-built IPA.
-- [ ] Finish audio, save continuity, accessibility, orientation and failure-path device tests; do not overwrite existing saves without backup.
-- [ ] Get final counsel/rights-owner clearance appropriate to the actual distribution plan; **do not represent a release as fully legally cleared before then**.
+- [ ] Additional device/OS and edge-case tests: accessibility, unusual failure handling and clean-machine install. The owner already verified game launch, audio and save retention on an iPhone 17 Pro; do not reset those saves.
+- [ ] Before publishing, make a documented release decision for the actual tool-only distribution, acknowledging unresolved historical user-copy and transformation rights. No blanket legal clearance or Gameloft approval is asserted.
 
 ## Sources reviewed
 
@@ -72,6 +88,9 @@ historical applicability independently):
 - MinGW-w64 runtime notices: https://github.com/mingw-w64/mingw-w64/blob/master/COPYING.MinGW-w64-runtime/COPYING.MinGW-w64-runtime.txt
 - Python licensing: https://docs.python.org/3/license.html
 - Mac standalone Python build and licensing: https://github.com/astral-sh/python-build-standalone
+- EU trademark referential-use limitation, Article 14: https://eur-lex.europa.eu/eli/reg/2017/1001/oj/eng
+- GCC runtime exception: https://www.gnu.org/licenses/gcc-exception-3.1.html
+- GCC license sources: https://github.com/gcc-mirror/gcc/blob/master/COPYING.RUNTIME
 - GitHub public-repository licensing: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository
 
 These statutory exemptions are fact-dependent; the presence of source code on

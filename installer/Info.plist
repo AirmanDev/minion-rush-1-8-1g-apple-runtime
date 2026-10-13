@@ -7,7 +7,7 @@
     <key>CFBundleName</key>
     <string>Minion Rush Installer</string>
     <key>CFBundleDisplayName</key>
-    <string>Minion Rush IPA Builder</string>
+    <string>Unofficial IPA Builder</string>
     <key>CFBundleExecutable</key>
     <string>MinionRushInstaller</string>
     <key>CFBundleIconFile</key>

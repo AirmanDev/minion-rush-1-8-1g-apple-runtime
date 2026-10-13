@@ -44,6 +44,7 @@ typedef enum { STATE_IDLE, STATE_BUSY, STATE_OK, STATE_FAILED, STATE_STOPPED } U
 typedef struct { int id; LPCWSTR kind; LPCWSTR text; DWORD style; Role role; } Spec;
 typedef struct { int label, hint, field, pick; } Row;
 
+#define MR_BUILDER_TITLE L"Unofficial IPA Builder"
 #define LABEL_STYLE (WS_CHILD | WS_VISIBLE | SS_NOPREFIX | SS_ENDELLIPSIS)
 #define BUTTON_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW)
 #define FIELD_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_READONLY)
@@ -52,9 +53,9 @@ typedef struct { int label, hint, field, pick; } Row;
 /* Creation order is also the z-order and keyboard order. Each field is
    preceded by its label so assistive technology can name it. */
 static const Spec specs[] = {
-    {ID_TITLE, L"STATIC", L"Minion Rush IPA Builder", LABEL_STYLE, ROLE_TITLE},
+    {ID_TITLE, L"STATIC", MR_BUILDER_TITLE, LABEL_STYLE, ROLE_TITLE},
     {ID_SUBTITLE, L"STATIC",
-     L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
+     L"For Minion Rush 1.8.1g. Use your own original ZIP.",
      LABEL_STYLE, ROLE_SUBTITLE},
     {ID_UI_EN, L"BUTTON", L"English", BUTTON_STYLE, ROLE_LANG},
     {ID_UI_HU, L"BUTTON", L"Magyar", BUTTON_STYLE, ROLE_LANG},
@@ -143,7 +144,6 @@ static void bind_symbol(void *target, size_t size, HMODULE module, const char *n
 /* Text stays in one table; future GUI locales only extend this mapping. */
 typedef struct { LPCWSTR english, hungarian; } UiText;
 static const UiText ui_texts[] = {
-    {L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.", L"K\u00e9sz\u00edts al\u00e1\u00edratlan iPhone IPA-t az eredeti 1.8.1g ZIP-b\u0151l."},
     {L"Drop or paste a ZIP path", L"ZIP beh\u00faz\u00e1sa vagy \u00fatvonal beilleszt\u00e9se"},
     {L"Original game ZIP", L"Eredeti j\u00e1t\u00e9k ZIP-f\u00e1jl"},
     {L"Browse ZIP...", L"ZIP kiv\u00e1laszt\u00e1sa..."},
@@ -154,6 +154,9 @@ static const UiText ui_texts[] = {
     {L"Magyar (Hungarian)", L"Magyar"},
     {L"Create IPA", L"IPA k\u00e9sz\u00edt\u00e9se"},
     {L"Cancel", L"Megszak\u00edt\u00e1s"},
+    {MR_BUILDER_TITLE, L"Nem hivatalos IPA-k\u00e9sz\u00edt\u0151"},
+    {L"For Minion Rush 1.8.1g. Use your own original ZIP.",
+     L"Minion Rush 1.8.1g: a saj\u00e1t eredeti ZIP-f\u00e1jlodb\u00f3l."},
     {L"Open output folder", L"Kimeneti mappa megnyit\u00e1sa"},
     {L"Show details", L"R\u00e9szletek"},
     {L"Hide details", L"R\u00e9szletek elrejt\u00e9se"},
@@ -228,11 +231,10 @@ static void relayout(void);
 static void update_interface(void) {
 #ifdef MR_UTM_TEST
     SetWindowTextW(main_window, interface_language ?
-        L"Minion Rush IPA-k\u00e9sz\u00edt\u0151 - UTM teszt" :
-        L"Minion Rush IPA Builder - UTM test build");
+        L"Nem hivatalos IPA-k\u00e9sz\u00edt\u0151 - UTM teszt" :
+        L"Unofficial IPA Builder - UTM test build");
 #else
-    SetWindowTextW(main_window, interface_language ?
-        L"Minion Rush IPA-k\u00e9sz\u00edt\u0151" : L"Minion Rush IPA Builder");
+    SetWindowTextW(main_window, tr(MR_BUILDER_TITLE));
 #endif
     for (size_t i = 0; i < sizeof(specs) / sizeof(specs[0]); i++) {
         int id = specs[i].id;
@@ -1718,9 +1720,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE unused, PWSTR arguments, int s
                                     GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
     if (!cls.hIcon || !cls.hIconSm || !RegisterClassExW(&cls)) return 1;
 #ifdef MR_UTM_TEST
-    LPCWSTR title = L"Minion Rush IPA Builder - UTM test build";
+    LPCWSTR title = L"Unofficial IPA Builder - UTM test build";
 #else
-    LPCWSTR title = L"Minion Rush IPA Builder";
+    LPCWSTR title = MR_BUILDER_TITLE;
 #endif
     HWND window = CreateWindowExW(0, cls.lpszClassName, title,
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 800, 640,

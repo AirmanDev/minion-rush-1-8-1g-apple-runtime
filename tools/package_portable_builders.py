@@ -26,7 +26,7 @@ from native_ipa import (EXE_NAME, PROFILE_LOADER_MARKERS, TEMPLATE_MANIFEST, TEM
                         _check_template_zip, _validate_manifest)
 from native_macos_package import validate_native_kit
 from native_macho import file_sha256, find_code_slot, require_zero_slot
-from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, verify_notice
+from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, TOOLCHAIN_NOTICES, verify_notice
 
 APP = "Minion Rush IPA Builder.app"
 WIN = "MinionRush-Builder-Windows-x64.exe"
@@ -88,7 +88,7 @@ def verify_windows(executable: Path) -> None:
                      if name.endswith("/MinionRush-native-template-unsigned.zip")]
         if len(templates) != 1:
             raise ValueError("Windows Builder is missing a unique generic iOS template")
-        for notice, digest in COMMON_NOTICES.items():
+        for notice, digest in (COMMON_NOTICES | TOOLCHAIN_NOTICES).items():
             path = "MinionRush-Portable-Windows/runtime/third_party_licenses/" + notice
             if path not in names or hashlib.sha256(kit.read(path)).hexdigest() != digest:
                 raise ValueError("Windows third-party license notice missing or modified: " + notice)
@@ -115,7 +115,7 @@ def verify_mac(app: Path, version: str) -> None:
     notices = resources / "Runtime" / RUNTIME_LICENSE_NAME
     if (not notices.is_file() or file_sha256(notices) != RUNTIME_LICENSE_SHA256):
         raise ValueError("bundled MinGW-w64 runtime attribution is missing or modified")
-    for notice, digest in COMMON_NOTICES.items():
+    for notice, digest in (COMMON_NOTICES | TOOLCHAIN_NOTICES).items():
         verify_notice(resources / "Runtime/third_party_licenses" / notice, digest)
     for notice, digest in MAC_ONLY_NOTICES.items():
         verify_notice(resources / "PythonRuntime/ThirdPartyLicenses" / notice, digest)

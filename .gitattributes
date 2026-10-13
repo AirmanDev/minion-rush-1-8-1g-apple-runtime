@@ -4,3 +4,4 @@
 *.xcprivacy text eol=lf
 ios/MinionRush/Assets.xcassets/AppIcon.appiconset/AppIcon.png linguist-generated=true
 third_party_licenses/mingw-w64-runtime-COPYING.txt whitespace=-blank-at-eol,-space-before-tab
+third_party_licenses/gcc-COPYING.RUNTIME.txt whitespace=-blank-at-eof

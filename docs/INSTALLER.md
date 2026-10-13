@@ -1,5 +1,9 @@
 # Native installer
 
+The Mac interface is titled "Unofficial IPA Builder" and identifies
+Minion Rush 1.8.1g only as the compatible input. It is not affiliated
+with or endorsed by the game's rightsholders.
+
 The Mac installer is a native SwiftUI application for creating an unsigned
 IPA from the user-owned original 1.8.1g ZIP. Its optional Xcode workflow
 continues to sign and install on connected Apple devices. It is not the game,

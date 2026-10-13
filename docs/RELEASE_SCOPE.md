@@ -34,9 +34,9 @@ fallback to the game-derived v2 template.
 
 ### 1.2.3 release packaging changes
 
-This release candidate updates license attributions only. It does not
-change the native engine, iOS loading overlay, ARM64 translation format or
-gameplay. The upstream MinGW-w64 runtime licensing text is bundled intact,
+This release candidate updates license attributions, desktop title and
+unaffiliated compatibility wording. It does not change the native engine,
+iOS loading overlay, ARM64 translation format or gameplay. The upstream MinGW-w64 runtime licensing text is bundled intact,
 with its original copyright signs and a pinned SHA-256. Package validation
 rejects a missing or altered notice in both Mac and Windows bundles.
 The third-party Python dependency inventory now also carries pinned upstream
@@ -46,9 +46,19 @@ iOS runtime changes. The originals reviewed are ASCII and require no new
 source style exemption. Only the existing MinGW-w64 upstream notice is exempt
 from the ASCII source rule.
 
+The GCC 16.2.0 toolchain-generated Windows executables import only Windows
+system and UCRT DLLs. The compiler's static runtime contribution is governed
+by the GCC Runtime Library Exception 3.1 where applicable. Unmodified GCC
+GPLv3 and runtime-exception notices are now pinned and included. Original
+engine identifiers remain in the compatibility symbol table because the
+Builder needs them to resolve symbols within the user-provided ZIP; no
+precomputed addresses are distributed. The app's desktop display title is
+"Unofficial IPA Builder" and its subtitle identifies Minion Rush 1.8.1g
+only as the supported input.
+
 The owner reported that the 1.2.2 Windows-built IPA launched, displayed
-its loading overlay and ran on a physical iPhone. No code-side regression
-was introduced by this notice-only update. The actual 1.2.3 packages
+its loading overlay and ran on a physical iPhone. No iOS engine or AOT change
+was introduced by the notice and independent-branding updates. The actual 1.2.3 packages
 were subsequently built and validated on Mac and Windows, including the
 entire original-ZIP-to-unsigned-IPA process.
 
@@ -92,7 +102,8 @@ ARM guest with x64 emulation: the native Create IPA action generated
 ZIP/profile audit confirmed 1,369 entries, v3, 109 bindings, 942,744 AOT
 blocks and 164,353,244 ARM64 code bytes. Windows onefile --self-test passed.
 The owner subsequently confirmed that the 1.2.2 loading screen and
-gameplay work on a physical iPhone. Audio/save continuity remain open.
+gameplay work on a physical iPhone. The owner later confirmed sound and
+save retention on an iPhone 17 Pro.
 
 ### 1.2.1 startup defect and Simulator regression
 
@@ -193,11 +204,12 @@ changing the native code, profile or game asset contents. The remaining
 platform-dependent PNG icon bytes and zlib implementation explain why these
 IPA files are not byte-identical across the platforms.
 
-The owner has confirmed physical iPhone gameplay and the 1.2.2 loading
-screen. Audio, save-state continuity and broader iOS version coverage
-remain unverified. A first-launch check on a clean desktop is recommended
+The owner has confirmed physical iPhone gameplay, sound, save retention
+and the 1.2.2 loading screen on an iPhone 17 Pro. Broader iOS and iPad
+device coverage remains unverified. A first-launch check on a clean desktop is recommended
 to verify accurate trust-prompt instructions, not to demand publisher
-signing. Dependency licenses and case-specific legal rights remain open.
+signing. The inventoried runtime dependencies have pinned notices;
+case-specific rights to transform a user-supplied game remain fact dependent.
 
 ## Legal and distribution limits
 
@@ -218,10 +230,10 @@ languages from the user's ZIP.
 
 The source code's Apache 2.0 license covers only contributions whose authors
 can license them. It does not license the game, its source assets, or the
-mark, and signing with Sideloadly/Xcode does not grant those rights. Third-
-party executable dependency licenses, the game's historical EULA, and the
-narrow scope of Hungarian/EU interoperability provisions require a concrete
-legal review before public release.
+mark, and signing with Sideloadly/Xcode does not grant those rights. The identified runtime dependency licenses have been inventoried and
+packaged. The game's historical EULA and Hungarian/EU interoperability
+exceptions remain context dependent. The release must describe this limitation
+without claiming Gameloft endorsement or blanket legal authorization.
 
 Primary references:
 

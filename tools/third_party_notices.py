@@ -20,6 +20,11 @@ MAC_ONLY_NOTICES = {
     'libffi-LICENSE.txt': 'deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0',
 }
 
+TOOLCHAIN_NOTICES = {
+    'gcc-COPYING.RUNTIME.txt': '9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74',
+    'gcc-COPYING3.txt': '8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903',
+}
+
 def verify_notice(path: Path, digest: str) -> None:
     if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
         raise ValueError("missing or modified third-party license notice: " + str(path))

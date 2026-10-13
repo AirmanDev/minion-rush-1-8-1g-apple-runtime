@@ -14,7 +14,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 from common import ROOT, content_files, load_json_object, public_source_names
-from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, verify_notice
+from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, TOOLCHAIN_NOTICES, verify_notice
 
 IGNORED_ROOTS = frozenset({
     "assets", "build", "logs", ".firecrawl", ".git", "__MACOSX", "__pycache__",
@@ -245,6 +245,8 @@ def check_text_style(tree: dict[str, str]) -> None:
         verify_notice(ROOT / "third_party_licenses" / name, digest)
     for name, digest in MAC_ONLY_NOTICES.items():
         verify_notice(ROOT / "third_party_licenses/mac_python" / name, digest)
+    for name, digest in TOOLCHAIN_NOTICES.items():
+        verify_notice(ROOT / "third_party_licenses" / name, digest)
     found = sorted(relative for relative, source in tree.items()
                    if relative != RUNTIME_LICENSE and not source.isascii())
     if found:

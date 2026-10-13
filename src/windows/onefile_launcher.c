@@ -25,7 +25,7 @@ _Static_assert(sizeof(BundleFooter) == 56, "Unexpected bundle footer");
 #define MAX_BUNDLE (256u * 1024u * 1024u)
 
 static void error_message(const WCHAR *message) {
-    MessageBoxW(NULL, message, L"Minion Rush Builder", MB_OK | MB_ICONERROR);
+    MessageBoxW(NULL, message, L"Unofficial IPA Builder", MB_OK | MB_ICONERROR);
 }
 
 static BOOL file_is_present(const WCHAR *path) {

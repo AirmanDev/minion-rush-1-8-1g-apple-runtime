@@ -10,9 +10,12 @@ update moved the current game to Unity with a new visual system and redesigned
 game modes. The two codebases and data formats are incompatible and are not
 combined here.
 
-The public repository does not include the original engine, DLC, graphics, or
-audio. Each user must install these assets from a lawfully obtained copy of
-release 1.8.1g. See `docs/LEGAL.md`.
+The public repository and generic desktop Builders do not include the original
+engine, DLC, graphics, audio or any completed game IPA. Each user supplies
+their own lawfully obtained release 1.8.1g ZIP. Conversion and IPA assembly
+occur locally on that user's computer. This tool is independent of Gameloft
+and does not authorize otherwise restricted copying or adaptation. See
+`docs/LEGAL.md`.
 
 ## Supported environment
 
@@ -48,10 +51,11 @@ can explicitly approve the application in Privacy & Security; managed
 systems may prevent it. Signing an iOS IPA for device installation is
 separate and still required.
 
-Version 1.2.3 is a packaging and license-notice update; it does not
-modify the iOS engine, loading overlay or ARM64 compiler. The official
-MinGW-w64 runtime copyright notices are retained in the Windows kit,
-with a checksum check before packaging. The 1.2.2 working baseline
+Version 1.2.3 finalizes third-party notices and the independent desktop
+branding; it does not modify the iOS engine, loading overlay or ARM64 compiler.
+The portable application is titled "Unofficial IPA Builder", with Minion Rush
+1.8.1g named solely as the supported original game. Source-controlled and
+bundled MinGW-w64, Python and GCC runtime notices are checksum-checked. The 1.2.2 working baseline
 remains available privately for comparison.
 
 Version 1.2.1 fixed a black screen caused by the missing
@@ -63,7 +67,9 @@ initialization messages. It closes after the first rendered frame rather
 than a fixed delay. The overlay and gameplay rendering were tested on the
 iOS 27.0 Simulator; the profile-based runtime was also tested on iOS 18.6.
 The owner confirmed the 1.2.2 loading overlay and gameplay on an iPhone.
-Audio, save continuity and a clean-device install were not separately audited.
+The owner additionally confirmed gameplay, audio and preserved saves on an
+iPhone 17 Pro. Clean-device installation and broader device/OS coverage remain
+separate tests.
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -150,9 +156,9 @@ original ZIP. The Windows test used the native GUI in a Windows 11 ARM VM
 with x64 emulation. IPA contents and checksums were checked separately.
 See [release scope](docs/RELEASE_SCOPE.md) for the test record.
 
-The currently identified Python component notices are distributed with the
-portable Builder candidate and checked against pinned digests. Remaining
-rights and dependency-review blockers are inventoried in
+The identified Python components and GCC runtime-license texts are included
+in the candidate and checked against pinned digests. Residual user-side
+transformation rights and release-decision considerations are tracked in
 [third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
 
 The 1.2.3 binaries must not be described as legally cleared or fully

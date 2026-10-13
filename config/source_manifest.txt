@@ -125,6 +125,8 @@ tests/test_package_portable_builders.py
 tests/test_tools.py
 tests/test_windows_icon.py
 tests/test_windows_native.py
+third_party_licenses/gcc-COPYING.RUNTIME.txt
+third_party_licenses/gcc-COPYING3.txt
 third_party_licenses/mingw-w64-COPYING.txt
 third_party_licenses/mingw-w64-runtime-COPYING.txt
 third_party_licenses/python-expat-LICENSE.txt

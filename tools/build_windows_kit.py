@@ -139,7 +139,7 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
                      if name != "tools/windows_utm_transport.py"]
             manifest.write_text("\n".join(names) + "\n", encoding="utf-8")
         (staged / "README-WINDOWS.txt").write_text(
-            "Minion Rush - native IPA builder\n"
+            "Unofficial IPA Builder for Minion Rush 1.8.1g\n"
             "================================\n"
             "Open MinionRush Builder.exe. Drag your original 1.8.1g ZIP onto the\n"
             "window or choose it with Browse. Select a new .ipa save path.\n"

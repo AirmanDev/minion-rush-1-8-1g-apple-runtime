@@ -103,6 +103,18 @@ and does not distribute that binary.
 - Declaring manually managed bundle localizations:
   https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundlelocalizations
 
+## Third-party notices and descriptive product references
+
+- GCC Runtime Library Exception 3.1:
+  https://www.gnu.org/licenses/gcc-exception-3.1.html
+- GCC upstream GPLv3 and runtime exception documents:
+  https://github.com/gcc-mirror/gcc/blob/master/COPYING3
+  https://github.com/gcc-mirror/gcc/blob/master/COPYING.RUNTIME
+- EU trademark regulation Article 14, referential identification:
+  https://eur-lex.europa.eu/eli/reg/2017/1001/oj/eng
+- CJEU C-406/10, functionality compared to protected expression:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62010CJ0406
+
 ## Localization
 
 - BCP 47 language tags in RFC 5646:

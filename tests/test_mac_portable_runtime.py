@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, verify_notice
+from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, TOOLCHAIN_NOTICES, verify_notice
 from mac_portable_runtime import (ARCHIVE_SHA256, PYTHON_VERSION, install_runtime,
                                   SKIP_ROOTS, SKIP_STDLIB)
 
@@ -25,6 +25,8 @@ class PortableMacRuntimeTests(unittest.TestCase):
 
     def test_dependency_notices_are_pinned(self):
         for name, digest in COMMON_NOTICES.items():
+            verify_notice(ROOT / "third_party_licenses" / name, digest)
+        for name, digest in TOOLCHAIN_NOTICES.items():
             verify_notice(ROOT / "third_party_licenses" / name, digest)
         for name, digest in MAC_ONLY_NOTICES.items():
             verify_notice(ROOT / "third_party_licenses/mac_python" / name, digest)

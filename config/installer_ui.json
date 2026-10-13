@@ -1,5 +1,5 @@
 {
-  "title": "Minion Rush IPA Builder",
+  "title": "Unofficial IPA Builder",
   "subtitle": "Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
   "minimumWidth": 700.0,
   "signingRules": {
@@ -98,7 +98,7 @@
     "noSource": "Choose the original 1.8.1g ZIP",
     "statusLabel": "Status",
     "sourceHelp": "The original ZIP stays private and is never bundled in the Builder.",
-    "headerSubtitle": "Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
+    "headerSubtitle": "For Minion Rush 1.8.1g. Use your own original ZIP.",
     "importForSigning": "Import ZIP for signed installation"
   },
   "hungarianLabels": {
@@ -179,7 +179,7 @@
     "quitHelp": "A megszak\u00edt\u00e1s nem t\u00f6rli a kor\u00e1bban telep\u00edtett j\u00e1t\u00e9kot.",
     "quit": "Megszak\u00edt\u00e1s \u00e9s kil\u00e9p\u00e9s",
     "keepRunning": "Folytat\u00e1s",
-    "headerSubtitle": "K\u00e9sz\u00edts al\u00e1\u00edratlan iPhone IPA-t az eredeti 1.8.1g ZIP-b\u0151l.",
+    "headerSubtitle": "Minion Rush 1.8.1g: a saj\u00e1t eredeti ZIP-f\u00e1jlodb\u00f3l.",
     "importForSigning": "ZIP import\u00e1l\u00e1sa al\u00e1\u00edrt telep\u00edt\u00e9shez"
   }
 }

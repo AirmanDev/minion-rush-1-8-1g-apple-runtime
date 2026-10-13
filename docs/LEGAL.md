@@ -4,9 +4,13 @@ Review updated: 2026-10-13. Scope: the historical Minion Rush 1.8.1g
 compatibility runtime, native Windows ZIP-to-IPA builder, source-derived
 iOS executable template, optional translations and distribution packaging.
 
-This is an independent project, not affiliated with Gameloft, Illumination
-or Universal Products & Experiences. The Minion Rush name identifies the
-historical title being studied, not an official or endorsed product.
+This is an independent, unofficial compatibility tool, not affiliated with
+Gameloft, Illumination or Universal Products & Experiences. The desktop app
+uses the product title "Unofficial IPA Builder". "Minion Rush 1.8.1g" is used
+to identify the compatible original game, not to claim approval or ownership.
+The ZIP and application bundle filenames retain their existing identifiers
+for compatibility. The app icon is drawn from project source as a package
+and arrow; original character imagery and game logos are not included.
 
 ## Project source and third-party rights
 
@@ -40,6 +44,53 @@ APK or Apple Account credentials and does not upload user content.
 The generated IPA still contains the user's game assets and translated
 machine code, and is a distinct legal issue from the Builder software.
 Signing it externally does not grant redistribution rights.
+
+## Separation of the Builder from user-supplied game content
+
+The published repository and generic Mac/Windows packages distribute the
+project's compatibility code, host tools, interpreter dependencies and a
+generic, game-data-free iOS template. They do not distribute the historical
+game archive, original executable or assets, game-derived ARM64 output,
+binding addresses, a completed IPA or private translation. The user supplies
+an independently obtained archive locally; compilation and IPA packaging run
+on that user's computer without downloading the original game from this
+project. The resulting IPA is not part of any public release.
+
+This narrows direct redistribution of protected game content, but it is not
+a blanket legal exemption for creating adaptation tools or using the tools.
+A lawfully held archive is relevant to lawful-user exceptions, but is not
+itself permission to translate the whole executable. A user's own conversion,
+any relevant contractual restrictions, the necessary scope of interoperability
+or error repair, and the project's distribution can require separate analysis.
+The repository must not promise that every resulting IPA is authorized.
+
+## Interface identifiers and referential trademark use
+
+`src/native/game_symbols.def` lists required JNI and C++ symbol names,
+including Android package identifiers containing "gameloft". They are
+lookup keys used to resolve binding addresses from the user-provided input.
+The distributed generic code slot contains no game-derived addresses or
+translated engine instructions. These functional identifiers are not
+themselves a shipped copy of the executable, but their origin and context
+matter. Removing or arbitrarily renaming them would break native conversion
+and is not supported by a technical or legal finding.
+
+CJEU C-406/10 distinguishes unprotected functionality, programming language
+and file formats from protected program expression. It does not categorically
+clear copied executable instructions, individual identifiers or decompilation.
+The use here was audited for purpose and packaging; it is not an assertion of
+legal ownership of game APIs.
+
+EU Regulation 2017/1001 Article 14(1)(c) permits certain third-party
+references to marks to identify goods or their intended purpose, subject to
+honest practices in Article 14(2). The desktop product name is therefore
+neutral, while the compatible game's name remains in the help text, file
+selection and documentation. The repository and release assets must not use
+official game logos, Minion character art, or wording implying endorsement.
+This limits confusion; it is not a trademark license or a legal ruling.
+
+Primary trademark text:
+- https://eur-lex.europa.eu/eli/reg/2017/1001/oj/eng
 
 ## Gameloft license and acquisition history
 
