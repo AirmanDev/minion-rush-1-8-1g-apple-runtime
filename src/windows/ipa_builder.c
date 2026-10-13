@@ -505,7 +505,7 @@ static int compute_geometry(Geometry *g, int width, int height) {
 
     int card_inner = inner - 2 * pad, label_width = card_inner * 45 / 100;
     for (size_t index = 0; index < sizeof(rows) / sizeof(rows[0]); index++) {
-        int top = card_top + S(18) + index * (row_height + row_gap);
+        int top = card_top + S(18) + (int)index * (row_height + row_gap);
         int field_top = top + label_height + S(4);
         int left = margin + pad;
         place_slot(g, rows[index].label, left, top, label_width, label_height);
