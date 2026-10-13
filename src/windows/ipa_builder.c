@@ -848,18 +848,18 @@ static void show_detail(LPCWSTR text) {
 static void append_log(WCHAR *line) {
     HWND log_field = ctl[ID_LOG];
     int size = GetWindowTextLengthW(log_field);
-    if (size + (int)wcslen(line) > 4 * 1024 * 1024) {
+    if (size + (int)wcslen(line) > 4 * 1024 * 1024 - 128) {
         if (!log_truncated) {
             log_truncated = TRUE;
             const WCHAR *notice = L"\r\n[Log display reached 4 MB. Additional output omitted.]\r\n";
             SendMessageW(log_field, EM_SETSEL, (WPARAM)size, (LPARAM)size);
             SendMessageW(log_field, EM_REPLACESEL, FALSE, (LPARAM)notice);
         }
-        return;
+    } else {
+        SendMessageW(log_field, EM_SETSEL, (WPARAM)size, (LPARAM)size);
+        SendMessageW(log_field, EM_REPLACESEL, FALSE, (LPARAM)line);
+        SendMessageW(log_field, EM_SCROLLCARET, 0, 0);
     }
-    SendMessageW(log_field, EM_SETSEL, (WPARAM)size, (LPARAM)size);
-    SendMessageW(log_field, EM_REPLACESEL, FALSE, (LPARAM)line);
-    SendMessageW(log_field, EM_SCROLLCARET, 0, 0);
     if (SUCCEEDED(StringCchCopyW(pending_detail, 512, line))) {
         size_t length = wcslen(pending_detail);
         while (length && (pending_detail[length - 1] == L'\r' || pending_detail[length - 1] == L'\n'))
@@ -867,16 +867,20 @@ static void append_log(WCHAR *line) {
         detail_dirty = TRUE;
     }
     if (wcsncmp(line, L"1/3:", 4) == 0 || wcsncmp(line, L"2/3:", 4) == 0 ||
-        wcsncmp(line, L"3/3:", 4) == 0)
+        wcsncmp(line, L"3/3:", 4) == 0) {
         StringCchCopyW(phase_text, 192, line);
-    if (wcsncmp(line, L"Import transport:", 17) == 0)
+        diagnostics_dirty = TRUE;
+    }
+    if (wcsncmp(line, L"Import transport:", 17) == 0) {
         StringCchCopyW(transport_text, 192, line + 17);
+        diagnostics_dirty = TRUE;
+    }
     if (wcsstr(line, L"Windows native IPA build failed:") ||
         wcsncmp(line, L"Error:", 6) == 0) {
         StringCchCopyW(last_error, 4096, line);
         EnableWindow(ctl[ID_COPY_ERROR], TRUE);
+        diagnostics_dirty = TRUE;
     }
-    diagnostics_dirty = TRUE;
 }
 
 static void send_log(HWND window, const char *bytes, int length) {
