@@ -19,8 +19,8 @@ sys.dont_write_bytecode = True
 
 import build_windows_kit
 from package_windows_release import package_windows_candidate
-from windows_native_package import (_utm_http_stream, _utm_webdav_url,
-                                    _needs_local_archive_copy,
+from windows_utm_transport import _utm_http_stream, _utm_webdav_url
+from windows_native_package import (_needs_local_archive_copy,
                                     _stage_source_archive, create_unsigned_ipa,
                                     validate_kit)
 
@@ -29,7 +29,7 @@ class WindowsKitTests(unittest.TestCase):
     def validate(self, kit: Path):
         return validate_kit(kit)
 
-    def fixture(self, root: Path):
+    def fixture(self, root: Path, *, mode: str = "release"):
         python_zip = root / "python-embed.zip"
         with zipfile.ZipFile(python_zip, "w") as archive:
             for name in build_windows_kit.PYTHON_FILES_REQUIRED:
@@ -45,20 +45,23 @@ class WindowsKitTests(unittest.TestCase):
         struct.pack_into("<H", pe, 148, 240)
         struct.pack_into("<H", pe, 152, 0x20B)
         struct.pack_into("<H", pe, 220, 2)
+        if mode == "utm-test":
+            pe.extend("UTM test build".encode("utf-16le"))
         gui.write_bytes(pe)
         template = root / "unsigned-template.zip"
         template.write_bytes(b"unsigned template fixture")
         output = root / "kit"
         checksum = hashlib.sha256(python_zip.read_bytes()).hexdigest()
         with mock.patch.object(build_windows_kit, "PYTHON_3147_EMBED_AMD64_SHA256", checksum):
-            build_windows_kit.build_kit(python_zip, compiler, template, gui, output)
+            build_windows_kit.build_kit(python_zip, compiler, template, gui, output,
+                                        mode=mode)
         return output
 
     def test_kit_contains_only_expected_public_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
             kit = self.fixture(Path(directory))
             config = self.validate(kit)
-            self.assertEqual(config["version"], 2)
+            self.assertEqual(config["version"], 3)
             self.assertFalse((kit / "assets").exists())
             self.assertFalse((kit / "runtime/assets").exists())
             self.assertFalse((kit / "runtime/build").exists())
@@ -70,9 +73,53 @@ class WindowsKitTests(unittest.TestCase):
                 (kit / "python/python314._pth").read_bytes(),
                 b"python314.zip\n.\n..\\runtime\\tools\n",
             )
+            self.assertEqual(config["mode"], "release")
+            self.assertFalse((kit / "runtime/tools/windows_utm_transport.py").exists())
             self.assertFalse((kit / "python/site-packages").exists())
             self.assertTrue((kit / "python-file-hashes.json").is_file())
 
+
+    def test_test_profile_contains_utm_support_and_rejects_mismatched_gui(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kit = self.fixture(root, mode="utm-test")
+            self.assertEqual(self.validate(kit)["mode"], "utm-test")
+            self.assertTrue((kit / "runtime/tools/windows_utm_transport.py").is_file())
+            source = root / "MinionRush Builder.exe"
+            test_bytes = source.read_bytes()
+            source.write_bytes(test_bytes.replace("UTM test build".encode("utf-16le"),
+                                                  b"Release build!!!".ljust(28, b"x")))
+            with mock.patch.object(build_windows_kit, "PYTHON_3147_EMBED_AMD64_SHA256",
+                                   hashlib.sha256((root / "python-embed.zip").read_bytes()).hexdigest()):
+                with self.assertRaisesRegex(ValueError, "does not match"):
+                    build_windows_kit.build_kit(root / "python-embed.zip",
+                                                root / "a64-compiler.exe",
+                                                root / "unsigned-template.zip", source,
+                                                root / "other", mode="utm-test")
+
+    def test_test_kit_requires_explicit_private_packaging_mode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kit = self.fixture(root, mode="utm-test")
+            archive = root / "test-kit.zip"
+            with self.assertRaisesRegex(ValueError, "explicit"):
+                package_windows_candidate(kit, archive)
+            package_windows_candidate(kit, archive, allow_test_profile=True)
+            self.assertTrue(archive.is_file())
+
+    def test_release_mode_does_not_import_utm_transport(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic")
+            scratch = root / "scratch"
+            scratch.mkdir()
+            with (mock.patch("windows_native_package._needs_local_archive_copy",
+                             return_value=True),
+                  mock.patch("windows_utm_transport._utm_webdav_url",
+                             side_effect=AssertionError("UTM called in release build"))):
+                staged = _stage_source_archive(source, scratch, mode="release")
+            self.assertEqual(staged.read_bytes(), b"synthetic")
 
     def test_packaged_gui_release_contains_no_private_game_files(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -109,14 +156,14 @@ class WindowsKitTests(unittest.TestCase):
                         self.validate(kit)
                 finally:
                     path.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 2)
+            self.assertEqual(self.validate(kit)["version"], 3)
             tamper = kit / "python/python314._pth"
             original = tamper.read_bytes()
             tamper.write_bytes(b"import site\n")
             with self.assertRaisesRegex(ValueError, "integrity"):
                 self.validate(kit)
             tamper.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 2)
+            self.assertEqual(self.validate(kit)["version"], 3)
             (kit / "runtime/tools/untrusted.py").write_text("print('bad')")
             with self.assertRaisesRegex(ValueError, "extra files"):
                 self.validate(kit)
@@ -151,11 +198,11 @@ class WindowsKitTests(unittest.TestCase):
             stream.headers = {"Content-Length": str(len(data))}
             with (mock.patch("windows_native_package._needs_local_archive_copy",
                              return_value=True),
-                  mock.patch("windows_native_package._utm_webdav_url",
+                  mock.patch("windows_utm_transport._utm_webdav_url",
                              return_value="http://127.0.0.1:9843/original.zip"),
-                  mock.patch("windows_native_package._utm_http_stream",
+                  mock.patch("windows_utm_transport._utm_http_stream",
                              return_value=stream)):
-                staged = _stage_source_archive(source, scratch)
+                staged = _stage_source_archive(source, scratch, mode="utm-test")
             self.assertEqual(staged.read_bytes(), data)
             self.assertEqual(source.read_bytes(), b"unchanged private source")
 
@@ -170,12 +217,12 @@ class WindowsKitTests(unittest.TestCase):
             stream.headers = {"Content-Length": "1000"}
             with (mock.patch("windows_native_package._needs_local_archive_copy",
                              return_value=True),
-                  mock.patch("windows_native_package._utm_webdav_url",
+                  mock.patch("windows_utm_transport._utm_webdav_url",
                              return_value="http://127.0.0.1:9843/original.zip"),
-                  mock.patch("windows_native_package._utm_http_stream",
+                  mock.patch("windows_utm_transport._utm_http_stream",
                              return_value=stream)):
                 with self.assertRaisesRegex(ValueError, "incomplete"):
-                    _stage_source_archive(source, scratch)
+                    _stage_source_archive(source, scratch, mode="utm-test")
 
     def test_utm_local_http_rejects_external_hosts_and_oversized_files(self):
         with self.assertRaisesRegex(ValueError, "unsafe UTM share URL"):
@@ -184,7 +231,7 @@ class WindowsKitTests(unittest.TestCase):
         stream.headers = {"Content-Length": str(3 * 1024 ** 3)}
         opener = mock.MagicMock()
         opener.open.return_value = stream
-        with mock.patch("windows_native_package.urllib.request.build_opener",
+        with mock.patch("windows_utm_transport.urllib.request.build_opener",
                         return_value=opener):
             with self.assertRaisesRegex(ValueError, "exceeds supported size"):
                 _utm_http_stream("http://127.0.0.1:9843/original.zip")
@@ -249,7 +296,7 @@ class WindowsKitTests(unittest.TestCase):
         self.assertTrue(_needs_local_archive_copy(unc))
         self.assertEqual(_utm_webdav_url(unc),
                          "http://127.0.0.1:9843/original-1.8.1g-PRIVATE.zip")
-        with mock.patch("windows_native_package._mapped_unc_root",
+        with mock.patch("windows_utm_transport._mapped_unc_root",
                         return_value=r"\\localhost@9843\DavWWWRoot"):
             self.assertEqual(
                 _utm_webdav_url(PureWindowsPath(r"Z:\original-1.8.1g-PRIVATE.zip")),

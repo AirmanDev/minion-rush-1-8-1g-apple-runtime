@@ -25,6 +25,22 @@ and formatter data before it writes the ignored engine table to
 `assets/game/files/text/<engine-code>.texts` and shared runtime metadata under
 `assets/localizations/runtime/`.
 
+On Windows, the original ZIP's built-in game languages and every validated
+private community catalog selected during IPA creation are compiled into that
+user's IPA. The build contains the generated `game/files/text/<code>.texts`
+table and `localizations/runtime` resources, not the editable XLIFF file.
+The user chooses English, Hungarian (when supplied), or another built-in
+language in the game's existing first-run language page or Settings language
+page. A selection takes effect through the game's own switch mechanism, is
+stored in its local language preference, and survives relaunch. There is no
+separate platform language menu or need to rebuild when switching between
+languages already packaged in the private IPA.
+
+Only Hungarian is currently configured as an additional community pack.
+Other languages require a separately prepared, validated catalog and config;
+no machine-translated or unreviewed packs are created automatically. The
+original game language assets remain subject to their original rights.
+
 The compiler creates one shared runtime formatter and font table for all
 installed community packs. These files are loaded before any language switch,
 so the engine can validate a community font even when its current locale is one

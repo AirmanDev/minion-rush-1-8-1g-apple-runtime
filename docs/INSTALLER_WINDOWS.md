@@ -16,7 +16,11 @@ To use the Mac path, export the IPA locally and transfer it privately.
 The Windows portable kit contains MinionRush Builder.exe. Extract all files,
 launch the GUI, drag an original ZIP onto the window or use Browse, select
 Save As to choose a new output IPA path, and select Create IPA. A private
-Hungarian hu.xlf can be selected optionally. The window shows the current
+Hungarian hu.xlf can be selected optionally. The resulting private iOS app
+contains the compiled language data and the original game's built-in
+languages. The language can be switched through the game's own initial
+language screen or Settings page; no XLIFF needs to be copied to the iPhone.
+The window shows the current
 step in a compact status panel. **Show details** expands build diagnostics,
 including paths, phase, transfer method and detailed error; it opens
 automatically on failure. Copy error, Copy full log and Save log provide
@@ -27,12 +31,21 @@ existing IPA and never signs automatically. Tab and Shift+Tab move between
 fields and buttons, Enter presses the focused button, and the window scales
 with the display's DPI setting.
 
+Two Windows build profiles are maintained. The standard release candidate
+does not include UTM/SPICE test transport, while the separately compiled
+private UTM test kit retains it for validating shared original ZIPs. Test
+kits must not be offered as standard release downloads.
+
 Use the independent [Sideloadly application](https://sideloadly.io/) to sign
 and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
 or maintained by this project. A 2026-10-12 Windows 11 ARM user test on
 iOS 27 successfully signed and installed an unsigned native IPA using
 Sideloadly; the user confirmed gameplay, sound, saves, Hungarian text and
-the original icon. This does not guarantee support for every device/version.
+the original icon. A follow-up private Windows 11 ARM test on 2026-10-13 also produced
+an unsigned IPA, installed it with Sideloadly v0.70.1, and confirmed that
+the game launches and Hungarian text works. On-device switching between
+all built-in languages was not exhaustively retested.
+This does not guarantee support for every device/version.
 The app requires iOS/iPadOS 17 or later. Changing a package's minimum OS does
 not make unsupported versions compatible.
 

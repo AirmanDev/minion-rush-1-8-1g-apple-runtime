@@ -141,3 +141,4 @@ tools/validate_installer.py
 tools/validate_source.py
 tools/verify_ios_startup.py
 tools/windows_native_package.py
+tools/windows_utm_transport.py

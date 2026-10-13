@@ -19,13 +19,16 @@ sys.dont_write_bytecode = True
 from windows_native_package import validate_kit
 
 
-def package_windows_candidate(kit: Path, output: Path) -> str:
+def package_windows_candidate(kit: Path, output: Path, *,
+                              allow_test_profile: bool = False) -> str:
     if output.suffix.lower() != ".zip" or output.exists() or output.is_symlink():
         raise ValueError("choose a new .zip candidate path")
     if not output.is_absolute() or not output.parent.is_dir():
         raise ValueError("output path must be absolute with an existing parent")
     kit = kit.resolve(strict=True)
-    validate_kit(kit)
+    config = validate_kit(kit)
+    if config["mode"] != "release" and not allow_test_profile:
+        raise ValueError("UTM test kit requires explicit --allow-test-profile")
     files = sorted(path for path in kit.rglob("*") if path.is_file())
     if not files or len(files) > 350:
         raise ValueError("unexpected number of portable runtime files")
@@ -72,9 +75,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--kit", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--allow-test-profile", action="store_true",
+                        help="create a private UTM test archive; never publish it")
     args = parser.parse_args()
     try:
-        digest = package_windows_candidate(args.kit, args.output)
+        digest = package_windows_candidate(args.kit, args.output,
+                                           allow_test_profile=args.allow_test_profile)
     except (ValueError, OSError, zipfile.BadZipFile) as exc:
         print("Windows release candidate error:", exc, file=sys.stderr)
         return 1

@@ -53,20 +53,23 @@ assets, generated ARM64 data and the AOT manifest.
    the complete folder. Do not run the EXE inside a ZIP preview.
 2. Open MinionRush-Portable-Windows/MinionRush Builder.exe.
 3. Drop one original 1.8.1g ZIP onto the window or select Browse ZIP.
-   When the portable kit is in a Windows UTM shared folder with a single
-   matching original ZIP next to it, the GUI fills its path automatically.
-   This avoids the Windows WebDAV file dialog's 50 MB download limit.
-   If detection is unavailable, paste a full absolute ZIP path in the source
-   field (Windows Explorer: Shift + right-click, Copy as path). The field
-   accepts the enclosing double quotes from Copy as path. The actual large
-   ZIP transfer is handled by the local UTM loopback HTTP transport during
-   Create IPA, not by the Windows file dialog.
+   In the standard release builder, choose a locally accessible ZIP. The
+   separately compiled UTM test builder recognizes an original ZIP next to
+   the kit in the private shared folder, fills its path automatically, and
+   uses the guest-local WebDAV transport to bypass the Windows file-picker
+   size limit. If necessary, paste a full absolute ZIP path in the source
+   field (Windows Explorer: Shift + right-click, Copy as path); enclosing
+   quotes are accepted. This test-only behavior is not in the release EXE.
 4. Select Save As and choose a writable folder and a new filename ending
    in .ipa. Existing IPA files are never overwritten.
 5. Optionally select a private Hungarian hu.xlf catalog. This translation is
    not part of the original game ZIP. The builder can also use
-   MinionRush-Private-Languages/hu.xlf next to the portable kit. Without a
-   catalog, original language data is imported without the extra translation.
+   MinionRush-Private-Languages/hu.xlf next to the portable kit. The private
+   IPA embeds the compiled language text, formatter and font metadata; the
+   editable XLIFF is not put into the iOS app. The game already provides
+   initial and in-game Settings language selectors for choosing installed
+   languages, with persistent preferences. Switching among built-in languages
+   and an included Hungarian pack does not require rebuilding.
 6. Select Create IPA. Progress and the latest step appear in the
    window without freezing the user interface. Show details expands the
    diagnostics with the build phase, source, output, translation, transfer
@@ -91,10 +94,13 @@ starts the existing offline build engine with an explicit source ZIP,
 chosen destination, and optional language catalog; there is only one
 translation and IPA assembly implementation.
 
-Windows UTM shared ZIPs are read using the VM's loopback-only SPICE WebDAV
-endpoint at 127.0.0.1:9843 to avoid Windows WebClient large-file limits.
-Local archives use normal file I/O. The GUI uses short per-job Windows
-temporary paths to avoid classic 260-character filesystem-path failures.
+The release and private UTM test builder have distinct compile-time
+configurations and version-3 kit manifests. Only the UTM test kit includes
+the guest-loopback SPICE/WebDAV transport module, which targets
+127.0.0.1:9843 for large shared ZIPs. The release kit excludes that module
+and the release GUI does not auto-select UTM share paths. Local archives
+use normal file I/O. The GUI uses short per-job Windows temporary paths
+to avoid classic 260-character filesystem-path failures.
 Successful and cancelled builds clean their private workspace. Failed
 builds retain the workspace for investigation, accessible through Open temp
 folder. This workspace can contain original copyrighted game files, so
@@ -152,24 +158,46 @@ directly from python.org and pinned to SHA-256:
 
 d297e5ff019966817ad8502465176139f2d3d840fa4ed84b13bed399a6ab1f15
 
-First build the native Windows x64 GUI on a Mac with MinGW-w64:
+Build the standard Windows x64 GUI on a Mac with MinGW-w64:
 
     ./tools/build_windows_gui.sh
 
-Then assemble the kit with the GUI, runtime and unsigned template:
+Build and validate a release-profile kit (the default). UTM-specific
+transport source and test-only GUI behavior are not shipped in this kit:
 
     python3 tools/build_windows_kit.py \
+      --mode release \
       --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
       --compiler /private/a64-compiler.exe \
       --gui-exe build/windows/MinionRush\ Builder.exe \
       --template build/native-template/MinionRush-native-template-unsigned.zip \
       --output /private/MinionRush-Portable-Windows
 
-Create a private ZIP candidate and checksum (no upload or GitHub release):
+For private UTM VM testing, compile and package a separate test profile:
+
+    ./tools/build_windows_gui.sh utm-test
+    python3 tools/build_windows_kit.py \
+      --mode utm-test \
+      --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
+      --compiler /private/a64-compiler.exe \
+      --gui-exe build/windows/utm-test/MinionRush\ Builder.exe \
+      --template build/native-template/MinionRush-native-template-unsigned.zip \
+      --output /private/MinionRush-UTM-Test
+
+Create a release-profile candidate and checksum (no upload or GitHub release):
 
     python3 tools/package_windows_release.py \
       --kit /private/MinionRush-Portable-Windows \
       --output /private/MinionRush-Windows-Builder-candidate.zip
+
+The private UTM test archive requires an explicit safety override:
+
+    python3 tools/package_windows_release.py \
+      --kit /private/MinionRush-UTM-Test \
+      --output /private/MinionRush-UTM-Test.zip \
+      --allow-test-profile
+
+Never label or publish that archive as the standard Windows release.
 
 The kit includes the native Win32 GUI, an isolated Python 3.14.7 runtime,
 the verified x64 AOT translator, public runtime source, and the developer-built

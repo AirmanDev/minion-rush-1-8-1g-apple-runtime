@@ -2,15 +2,22 @@
 set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
 
-[[ $# -eq 0 ]] || {
-  printf 'Usage: ./tools/build_windows_gui.sh\n' >&2
+mode="${1:-release}"
+[[ $# -le 1 && ( "$mode" == release || "$mode" == utm-test ) ]] || {
+  printf 'Usage: ./tools/build_windows_gui.sh [release|utm-test]\n' >&2
   exit 2
 }
 project_require_command x86_64-w64-mingw32-gcc
 mkdir -p "$OUT/windows"
 target="$OUT/windows/MinionRush Builder.exe"
+define=-DMR_RELEASE
+if [[ "$mode" == "utm-test" ]]; then
+  mkdir -p "$OUT/windows/utm-test"
+  target="$OUT/windows/utm-test/MinionRush Builder.exe"
+  define=-DMR_UTM_TEST
+fi
 x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror \
-  -municode -mwindows -D_WIN32_WINNT=0x0A00 \
+  -municode -mwindows -D_WIN32_WINNT=0x0A00 "$define" \
   -Wl,--dynamicbase,--nxcompat,--high-entropy-va \
   -o "$target" "$PROJECT_ROOT/src/windows/ipa_builder.c" \
   -lole32 -luuid -lcomctl32 -lshell32 -lgdi32 -lcomdlg32

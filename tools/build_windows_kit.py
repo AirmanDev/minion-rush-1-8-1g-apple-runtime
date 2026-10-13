@@ -83,7 +83,12 @@ def validate_gui_executable(source: Path) -> None:
 
 
 def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
-              gui_exe: Path, target: Path) -> None:
+              gui_exe: Path, target: Path, *, mode: str = "release") -> None:
+    if mode not in ("release", "utm-test"):
+        raise ValueError("invalid Windows kit mode")
+    marker = "UTM test build".encode("utf-16le")
+    if (marker in gui_exe.read_bytes()) != (mode == "utm-test"):
+        raise ValueError("GUI executable does not match selected Windows kit mode")
     if target.exists() or target.is_symlink():
         raise ValueError("Windows kit output must be a new directory")
     if not target.parent.is_dir():
@@ -114,15 +119,26 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
         runtime.mkdir()
         runtime = runtime.resolve()  # macOS /var is a symlink to /private/var
         for path in public_files(ROOT):
-            dest = runtime / path.relative_to(ROOT)
+            relative = path.relative_to(ROOT)
+            if mode == "release" and relative.as_posix() == "tools/windows_utm_transport.py":
+                continue
+            dest = runtime / relative
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, dest)
+        if mode == "release":
+            manifest = runtime / "config/source_manifest.txt"
+            names = [name for name in manifest.read_text(encoding="utf-8").splitlines()
+                     if name != "tools/windows_utm_transport.py"]
+            manifest.write_text("\n".join(names) + "\n", encoding="utf-8")
         (staged / "README-WINDOWS.txt").write_text(
             "Minion Rush - native IPA builder\n"
             "================================\n"
             "Open MinionRush Builder.exe. Drag your original 1.8.1g ZIP onto the\n"
             "window or choose it with Browse. Select a new .ipa save path.\n"
-            "The optional Hungarian hu.xlf can be selected separately.\n"
+            "The optional private Hungarian hu.xlf is compiled into the resulting IPA.\n"
+            "Use the game's existing language selector to switch languages.\n"
+            + ("UTM test profile: supports private SPICE shared folders.\n"
+               if mode == "utm-test" else "Release profile: no UTM-specific support.\n") +
             "The output is unsigned. Sign it with Sideloadly before installing.\n"
             "The original game ZIP and final IPA are private. Do not publish them.\n"
             "This package includes the original-game-free iOS template.\n"
@@ -147,7 +163,8 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
             encoding="utf-8"
         )
         config = {
-            "version": 2,
+            "version": 3,
+            "mode": mode,
             "engine_sha256": OFFICIAL_ENGINE_SHA256,
             "template_sha256": file_sha256(staged / "MinionRush-native-template-unsigned.zip"),
             "compiler_sha256": file_sha256(staged / "a64-compiler.exe"),
@@ -170,10 +187,11 @@ def main() -> int:
     parser.add_argument("--gui-exe", type=Path, required=True)
     parser.add_argument("--template", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--mode", choices=("release", "utm-test"), default="release")
     options = parser.parse_args()
     try:
         build_kit(options.python_embed_zip, options.compiler, options.template,
-                  options.gui_exe, options.output)
+                  options.gui_exe, options.output, mode=options.mode)
     except (ValueError, OSError, zipfile.BadZipFile) as exc:
         print("Windows kit assembly failed:", exc, file=sys.stderr)
         return 1

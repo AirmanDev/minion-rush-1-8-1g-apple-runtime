@@ -212,6 +212,7 @@ static BOOL regular_file(LPCWSTR file) {
            (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
 
+#ifdef MR_UTM_TEST
 /* The private original ZIP is normally next to the extracted GUI directory
    in UTM's shared folder. Look it up by version, without opening the ZIP via
    the WebDAV-backed shell file picker. Only prefill when unambiguous. */
@@ -238,6 +239,8 @@ static BOOL nearby_original_zip(WCHAR *path, size_t capacity) {
     FindClose(search);
     return found_one && !ambiguous;
 }
+
+#endif
 
 static void unquote_path(WCHAR *path) {
     size_t length = wcslen(path);
@@ -1355,11 +1358,11 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         ui_dpi = query_dpi(window);
         create_controls(window);
         rebuild_fonts();
-        /* UTM's Windows WebDAV picker cannot open a 433 MB ZIP. The file is
-           already shared next to the kit, so supply its path directly. */
+#ifdef MR_UTM_TEST
         WCHAR nearby[32768] = {0};
         if (nearby_original_zip(nearby, 32768))
             set_path(ctl[ID_SOURCE], nearby);
+#endif
         tint_title_bar(window);
         DragAcceptFiles(window, TRUE);
         return 0;
@@ -1429,11 +1432,14 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
                 InvalidateRect(window, NULL, FALSE);
             return 0;
         case ID_PICK_SOURCE: {
+#ifdef MR_UTM_TEST
             WCHAR nearby[32768] = {0};
-            if (nearby_original_zip(nearby, 32768))
+            if (nearby_original_zip(nearby, 32768)) {
                 set_path(ctl[ID_SOURCE], nearby);
-            else
-                pick_into(ID_SOURCE, FALSE, FALSE);
+                return 0;
+            }
+#endif
+            pick_into(ID_SOURCE, FALSE, FALSE);
             return 0;
         }
         case ID_PICK_DESTINATION: pick_into(ID_DESTINATION, TRUE, FALSE); return 0;
@@ -1513,7 +1519,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE unused, PWSTR arguments, int s
     cls.hCursor = LoadCursorW(NULL, IDC_ARROW);
     cls.hIcon = LoadIconW(NULL, IDI_APPLICATION);
     if (!RegisterClassExW(&cls)) return 1;
-    HWND window = CreateWindowExW(0, cls.lpszClassName, L"Minion Rush IPA Builder",
+#ifdef MR_UTM_TEST
+    LPCWSTR title = L"Minion Rush IPA Builder - UTM test build";
+#else
+    LPCWSTR title = L"Minion Rush IPA Builder";
+#endif
+    HWND window = CreateWindowExW(0, cls.lpszClassName, title,
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 800, 640,
         NULL, NULL, instance, NULL);
     if (!window) return 1;

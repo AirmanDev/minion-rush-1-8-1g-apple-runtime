@@ -214,14 +214,29 @@ class NativeIpaTests(unittest.TestCase):
             assets.mkdir()
             (assets / "lib").mkdir()
             (assets / "lib/game.so").write_bytes(b"synthetic private ELF")
+            localized = assets / "game/files/text/hu.texts"
+            localized.parent.mkdir(parents=True)
+            localized.write_bytes(b"compiled Hungarian text fixture")
+            formatter = assets / "localizations/runtime/localizationText/langs.json"
+            formatter.parent.mkdir(parents=True)
+            formatter.write_bytes(b"synthetic localized formatter")
             (assets / "app-icon.png").write_bytes(synthetic_original_icon())
             output = root / "private.ipa"
+            packaged = [(path, path.relative_to(assets)) for path in
+                        (assets / "lib/game.so", localized, formatter)]
             with (mock.patch("native_ipa._validate_private_assets",
-                             return_value=[(assets / "lib/game.so", Path("lib/game.so"))]),
+                             return_value=packaged),
                   mock.patch("ios_private_icon.validate_app_icon")):
                 assemble_unsigned_ipa(template, private, output)
             with zipfile.ZipFile(output) as archive:
                 self.assertIn("Payload/MinionRush.app/lib/game.so", archive.namelist())
+                self.assertEqual(archive.read("Payload/MinionRush.app/game/files/text/hu.texts"),
+                                 localized.read_bytes())
+                self.assertEqual(
+                    archive.read("Payload/MinionRush.app/localizations/runtime/localizationText/langs.json"),
+                    formatter.read_bytes())
+                self.assertFalse(any(name.lower().endswith(".xlf")
+                                     for name in archive.namelist()))
                 binary = archive.read("Payload/MinionRush.app/MinionRush")
                 self.assertEqual(binary[0x1000:0x1100], (compiled / "minion_code.bin").read_bytes())
                 self.assertFalse(any("_CodeSignature" in item for item in archive.namelist()))

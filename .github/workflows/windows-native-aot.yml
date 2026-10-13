@@ -57,11 +57,25 @@ jobs:
           $command = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $gui + '" src\windows\ipa_builder.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
           & cmd.exe /d /s /c $command
           if ($LASTEXITCODE -ne 0) { throw 'Windows GUI C build failed' }
+          $testGui = Join-Path $temp 'MinionRush Builder UTM test.exe'
+          $testCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /DMR_UTM_TEST /D_WIN32_WINNT=0x0A00 /Fe:"' + $testGui + '" src\windows\ipa_builder.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
+          & cmd.exe /d /s /c $testCommand
+          if ($LASTEXITCODE -ne 0) { throw 'Windows UTM test GUI C build failed' }
           $template = Join-Path $temp 'unsigned-test-template.zip'
           [System.IO.File]::WriteAllBytes($template, [byte[]](1, 2, 3))
           $kit = Join-Path $temp 'kit'
           python tools/build_windows_kit.py --python-embed-zip $pyzip --compiler $compiler --gui-exe $gui --template $template --output $kit
           if ($LASTEXITCODE -ne 0) { throw 'Portable kit assembly failed' }
+          $utmKit = Join-Path $temp 'utm-kit'
+          python tools/build_windows_kit.py --mode utm-test --python-embed-zip $pyzip --compiler $compiler --gui-exe $testGui --template $template --output $utmKit
+          if ($LASTEXITCODE -ne 0) { throw 'UTM test kit assembly failed' }
+          & (Join-Path $utmKit 'MinionRush Builder.exe') --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'UTM test GUI startup check failed' }
+          if (Test-Path (Join-Path $kit 'runtime\tools\windows_utm_transport.py')) { throw 'Release kit includes UTM support' }
+          if (-not (Test-Path (Join-Path $utmKit 'runtime\tools\windows_utm_transport.py'))) { throw 'UTM test kit missing transport module' }
+          $releaseManifest = Get-Content (Join-Path $kit 'kit-manifest.json') -Raw | ConvertFrom-Json
+          $utmManifest = Get-Content (Join-Path $utmKit 'kit-manifest.json') -Raw | ConvertFrom-Json
+          if ($releaseManifest.mode -ne 'release' -or $utmManifest.mode -ne 'utm-test') { throw 'Kit profile manifest mismatch' }
           $exe = Join-Path $kit 'python\python.exe'
           & $exe -c 'import windows_native_package; import prepare_native_aot; import native_ipa; print("Embedded runtime imports: PASS")'
           if ($LASTEXITCODE -ne 0) { throw 'Embedded Python import failed' }
