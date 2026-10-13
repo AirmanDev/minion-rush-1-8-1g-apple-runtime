@@ -87,7 +87,7 @@ python3 tools/build_windows_kit.py \
 python3 tools/build_windows_onefile.py \
   --launcher "$PWD/build/windows/MinionRush Portable.exe" \
   --kit "$PWD/build/ios-generic/windows-kit-1.2" \
-  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.3.exe"
+  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.8.exe"
 ```
 
 Outputs are created only in new, nonexistent paths. The normal release
@@ -96,64 +96,33 @@ build profile remains only for diagnosing an owner's private virtual-machine
 shared drive and is not a general Windows release target.
 
 No private `--hungarian-xlf` option is used for the portable public
-candidate. Do not package game text, game-derived profile values, original
+Builder. Do not package game text, game-derived profile values, original
 ZIPs, signed IPAs or device credentials. The builder UI itself includes
 its original bilingual labels.
 
 ## Verification and limitations
 
-The release kit verifies the checksums of its native Win32 application,
-AOT compiler, embedded Python interpreter, generic iOS template and
-source-controlled runtime. The onefile launcher checks the embedded ZIP
-before extracting it. The unsigned iOS template requires one thin ARM64
-Mach-O executable with an RX `__MRCODE/__text` code slot; the IPA assembler
-rejects unexpected assets and signature metadata. SHA-256 verifies the
-generated v3 profile and patched ARM64 code. Native output is assembled
-atomically. The VM-only network import is distinct from the standard
-filesystem import path.
+The release kit validates the native Win32 executable, host AOT compiler,
+embedded Python distribution, generic iOS template, pinned runtime source
+and applicable license files. The onefile launcher checks its embedded ZIP
+before unpacking. The IPA assembly stage validates the native Mach-O
+code slot, game profile and output archive. A failed or cancelled build
+does not intentionally destroy a previously completed IPA.
 
-The generic v3 Mac and Windows portable Builders both passed native
-original-ZIP-to-unsigned-IPA tests. On Windows 11 ARM in UTM, the x64
-self-extracting EXE passed its embedded-kit integrity and self-test, started
-a responsive native GUI in the interactive desktop session, and built an
-unsigned IPA through Create IPA using the user's locally staged original
-ZIP. The checked 1.2.0 GUI result contains 1,369 entries, 942,744 AOT
-blocks and no bundled Hungarian game translation. The generated file
-passes an independent full ZIP integrity and profile parse check.
-Version 1.2.1 corrected the missing iOS startup profile loader. Version
-1.2.2 subsequently passed the Windows GUI-to-IPA test. The fixed runtime
-rendered on the iOS 18.6 and 27.0 Simulators.
+The Mac and Windows Builders were tested with an independently supplied
+original 1.8.1g ZIP. The Windows 11 ARM UTM VM executed the x64 Builder
+in its native GUI and passed the complete self-test and IPA creation flow.
+The owner also confirmed on-device installation, gameplay, audio,
+Hungarian text and save continuity from privately built applications.
+These tests do not establish universal device compatibility.
 
-Windows' mapped UTM WebDAV drive cannot directly read this 454 MB ZIP.
-For this private UTM test, the ZIP was first copied through UTM's
-localhost-only WebDAV server onto the guest's local disk and checked using
-its original SHA-256. This is a VM transport limitation, not a requirement
-for users with ordinary local ZIP files.
+The public Windows Builder is not Authenticode signed. Device-side
+installation and iOS signing require the user's own appropriate Apple
+account and credentials via a separate signing utility. The minimum
+deployment target is iOS/iPadOS 17; building against a platform version
+does not certify runtime compatibility with all devices.
 
-The shared IPA writer uses ZIP deflate level 3 to balance the large native
-payload size with short host-side assembly time. On the test source, the
-Windows IPA shrank from 447,936,121 to 367,832,694 bytes after this change.
-
-The owner confirmed 1.2.1 game display/running on their physical
-iPhone after building and signing the IPA on Windows. The 1.2.2 Windows
-Builder was then tested again on the UTM Windows 11 ARM guest: exact
-portable EXE self-test passed, and its normal Win32 GUI generated a
-367,839,044-byte native unsigned IPA through Create IPA using the
-owner's local source ZIP. Independent Windows ZipArchive and v3 profile
-header checks passed (1,369 entries; 109 bindings; 942,744 AOT blocks;
-164,353,244 bytes of ARM64 code). The owner separately confirmed the
-1.2.2 loading overlay and running gameplay on a physical iPhone; audio
-and save continuity require further verification. The 1.2.3 Windows EXE
-also passed its SHA-256 self-test and native GUI ZIP-to-IPA conversion,
-producing the same 1,369-entry, 367,839,044-byte IPA on the Windows VM.
-The packaged 1.2.3 license-only update does not alter the iOS runtime.
-
-The Windows candidate is not Authenticode signed. Apple-side code signing
-or sideloading requires the user's own account; the Builder does not sign.
-The iOS deployment minimum remains 17.0, but supported-range build checks
-are not a substitute for actual physical-device tests.
-
-Legal restrictions on the owner's source game and the generated IPA remain
-distinct from the distribution of the generic Builder.
-See [RELEASE_SCOPE.md](RELEASE_SCOPE.md) and
-[INSTALLER_WINDOWS.md](INSTALLER_WINDOWS.md).
+The user owns responsibility for lawful game acquisition and any rights
+associated with the locally generated IPA. This is an independent,
+unofficial compatibility tool. See [distribution scope](RELEASE_SCOPE.md)
+and [Windows usage](INSTALLER_WINDOWS.md).
