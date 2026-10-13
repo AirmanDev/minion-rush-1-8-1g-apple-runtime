@@ -218,11 +218,17 @@ static BOOL regular_file(LPCWSTR file) {
    the WebDAV-backed shell file picker. Only prefill when unambiguous. */
 static BOOL nearby_original_zip(WCHAR *path, size_t capacity) {
     WCHAR pattern[32768];
-    const WCHAR *end = wcsrchr(kit_path, L'\\');
-    if (!end) return FALSE;
-    size_t prefix = (size_t)(end - kit_path);
+    WCHAR source_root[32768] = {0};
+    DWORD from_parent = GetEnvironmentVariableW(L"MR_SOURCE_DIR", source_root, 32768);
+    LPCWSTR search_root = (from_parent > 0 && from_parent < 32768)
+                           ? source_root : kit_path;
+    const WCHAR *end = wcsrchr(search_root, L'\\');
+    size_t prefix = (from_parent > 0 && from_parent < 32768)
+                    ? wcslen(search_root)
+                    : (end ? (size_t)(end - search_root) : 0);
+    if (!prefix) return FALSE;
     if (FAILED(StringCchPrintfW(pattern, 32768, L"%.*s\\*1.8.1g*.zip",
-                                (int)prefix, kit_path)))
+                                (int)prefix, search_root)))
         return FALSE;
     WIN32_FIND_DATAW entry;
     HANDLE search = FindFirstFileW(pattern, &entry);
@@ -234,7 +240,7 @@ static BOOL nearby_original_zip(WCHAR *path, size_t capacity) {
             continue;
         if (found_one) { ambiguous = TRUE; break; }
         found_one = SUCCEEDED(StringCchPrintfW(
-            path, capacity, L"%.*s\\%s", (int)prefix, kit_path, entry.cFileName));
+            path, capacity, L"%.*s\\%s", (int)prefix, search_root, entry.cFileName));
     } while (FindNextFileW(search, &entry));
     FindClose(search);
     return found_one && !ambiguous;
@@ -1358,6 +1364,11 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         ui_dpi = query_dpi(window);
         create_controls(window);
         rebuild_fonts();
+        WCHAR included_catalog[32768] = {0};
+        if (SUCCEEDED(StringCchPrintfW(included_catalog, 32768,
+                                       L"%s\\private-localizations\\hu.xlf", kit_path)) &&
+            regular_file(included_catalog))
+            set_path(ctl[ID_CATALOG], included_catalog);
 #ifdef MR_UTM_TEST
         WCHAR nearby[32768] = {0};
         if (nearby_original_zip(nearby, 32768))

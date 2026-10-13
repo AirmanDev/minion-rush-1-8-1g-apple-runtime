@@ -95,6 +95,7 @@ src/native/window_ios.h
 src/native/window_ios.m
 src/native/window_macos.m
 src/windows/ipa_builder.c
+src/windows/onefile_launcher.c
 test.sh
 tests/InstallerTests.swift
 tests/InstallerViewTests.swift
@@ -111,6 +112,7 @@ tools/build_ios.sh
 tools/build_ios_template.sh
 tools/build_windows_gui.sh
 tools/build_windows_kit.py
+tools/build_windows_onefile.py
 tools/common.py
 tools/configure_graphics.py
 tools/deploy_ios.sh

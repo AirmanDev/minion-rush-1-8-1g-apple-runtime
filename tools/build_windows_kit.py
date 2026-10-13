@@ -83,7 +83,8 @@ def validate_gui_executable(source: Path) -> None:
 
 
 def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
-              gui_exe: Path, target: Path, *, mode: str = "release") -> None:
+              gui_exe: Path, target: Path, *, mode: str = "release",
+              hungarian_xlf: Path | None = None) -> None:
     if mode not in ("release", "utm-test"):
         raise ValueError("invalid Windows kit mode")
     marker = "UTM test build".encode("utf-16le")
@@ -108,6 +109,13 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
         shutil.copyfile(compiler_exe, staged / "a64-compiler.exe")
         shutil.copyfile(gui_exe, staged / "MinionRush Builder.exe")
         shutil.copyfile(template, staged / "MinionRush-native-template-unsigned.zip")
+        if hungarian_xlf is not None:
+            if (hungarian_xlf.name.lower() != "hu.xlf" or hungarian_xlf.is_symlink()
+                    or not hungarian_xlf.is_file() or hungarian_xlf.stat().st_size > 2 * 1024 * 1024):
+                raise ValueError("private Hungarian catalog must be a regular hu.xlf under 2 MB")
+            languages = staged / "private-localizations"
+            languages.mkdir()
+            shutil.copyfile(hungarian_xlf, languages / "hu.xlf")
         _unpack_verified_python(python_zip, staged / "python")
         # The official embedded interpreter deliberately excludes the script
         # directory from sys.path. Whitelist only our source-controlled tools,
@@ -163,8 +171,12 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
             encoding="utf-8"
         )
         config = {
-            "version": 3,
+            "version": 4,
             "mode": mode,
+            "hungarian_xlf_sha256": (
+                file_sha256(staged / "private-localizations/hu.xlf") if hungarian_xlf is not None
+                else None
+            ),
             "engine_sha256": OFFICIAL_ENGINE_SHA256,
             "template_sha256": file_sha256(staged / "MinionRush-native-template-unsigned.zip"),
             "compiler_sha256": file_sha256(staged / "a64-compiler.exe"),
@@ -188,10 +200,13 @@ def main() -> int:
     parser.add_argument("--template", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--mode", choices=("release", "utm-test"), default="release")
+    parser.add_argument("--hungarian-xlf", type=Path,
+                        help="private language catalog for a one-file or private kit build")
     options = parser.parse_args()
     try:
         build_kit(options.python_embed_zip, options.compiler, options.template,
-                  options.gui_exe, options.output, mode=options.mode)
+                  options.gui_exe, options.output, mode=options.mode,
+                  hungarian_xlf=options.hungarian_xlf)
     except (ValueError, OSError, zipfile.BadZipFile) as exc:
         print("Windows kit assembly failed:", exc, file=sys.stderr)
         return 1

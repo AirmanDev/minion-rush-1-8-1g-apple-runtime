@@ -31,6 +31,17 @@ existing IPA and never signs automatically. Tab and Shift+Tab move between
 fields and buttons, Enter presses the focused button, and the window scales
 with the display's DPI setting.
 
+The preferred Windows user-facing package is now a single portable EXE.
+It unpacks a verified temporary copy of the runtime (the embedded Python,
+native converter, unsigned iOS template and the privately provided language
+catalog) on launch, then runs the existing native Builder GUI. Closing the
+GUI removes its extracted runtime. This is a portable, self-contained
+launcher, not an installer and not a single standalone Windows process.
+Windows 11's built-in tar.exe is used locally. The 1.8.1g original game ZIP
+must still be supplied by the user. A private hu.xlf included by the
+developer is automatically selected and becomes compiled iOS language data;
+the iPhone app does not need any external .xlf.
+
 Two Windows build profiles are maintained. The standard release candidate
 does not include UTM/SPICE test transport, while the separately compiled
 private UTM test kit retains it for validating shared original ZIPs. Test

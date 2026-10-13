@@ -18,6 +18,7 @@ sys.path.insert(0, str(TOOLS))
 sys.dont_write_bytecode = True
 
 import build_windows_kit
+import build_windows_onefile
 from package_windows_release import package_windows_candidate
 from windows_utm_transport import _utm_http_stream, _utm_webdav_url
 from windows_native_package import (_needs_local_archive_copy,
@@ -61,7 +62,7 @@ class WindowsKitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             kit = self.fixture(Path(directory))
             config = self.validate(kit)
-            self.assertEqual(config["version"], 3)
+            self.assertEqual(config["version"], 4)
             self.assertFalse((kit / "assets").exists())
             self.assertFalse((kit / "runtime/assets").exists())
             self.assertFalse((kit / "runtime/build").exists())
@@ -121,6 +122,51 @@ class WindowsKitTests(unittest.TestCase):
                 staged = _stage_source_archive(source, scratch, mode="release")
             self.assertEqual(staged.read_bytes(), b"synthetic")
 
+    def test_private_hungarian_catalog_is_verified_in_kit_and_onefile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            kit = self.fixture(root)
+            private = root / "hu.xlf"
+            private.write_bytes(b"private test translation")
+            newkit = root / "kit-with-language"
+            checksum = hashlib.sha256((root / "python-embed.zip").read_bytes()).hexdigest()
+            with mock.patch.object(build_windows_kit, "PYTHON_3147_EMBED_AMD64_SHA256",
+                                   checksum):
+                build_windows_kit.build_kit(root / "python-embed.zip",
+                                            root / "a64-compiler.exe",
+                                            root / "unsigned-template.zip",
+                                            root / "MinionRush Builder.exe",
+                                            newkit, hungarian_xlf=private)
+            self.assertEqual(self.validate(newkit)["hungarian_xlf_sha256"],
+                             hashlib.sha256(private.read_bytes()).hexdigest())
+            bundled = newkit / "private-localizations/hu.xlf"
+            self.assertEqual(bundled.read_bytes(), private.read_bytes())
+            original = bundled.read_bytes()
+            bundled.write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "checksum"):
+                self.validate(newkit)
+            bundled.write_bytes(original)
+
+            stub = root / "outer-launcher.exe"
+            stub.write_bytes((root / "MinionRush Builder.exe").read_bytes() +
+                             bytes(4096))
+            output = root / "MinionRush Portable.exe"
+            digest = build_windows_onefile.build_onefile(stub, newkit, output)
+            self.assertEqual(digest, hashlib.sha256(output.read_bytes()).hexdigest())
+            with output.open("rb") as source:
+                source.seek(-build_windows_onefile.FOOTER.size, 2)
+                magic, offset, size, expected = build_windows_onefile.FOOTER.unpack(
+                    source.read(build_windows_onefile.FOOTER.size))
+                self.assertEqual(magic, build_windows_onefile.BUNDLE_MAGIC)
+                source.seek(offset)
+                archive = source.read(size)
+            self.assertEqual(hashlib.sha256(archive).digest(), expected)
+            with zipfile.ZipFile(io.BytesIO(archive)) as zipped:
+                self.assertEqual(zipped.read(
+                    "MinionRush-Portable-Windows/private-localizations/hu.xlf"),
+                    private.read_bytes())
+            self.assertFalse(output.with_name(output.name + ".partial").exists())
+
     def test_packaged_gui_release_contains_no_private_game_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -156,14 +202,14 @@ class WindowsKitTests(unittest.TestCase):
                         self.validate(kit)
                 finally:
                     path.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 3)
+            self.assertEqual(self.validate(kit)["version"], 4)
             tamper = kit / "python/python314._pth"
             original = tamper.read_bytes()
             tamper.write_bytes(b"import site\n")
             with self.assertRaisesRegex(ValueError, "integrity"):
                 self.validate(kit)
             tamper.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 3)
+            self.assertEqual(self.validate(kit)["version"], 4)
             (kit / "runtime/tools/untrusted.py").write_text("print('bad')")
             with self.assertRaisesRegex(ValueError, "extra files"):
                 self.validate(kit)

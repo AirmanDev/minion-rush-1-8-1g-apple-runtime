@@ -35,7 +35,8 @@ def package_windows_candidate(kit: Path, output: Path, *,
     if any(path.is_symlink() for path in kit.rglob("*")):
         raise ValueError("symbolic links are not allowed in the portable kit")
     names = [path.relative_to(kit).as_posix() for path in files]
-    if any(name.endswith((".ipa", ".xlf", ".apk", ".so"))
+    if any(name.endswith((".ipa", ".apk", ".so"))
+           or (name.endswith(".xlf") and name != "private-localizations/hu.xlf")
            or name.lower().startswith("assets/") for name in names):
         raise ValueError("private game or translation files are present in the release kit")
     descriptor, temporary = tempfile.mkstemp(prefix=".minion-windows-", suffix=".zip",

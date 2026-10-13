@@ -61,6 +61,10 @@ jobs:
           $testCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /DUNICODE /D_UNICODE /DMR_UTM_TEST /D_WIN32_WINNT=0x0A00 /Fe:"' + $testGui + '" src\windows\ipa_builder.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib uuid.lib comctl32.lib shell32.lib gdi32.lib comdlg32.lib'
           & cmd.exe /d /s /c $testCommand
           if ($LASTEXITCODE -ne 0) { throw 'Windows UTM test GUI C build failed' }
+          $launcher = Join-Path $temp 'MinionRush Portable.exe'
+          $launcherCommand = 'call "' + $vsdevcmd + '" -no_logo -arch=amd64 && cl /nologo /std:c11 /O2 /W4 /WX /D_CRT_SECURE_NO_WARNINGS /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /Fe:"' + $launcher + '" src\windows\onefile_launcher.c /link /SUBSYSTEM:WINDOWS user32.lib ole32.lib shell32.lib advapi32.lib'
+          & cmd.exe /d /s /c $launcherCommand
+          if ($LASTEXITCODE -ne 0) { throw 'Windows one-file launcher build failed' }
           $template = Join-Path $temp 'unsigned-test-template.zip'
           [System.IO.File]::WriteAllBytes($template, [byte[]](1, 2, 3))
           $kit = Join-Path $temp 'kit'
@@ -76,6 +80,21 @@ jobs:
           $releaseManifest = Get-Content (Join-Path $kit 'kit-manifest.json') -Raw | ConvertFrom-Json
           $utmManifest = Get-Content (Join-Path $utmKit 'kit-manifest.json') -Raw | ConvertFrom-Json
           if ($releaseManifest.mode -ne 'release' -or $utmManifest.mode -ne 'utm-test') { throw 'Kit profile manifest mismatch' }
+          $catalog = Join-Path $temp 'hu.xlf'
+          [System.IO.File]::WriteAllText($catalog, 'synthetic CI-only language fixture')
+          $privateKit = Join-Path $temp 'private-kit'
+          python tools/build_windows_kit.py --mode release --hungarian-xlf $catalog --python-embed-zip $pyzip --compiler $compiler --gui-exe $gui --template $template --output $privateKit
+          if ($LASTEXITCODE -ne 0) { throw 'Private-language kit assembly failed' }
+          $onefile = Join-Path $temp 'MinionRush-OneFile-CI.exe'
+          python tools/build_windows_onefile.py --launcher $launcher --kit $privateKit --output $onefile
+          if ($LASTEXITCODE -ne 0) { throw 'One-file package build failed' }
+          & $onefile --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'One-file native self-extraction/startup failed' }
+          $utmOnefile = Join-Path $temp 'MinionRush-UTM-OneFile-CI.exe'
+          python tools/build_windows_onefile.py --launcher $launcher --kit $utmKit --output $utmOnefile --allow-test-profile
+          if ($LASTEXITCODE -ne 0) { throw 'UTM one-file package build failed' }
+          & $utmOnefile --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'UTM one-file self-extraction/startup failed' }
           $exe = Join-Path $kit 'python\python.exe'
           & $exe -c 'import windows_native_package; import prepare_native_aot; import native_ipa; print("Embedded runtime imports: PASS")'
           if ($LASTEXITCODE -ne 0) { throw 'Embedded Python import failed' }

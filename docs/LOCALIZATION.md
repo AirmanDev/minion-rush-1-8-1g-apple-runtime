@@ -36,6 +36,11 @@ stored in its local language preference, and survives relaunch. There is no
 separate platform language menu or need to rebuild when switching between
 languages already packaged in the private IPA.
 
+For the private Windows one-file Builder, the build host may embed its
+private hu.xlf in the bundled portable kit. It is integrity-checked and
+automatically selected when the user builds an IPA. This convenience does
+not imply permission to redistribute translated proprietary game text.
+
 Only Hungarian is currently configured as an additional community pack.
 Other languages require a separately prepared, validated catalog and config;
 no machine-translated or unreviewed packs are created automatically. The

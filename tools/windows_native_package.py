@@ -32,10 +32,10 @@ def validate_kit(kit: Path) -> dict:
         raise ValueError("Windows kit manifest is missing or invalid")
     config = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(config, dict) or set(config) != {
-        "version", "mode", "engine_sha256", "template_sha256", "compiler_sha256", "gui_sha256",
+        "version", "mode", "hungarian_xlf_sha256", "engine_sha256", "template_sha256", "compiler_sha256", "gui_sha256",
         "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
         "python_files_sha256",
-    } or config["version"] != 3 or config["mode"] not in ("release", "utm-test"):
+    } or config["version"] != 4 or config["mode"] not in ("release", "utm-test"):
         raise ValueError("Windows kit manifest format is invalid")
     if config["engine_sha256"] != OFFICIAL_ENGINE_SHA256:
         raise ValueError("Windows kit targets the wrong game engine")
@@ -46,6 +46,20 @@ def validate_kit(kit: Path) -> dict:
         if (not isinstance(digest, str) or len(digest) != 64
                 or any(char not in "0123456789abcdef" for char in digest)):
             raise ValueError("invalid Windows kit checksum")
+    catalog_digest = config["hungarian_xlf_sha256"]
+    catalog_file = kit / "private-localizations" / "hu.xlf"
+    if catalog_digest is not None:
+        if (not isinstance(catalog_digest, str) or len(catalog_digest) != 64 or
+                any(char not in "0123456789abcdef" for char in catalog_digest)):
+            raise ValueError("invalid bundled catalog checksum")
+        if (not catalog_file.is_file() or catalog_file.is_symlink() or
+                catalog_file.stat().st_size > 2 * 1024 * 1024 or
+                file_sha256(catalog_file) != catalog_digest):
+            raise ValueError("bundled Hungarian catalog checksum mismatch")
+    if (kit / "private-localizations").exists():
+        if (catalog_digest is None or
+                {path.name for path in (kit / "private-localizations").iterdir()} != {"hu.xlf"}):
+            raise ValueError("unexpected private language files in kit")
     if (kit / "runtime").is_symlink():
         raise ValueError("linked Windows runtime directory")
     runtime_root = (kit / "runtime").resolve()
@@ -176,7 +190,9 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
             raise ValueError("expected a private, regular hu.xlf catalog")
         translations_root = selected.parent
     else:
-        optional = kit.parent / "MinionRush-Private-Languages" / "hu.xlf"
+        bundled = kit / "private-localizations" / "hu.xlf"
+        optional = (bundled if config.get("hungarian_xlf_sha256") is not None
+                    else kit.parent / "MinionRush-Private-Languages" / "hu.xlf")
         if optional.is_file() and not optional.is_symlink():
             translations_root = optional.parent
     if scratch_root is not None:

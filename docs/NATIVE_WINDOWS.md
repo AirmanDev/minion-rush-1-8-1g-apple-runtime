@@ -83,6 +83,20 @@ assets, generated ARM64 data and the AOT manifest.
 8. Sign and install it with a trusted external tool such as Sideloadly.
    The GUI does not collect Apple account credentials or sign IPA files.
 
+For a single-file distribution, use the native one-file launcher. The
+user receives only one EXE; that EXE contains a compressed, hash-checked
+portable kit (including Python, translator, template, and optionally a
+private Hungarian translation). On startup it expands into a unique Windows
+TEMP directory, executes the same GUI and build engine, waits for it to
+finish, and removes the extracted kit. Windows 11 includes the local tar
+extractor required by the launcher. This does not install applications,
+require administrator privileges, or bundle the original 1.8.1g source ZIP.
+The user still selects their own original ZIP. Private Hungarian XLIFF can
+be supplied at kit creation with --hungarian-xlf and is then selected by
+the GUI automatically, compiled into the private iOS IPA, and need not be
+selected again by end users. It must not be committed or published without
+clear redistribution rights.
+
 The kit contains an unsigned game-asset-free iOS template, the native
 Windows EXE, and a private Python runtime plus AOT compiler. Game assets,
 original icon and ARM64 machine instructions are generated only after
@@ -95,7 +109,7 @@ chosen destination, and optional language catalog; there is only one
 translation and IPA assembly implementation.
 
 The release and private UTM test builder have distinct compile-time
-configurations and version-3 kit manifests. Only the UTM test kit includes
+configurations and version-4 kit manifests. Only the UTM test kit includes
 the guest-loopback SPICE/WebDAV transport module, which targets
 127.0.0.1:9843 for large shared ZIPs. The release kit excludes that module
 and the release GUI does not auto-select UTM share paths. Local archives
@@ -173,6 +187,25 @@ transport source and test-only GUI behavior are not shipped in this kit:
       --template build/native-template/MinionRush-native-template-unsigned.zip \
       --output /private/MinionRush-Portable-Windows
 
+To create a single Windows EXE with the private Hungarian catalog:
+
+    python3 tools/build_windows_kit.py \
+      --mode release \
+      --hungarian-xlf /private/hu.xlf \
+      --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
+      --compiler /private/a64-compiler.exe \
+      --gui-exe build/windows/MinionRush\ Builder.exe \
+      --template build/native-template/MinionRush-native-template-unsigned.zip \
+      --output /private/MinionRush-Release-Private
+
+    python3 tools/build_windows_onefile.py \
+      --launcher build/windows/MinionRush\ Portable.exe \
+      --kit /private/MinionRush-Release-Private \
+      --output /private/MinionRush-Builder.exe
+
+This is a private artifact until the template and translation rights have
+been reviewed. The public candidate should not embed unlicensed text.
+
 For private UTM VM testing, compile and package a separate test profile:
 
     ./tools/build_windows_gui.sh utm-test
@@ -198,6 +231,19 @@ The private UTM test archive requires an explicit safety override:
       --allow-test-profile
 
 Never label or publish that archive as the standard Windows release.
+
+The one-file test EXE is also explicit and must not be offered as a release:
+
+    python3 tools/build_windows_onefile.py \
+      --launcher build/windows/MinionRush\ Portable.exe \
+      --kit /private/MinionRush-UTM-Test \
+      --output /private/MinionRush-Builder-UTM-Test.exe \
+      --allow-test-profile
+
+When the private UTM one-file EXE sits next to the original ZIP in the
+guest's mapped shared folder, the test profile reads that original ZIP via
+the local SPICE/WebDAV service. The normal release profile does not contain
+this integration.
 
 The kit includes the native Win32 GUI, an isolated Python 3.14.7 runtime,
 the verified x64 AOT translator, public runtime source, and the developer-built
