@@ -230,6 +230,12 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
                 build_unsigned(args.archive, args.destination, args.native_kit,
                                hungarian=not args.no_hungarian, overwrite=args.overwrite)
             return {"ipa_path": str(args.destination)}
+        if args.command == "devices":
+            chain = toolchain()
+            return {
+                "toolchain": chain["version"],
+                "devices": query_devices(command_environment(chain["developer"])),
+            }
         emit("progress", message="Preparing runtime")
         runtime = prepare_runtime(source, workspace)
         assets = workspace / "assets"
@@ -259,8 +265,6 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         chain = toolchain()
         emit("log", message=chain["version"])
         environment = command_environment(chain["developer"])
-        if args.command == "devices":
-            return {"devices": query_devices(environment)}
         environment.update(signing_settings(args.team, args.bundle))
         emit("progress", message="Validating imported assets")
         report = inspect_assets(runtime, assets)

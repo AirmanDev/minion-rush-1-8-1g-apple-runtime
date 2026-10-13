@@ -66,6 +66,7 @@ enum InstallerViewTests {
     try InstallerTests.require(
       device.bounds.width > 350, "Device menu must span its row")
     try InstallerTests.require(device.bounds.height >= 44, "Device selector target height")
+    try InstallerTests.require(device.isBordered, "Device selector has visible native border")
     if let parent = device.superview {
       for point in [NSPoint(x: 4, y: 4), NSPoint(x: device.bounds.width - 4, y: 40)] {
         try InstallerTests.require(

@@ -190,6 +190,9 @@ struct InstallerTests {
       {"id":"second","udid":"two","name":"iPad","os":"27.0"}]}
       """)
     try require(model.selectedDevice.isEmpty, "Multiple devices require explicit selection")
+    try require(
+      model.deviceStatus == model.text("selectDevice"),
+      "Paired devices require selection, not reconnection")
     model.selectedDevice = "second"
     try applyResult(
       """

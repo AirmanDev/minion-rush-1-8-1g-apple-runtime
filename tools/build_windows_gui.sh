@@ -8,6 +8,12 @@ mode="${1:-release}"
   exit 2
 }
 python3 tools/build_builder_palette.py --check
+builder_version="$(plutil -extract CFBundleShortVersionString raw -o - installer/Info.plist)"
+[[ "$builder_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+  printf 'Invalid Builder version in installer/Info.plist\n' >&2
+  exit 1
+}
+version_define="-DMR_BUILDER_VERSION=L\"$builder_version\""
 project_require_command x86_64-w64-mingw32-gcc
 mkdir -p "$OUT/windows"
 target="$OUT/windows/MinionRush Builder.exe"
@@ -20,7 +26,7 @@ fi
 x86_64-w64-mingw32-windres -i "$PROJECT_ROOT/src/windows/builder.rc" \
   -o "$OUT/windows/builder_icon.o" -O coff
 x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror \
-  -municode -mwindows -D_WIN32_WINNT=0x0A00 "$define" \
+  -municode -mwindows -D_WIN32_WINNT=0x0A00 "$define" "$version_define" \
   -Wl,--dynamicbase,--nxcompat,--high-entropy-va \
   -o "$target" "$PROJECT_ROOT/src/windows/ipa_builder.c" \
   "$OUT/windows/builder_icon.o" \

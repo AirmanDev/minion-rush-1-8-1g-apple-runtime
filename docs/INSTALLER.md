@@ -33,10 +33,12 @@ This does not change the game executable's macOS 14 deployment minimum.
 
 ## Portable Mac download and integrity
 
-The 1.2.3 portable Mac ZIP is a local candidate, not yet a public Release.
-After rights clearance and publication, download both
-MinionRush-Builder-macOS-arm64.zip and SHA256SUMS.txt from the same
-GitHub Release. In Terminal run:
+Download MinionRush-Builder-macOS-arm64.zip and SHA256SUMS.txt
+from the same published GitHub Release. Version 1.2.4 displays the version
+in the Mac application header. The downloaded ZIP contains the full portable
+Builder with NativeKit, PythonRuntime and the Hungarian pack. The separate
+source-only `build/installer/Minion Rush Installer.app` does not contain
+NativeKit and cannot make an unsigned IPA. In Terminal run:
 
     shasum -a 256 MinionRush-Builder-macOS-arm64.zip
 
@@ -207,7 +209,12 @@ and trailing newlines cannot pass one layer and fail another.
 
 The portable Mac Builder offers the same primary workflow as Windows:
 choose the original ZIP and unsigned IPA destination, create the IPA and
-inspect the detailed log. The optional game-language toggle is enabled
+inspect the detailed log. Xcode signing and device selection are optional.
+The Device Refresh control runs a standalone Xcode device query without
+reimporting the game or rechecking the entire runtime. Paired iPhones and
+iPads are selectable when Xcode reports them. If a device is paired but not
+currently reachable, unlock it, reconnect it and refresh; this does not
+change any installed game or save file. The optional game-language toggle is enabled
 by the included Hungarian target-only translation pack.
 English and Magyar switch the Builder interface independently of the
 game's language resources.
