@@ -30,10 +30,6 @@ if (( $# != 0 )); then
   usage >&2
   exit 2
 fi
-if (( template )) && [[ "$platform" != "device" ]]; then
-  printf 'ERROR: the native AOT template supports physical iOS devices only.\n' >&2
-  exit 2
-fi
 case "$platform" in
   device)
     sdk="iphoneos"
@@ -53,7 +49,11 @@ esac
 
 OUT_DIR="$default_output"
 if (( template )); then
-  OUT_DIR="$OUT/ios-template"
+  if [[ "$platform" == "simulator" ]]; then
+    OUT_DIR="$OUT/ios-template-simulator"
+  else
+    OUT_DIR="$OUT/ios-template"
+  fi
 fi
 [[ ! -L "$OUT" ]] || {
   printf 'ERROR: the build directory must not be a symbolic link.\n' >&2

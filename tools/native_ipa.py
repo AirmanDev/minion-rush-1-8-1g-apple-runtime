@@ -44,6 +44,12 @@ SIGNING_FILES = frozenset(("embedded.mobileprovision", "_CodeSignature", "SC_Inf
 ALLOWED_TEMPLATE_FILES = frozenset((
     "MinionRush", "Info.plist", "PrivacyInfo.xcprivacy", "PkgInfo",
 ))
+# The iOS application's Objective-C entry point is compiled by Xcode, not
+# by build_ios.sh. A missing MR_RUNTIME_PROFILE definition there silently
+# omits the loader, leaving the UI blank with all binding addresses zero.
+PROFILE_LOADER_MARKERS = (
+    b"game-profile.bin", b"native ARM64 build profile missing or invalid",
+)
 
 
 
@@ -164,6 +170,8 @@ def create_template(application: Path, output: Path) -> dict:
     binary = bundle[EXE_NAME].read_bytes()
     slot = find_code_slot(binary)
     require_zero_slot(binary, slot)
+    if any(marker not in binary for marker in PROFILE_LOADER_MARKERS):
+        raise ValueError("iOS template lacks the native game-profile startup loader")
     manifest = _validate_manifest({
         "version": VERSION,
         "app_name": APP_NAME,
@@ -214,6 +222,8 @@ def _unpack_template(template: Path, staging: Path) -> tuple[Path, dict]:
         if hashlib.sha256(binary).hexdigest() != manifest["executable_sha256"]:
             raise ValueError("unsigned template executable checksum mismatch")
         slot = find_code_slot(binary)
+        if any(marker not in binary for marker in PROFILE_LOADER_MARKERS):
+            raise ValueError("iOS template lacks the native game-profile startup loader")
         if (slot.offset, slot.size) != (manifest["slot_offset"], manifest["slot_size"]):
             raise ValueError("Mach-O code slot is inconsistent with template manifest")
         require_zero_slot(binary, slot)

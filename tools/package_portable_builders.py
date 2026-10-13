@@ -22,7 +22,7 @@ from pathlib import Path
 
 from build_windows_onefile import BUNDLE_MAGIC, FOOTER, MAX_BUNDLE_BYTES
 from common import ROOT
-from native_ipa import (EXE_NAME, TEMPLATE_MANIFEST, TEMPLATE_PREFIX,
+from native_ipa import (EXE_NAME, PROFILE_LOADER_MARKERS, TEMPLATE_MANIFEST, TEMPLATE_PREFIX,
                         _check_template_zip, _validate_manifest)
 from native_macos_package import validate_native_kit
 from native_macho import file_sha256, find_code_slot, require_zero_slot
@@ -40,6 +40,8 @@ def verify_generic_template(contents: bytes) -> None:
         if manifest["version"] != 3:
             raise ValueError("portable Builder must use the generic v3 iOS template")
         binary = source.read(TEMPLATE_PREFIX + EXE_NAME)
+        if any(marker not in binary for marker in PROFILE_LOADER_MARKERS):
+            raise ValueError("generic iOS template is missing startup profile loader")
         if hashlib.sha256(binary).hexdigest() != manifest["executable_sha256"]:
             raise ValueError("generic iOS template executable digest mismatch")
         slot = find_code_slot(binary)

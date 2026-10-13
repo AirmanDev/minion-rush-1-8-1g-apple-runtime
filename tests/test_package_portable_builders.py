@@ -22,14 +22,15 @@ from test_native_ipa import macho
 
 def generic_template() -> bytes:
     payload = io.BytesIO()
+    binary = macho() + b"game-profile.bin\0native ARM64 build profile missing or invalid\0"
     manifest = {
         "app_name": "MinionRush.app", "version": 3, "profile_version": 3,
         "slot_offset": 4096, "slot_size": 256,
-        "executable_sha256": hashlib.sha256(macho()).hexdigest(),
+        "executable_sha256": hashlib.sha256(binary).hexdigest(),
     }
     with zipfile.ZipFile(payload, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("template-manifest.json", json.dumps(manifest))
-        archive.writestr("Template/MinionRush.app/MinionRush", macho())
+        archive.writestr("Template/MinionRush.app/MinionRush", binary)
     return payload.getvalue()
 
 
@@ -77,6 +78,19 @@ class PortableBuilderPackagingTests(unittest.TestCase):
             archive.writestr("Template/MinionRush.app/MinionRush", executable)
         with self.assertRaisesRegex(ValueError, "nonzero"):
             verify_generic_template(modified.getvalue())
+
+    def test_template_with_missing_profile_loader_is_rejected(self):
+        with zipfile.ZipFile(io.BytesIO(generic_template())) as source:
+            info = json.loads(source.read("template-manifest.json"))
+            executable = source.read("Template/MinionRush.app/MinionRush")
+        missing_loader = executable.replace(b"game-profile.bin", b"game-profile.old")
+        info["executable_sha256"] = hashlib.sha256(missing_loader).hexdigest()
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as dest:
+            dest.writestr("template-manifest.json", json.dumps(info))
+            dest.writestr("Template/MinionRush.app/MinionRush", missing_loader)
+        with self.assertRaisesRegex(ValueError, "profile"):
+            verify_generic_template(stream.getvalue())
 
     def test_rejects_modified_embedded_kit(self):
         with tempfile.TemporaryDirectory() as location:

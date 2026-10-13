@@ -43,7 +43,8 @@ def macho(slot_size=256):
 def synthetic_app(root: Path) -> Path:
     app = root / APP_NAME
     app.mkdir()
-    (app / "MinionRush").write_bytes(macho())
+    (app / "MinionRush").write_bytes(
+        macho() + b"game-profile.bin\0native ARM64 build profile missing or invalid\0")
     (app / "Info.plist").write_bytes(plistlib.dumps({
         "CFBundleExecutable": "MinionRush",
         "CFBundleIdentifier": "example.native.runtime",
@@ -101,6 +102,14 @@ class NativeMachoTests(unittest.TestCase):
         data = data[:0x1000] + b"\x01" + data[0x1001:]
         with self.assertRaisesRegex(ValueError, "nonzero"):
             require_zero_slot(data, slot)
+
+    def test_template_without_runtime_profile_loader_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = synthetic_app(root)
+            (app / "MinionRush").write_bytes(macho())
+            with self.assertRaisesRegex(ValueError, "lacks the native game-profile startup loader"):
+                create_template(app, root / "template.zip")
 
     def test_rejects_truncation_invalid_cpu_nonexecutable_and_bad_ranges(self):
         samples = [

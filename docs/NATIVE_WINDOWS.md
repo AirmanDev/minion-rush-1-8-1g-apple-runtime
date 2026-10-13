@@ -87,7 +87,7 @@ python3 tools/build_windows_kit.py \
 python3 tools/build_windows_onefile.py \
   --launcher "$PWD/build/windows/MinionRush Portable.exe" \
   --kit "$PWD/build/ios-generic/windows-kit-1.2" \
-  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.0.exe"
+  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.1.exe"
 ```
 
 Outputs are created only in new, nonexistent paths. The normal release
@@ -120,6 +120,12 @@ unsigned IPA through Create IPA using the user's locally staged original
 ZIP. The checked 1.2.0 GUI result contains 1,369 entries, 942,744 AOT
 blocks and no bundled Hungarian game translation. The generated file
 passes an independent full ZIP integrity and profile parse check.
+The 1.2.1 hotfix corrects the missing iOS startup profile loader in the
+Xcode-built runtime; the exact 1.2.1 Windows EXE passed the embedded
+portable self-test on the Windows 11 UTM guest, but a separate full
+Windows GUI compile using 1.2.1 has not yet been claimed as completed.
+The packaged Mac 1.2.1 Builder did complete the end-to-end AOT IPA build;
+iOS 18.6 and 27.0 Simulators rendered the game with the fixed runtime.
 
 Windows' mapped UTM WebDAV drive cannot directly read this 454 MB ZIP.
 For this private UTM test, the ZIP was first copied through UTM's
@@ -133,7 +139,7 @@ Windows IPA shrank from 447,936,121 to 367,832,694 bytes after this change.
 
 A signed physical iOS gameplay, audio, safe-area and save-state regression
 is still outstanding. Earlier Windows 11 ARM/Sideloadly iPhone results
-belong to the historical 1.1.0 build and do not establish 1.2.0 device
+belong to the historical 1.1.0 build and do not establish 1.2.1 device
 compatibility.
 
 The Windows candidate is not Authenticode signed. Apple-side code signing

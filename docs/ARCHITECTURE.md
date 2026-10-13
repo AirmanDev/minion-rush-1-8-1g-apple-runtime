@@ -83,7 +83,7 @@ artifact is cleared for public redistribution.
 
 ## Generic portable IPA profile
 
-The 1.2.0 portable Builder compiles the iOS host runtime once, without
+The 1.2.1 portable Builder compiles the iOS host runtime once, without
 the original game ZIP. Its fixed-size executable `__MRCODE/__text` slot is
 zeroed (192 MiB). The iOS runtime contains no game-specific block table,
 engine address constants, or original machine instructions.

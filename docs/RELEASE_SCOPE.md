@@ -1,6 +1,6 @@
 # Portable Builder release scope
 
-## Candidate 1.2.0 (generic AOT runtime)
+## Candidate 1.2.1 (generic AOT runtime, startup hotfix)
 
 The next portable Builder candidate supports the same local workflow on both
 platforms: a user imports their own unmodified Minion Rush 1.8.1g ZIP and
@@ -32,6 +32,42 @@ The profile format, bounds and ABI are documented by:
 and `src/native/game_profile.h`. Only version 3 is accepted. There is no
 fallback to the game-derived v2 template.
 
+### 1.2.1 startup defect and Simulator regression
+
+The initial 1.2.0 IPA starts a UIKit scene but remains black: the portable
+iOS AOT runtime is built with `MR_RUNTIME_PROFILE=1` while Xcode compiled
+the application delegate without it. Thus the delegate never invoked
+`mr_game_profile_load`; engine bindings remained zero.
+
+In 1.2.1 the template Xcode build explicitly enables the profile flag
+for the delegate too. Both template creation and release packaging reject
+executables without the profile loader markers. Synthetic negative tests
+cover this regression.
+
+An iOS 18.6 iPhone 11 Simulator build was made from the same generic v3
+runtime, filled on the Mac with a real owner-supplied ZIP and loaded in an
+isolated simulator. The profile loaded, the engine ran 650 frames with
+942,744 native blocks and zero AOT block faults, and the game started
+rendering 118 draw calls at frame 267. A simulator screenshot confirmed
+visible game animation. A separate, isolated iOS 27.0 iPhone 17 Pro
+Simulator showed the game's intro graphics and text: first draw calls
+at frame 229, 360 frames completed and zero ARM64 block faults.
+Performance on the simulated GPU is not evidence of hardware frame rate.
+The screen turns black again when the bounded
+`MR_FRAMES` diagnostic session is intentionally completed; this is not
+evidence of a normal indefinite gameplay regression.
+
+The 1.2.1 packaged Mac Builder successfully produced another native IPA
+from the user-owned ZIP (1,369 entries, 942,744 AOT blocks, no private
+Hungarian XLIFF) and its template contained the working startup profile
+loader. The final 1.2.1 Windows EXE was copied to the UTM Z: share and
+passed SHA-256 verification plus a zero-exit portable self-test directly
+from the guest. The previous 1.2.0 exe was removed from the share.
+
+The 1.2.1 physical iPhone build still requires installation and actual
+gameplay testing, and existing user save data must not be overwritten
+without explicit approval.
+
 ## Build the candidate locally
 
 Build the generic template once, on a developer Mac with Xcode 27 or later:
@@ -49,11 +85,11 @@ Then build the portable host executables as described in
 ```bash
 mkdir -p build/portable-releases
 python3 tools/package_portable_builders.py \
-  --app "$PWD/build/ios-generic/Minion Rush IPA Builder 1.2.0.app" \
-  --windows-exe "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.0.exe" \
-  --version 1.2.0 \
-  --output "$PWD/build/portable-releases/1.2.0"
-(cd build/portable-releases/1.2.0 && shasum -a 256 -c SHA256SUMS.txt)
+  --app "$PWD/build/ios-generic/Minion Rush IPA Builder 1.2.1.app" \
+  --windows-exe "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.1.exe" \
+  --version 1.2.1 \
+  --output "$PWD/build/portable-releases/1.2.1"
+(cd build/portable-releases/1.2.1 && shasum -a 256 -c SHA256SUMS.txt)
 ```
 
 The packager verifies the Mac bundle's version, signature (including after
@@ -130,6 +166,6 @@ Primary references:
 
 The already published GitHub 1.1.0 RC1 is a separate, Xcode-based Mac
 import/sign/install application. It does not contain the v3 generic portable
-runtime or Windows EXE. Do not replace or mislabel it before the 1.2.0
+runtime or Windows EXE. Do not replace or mislabel it before the 1.2.1
 candidate's remaining gates are passed. Do not publish any user ZIP,
 generated IPA, private translation, signing credentials or device identifiers.

@@ -225,7 +225,7 @@ Its embedded Python runtime is version- and checksum-pinned, independently
 ad-hoc signed and relocatable inside the signed .app.
 The previous IPA is protected: a candidate is completed and verified in an
 isolated destination-side directory before atomic replacement.
-The original ZIP must always be supplied by the user. The 1.2.0 generic
+The original ZIP must always be supplied by the user. The 1.2.1 generic
 runtime is compiled independently of that ZIP; its engine-specific map and
 binding values are generated only during the user's local IPA build.
 
