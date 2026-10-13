@@ -47,12 +47,13 @@ was introduced by this notice-only update. The actual 1.2.3 packages
 were subsequently built and validated on Mac and Windows, including the
 entire original-ZIP-to-unsigned-IPA process.
 
-On the development Mac, only Apple Development and Apple Distribution
-signing identities are installed; no Developer ID certificate is
-available. The ad hoc-signed Mac Builder fails a Gatekeeper assessment.
-The final 1.2.3 Windows executable was checked in the guest using
-Get-AuthenticodeSignature and returned NotSigned. Neither application
-is currently ready for a friction-free, publisher-authenticated download.
+The publisher has selected direct GitHub download with an ad hoc-signed
+Mac Builder and an unsigned Windows EXE. The optional Developer ID,
+notarization and Authenticode release paths are out of scope. The built
+Mac app is rejected by Gatekeeper before manual approval, and the Windows
+1.2.3 EXE reports NotSigned in Get-AuthenticodeSignature. Downloaders must
+be informed about operating-system trust prompts. User approval is not
+available on every restricted or managed device.
 
 The packaged 1.2.3 Mac Builder passed ZIP-to-IPA conversion and generated
 1,369 entries and 942,744 native blocks. The 1.2.3 Windows EXE passed
@@ -155,7 +156,7 @@ extraction), runtime and kit integrity, the Windows EXE embedded archive,
 and the generic template version. It rejects private XLIFF and finished
 game IPAs. It does not upload anything.
 
-The open rights, third-party notices and signing prerequisites are tracked
+The open rights, third-party notices and distribution instructions are tracked
 in [THIRD_PARTY_AND_RELEASE_GATE.md](THIRD_PARTY_AND_RELEASE_GATE.md).
 
 ## Validation status
@@ -187,11 +188,11 @@ changing the native code, profile or game asset contents. The remaining
 platform-dependent PNG icon bytes and zlib implementation explain why these
 IPA files are not byte-identical across the platforms.
 
-A signed on-device iPhone/iPad startup/gameplay regression, save-state
-continuity and broader iOS version coverage, clean-machine Gatekeeper and
-Windows Authenticode signing checks, dependency licenses and case-specific
-legal review remain gates before an unqualified public release. Previous
-Windows/iPhone gameplay successes concerned the older 1.1.0 private package.
+The owner has confirmed physical iPhone gameplay and the 1.2.2 loading
+screen. Audio, save-state continuity and broader iOS version coverage
+remain unverified. A first-launch check on a clean desktop is recommended
+to verify accurate trust-prompt instructions, not to demand publisher
+signing. Dependency licenses and case-specific legal rights remain open.
 
 ## Legal and distribution limits
 

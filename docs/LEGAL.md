@@ -142,7 +142,7 @@ before publicly representing full distribution clearance.
 
 A full release requires verified Windows GUI E2E testing, physical
 iPhone/iPad gameplay regression, dependency license audit, trustworthy
-installer checksums, developer signing/notarization decisions, and
+installer checksums, accurate direct-download trust guidance, and
 inspection of the remaining publicly exposed engine symbol names.
 
 Do not publish original game ZIPs, generated user IPAs, saved games,

@@ -283,17 +283,15 @@ detects changes relative to that file; it does not authenticate the publisher.
 Never ask users to disable Gatekeeper, remove quarantine, or override a malware
 or invalid-signature alert.
 
-Before publishing a binary release, test the browser-downloaded ZIP on a clean
-Mac: checksum, extraction, first-launch warning, manual approval, import, and
-installation. Local build and archive verification do not cover that Gatekeeper
-workflow. A clean-Mac download test remains a release check.
+A browser-downloaded ZIP should also be tested on a clean Mac: checksum,
+extraction, first-launch warning, optional user approval, and ZIP-to-IPA
+creation. This is a documentation and compatibility check, not a requirement
+to obtain publisher credentials. Approval may be unavailable on managed Macs.
 
-Developer ID signing and notarization are optional for a contributor with paid
-membership who wants Apple's standard verified distribution path. The builder
-accepts `--identity "Developer ID Application: Your Name (TEAMID)"` and adds a
-secure timestamp for that identity. Such a release needs notarization, stapling,
-and a fresh final archive; the ad-hoc packaging command does not perform those
-steps. Neither workflow changes macOS or device signing/trust protections.
+The release build uses ad hoc signing only. The packaging script has no
+publisher-signing or notarization mode. This does not affect the independent
+signing required to install an IPA on an iPhone or iPad. Neither the Builder
+nor this guide disables operating-system trust protections.
 
 Apple references are listed in `TECHNICAL_SOURCES.md`. Asset ownership and the
 project's legal scope are described in `LEGAL.md`.

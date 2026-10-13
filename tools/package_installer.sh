@@ -37,4 +37,4 @@ codesign --verify --strict "$extracted"
 mv -f "$temporary/$archive" "$output/$archive"
 mv -f "$temporary/$archive.sha256" "$output/$archive.sha256"
 printf 'DONE: %s\nChecksum: %s\n' "$output/$archive" "$output/$archive.sha256"
-printf 'Ad-hoc signed, not notarized. Downloaded copies need manual Gatekeeper approval.\n'
+printf 'Ad hoc signed. Downloaded copies may need user approval in Privacy & Security.\n'

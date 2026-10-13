@@ -41,6 +41,13 @@ See [release scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
 
 ## Runtime test status
 
+The distribution target is direct GitHub download: the Mac Builder is
+ad hoc signed and the Windows EXE is unsigned. No Developer ID,
+notarization or Authenticode signing is planned. On some Macs, the user
+can explicitly approve the application in Privacy & Security; managed
+systems may prevent it. Signing an iOS IPA for device installation is
+separate and still required.
+
 Version 1.2.3 is a packaging and license-notice update; it does not
 modify the iOS engine, loading overlay or ARM64 compiler. The official
 MinGW-w64 runtime copyright notices are retained in the Windows kit,
@@ -468,8 +475,9 @@ The original source code, tools, tests, and documentation in this repository
 are licensed under the Apache License 2.0. See `LICENSE`.
 
 The source license does not grant rights to distribute the original game,
-name, or assets. Resolve the required rights and App Store compliance
-separately before any public binary or commercial release.
+name, or assets. Resolve the rights necessary for direct GitHub distribution
+before publishing any binary. The Builder itself is not submitted to the
+App Store.
 
 The optional native Windows IPA template build uses the Xcode-only override
 MR_IOS_LIB_DIR=ios-template; the standard builds retain MR_IOS_LIB_DIR=ios.
