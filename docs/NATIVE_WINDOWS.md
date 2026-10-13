@@ -59,9 +59,11 @@ assets, generated ARM64 data and the AOT manifest.
    not part of the original game ZIP. The builder can also use
    MinionRush-Private-Languages/hu.xlf next to the portable kit. Without a
    catalog, original language data is imported without the extra translation.
-6. Select Create IPA. Progress, errors, and compiler output appear in the
-   window without freezing the user interface. Cancel terminates the child
-   build process group; its private scratch directory is cleaned afterwards.
+6. Select Create IPA. Progress and the latest step appear in the
+   window without freezing the user interface; Show details opens the full
+   compiler output, which is also shown automatically after a failure.
+   Cancel terminates the child build process group; its private scratch
+   directory is cleaned afterwards.
 7. Open the chosen output folder. The IPA is unsigned, contains copyrighted
    game assets from your own ZIP, and is for private use only.
 8. Sign and install it with a trusted external tool such as Sideloadly.

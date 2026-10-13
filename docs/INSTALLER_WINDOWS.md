@@ -16,8 +16,12 @@ To use the Mac path, export the IPA locally and transfer it privately.
 The Windows portable kit contains MinionRush Builder.exe. Extract all files,
 launch the GUI, drag an original ZIP onto the window or use Browse, select
 Save As to choose a new output IPA path, and select Create IPA. A private
-Hungarian hu.xlf can be selected optionally. The GUI shows the current step
-and error log, never overwrites an existing IPA and never signs automatically.
+Hungarian hu.xlf can be selected optionally. The window shows the current
+step in a compact status panel; **Show details** opens the full log, and it
+opens by itself if a build fails. The GUI never overwrites an existing IPA
+and never signs automatically. Tab and Shift+Tab move between the fields and
+buttons, Enter presses the focused button, and the window scales with the
+display's DPI setting.
 
 Use the independent [Sideloadly application](https://sideloadly.io/) to sign
 and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
@@ -91,5 +95,5 @@ A physical-device test using UTM Windows 11 ARM, USB forwarding and Sideloadly
 v0.70.1 successfully installed and ran the unsigned IPA on an iPhone with
 iOS 27. The user also reported repeated extended gameplay without stability
 problems. Signing renewal and installation on additional Windows PCs and
-iPads remain untested. The new graphical Windows builder has not yet had
+iPads remain untested. The redesigned graphical Windows builder has not yet had
 its full interactive end-to-end device test.

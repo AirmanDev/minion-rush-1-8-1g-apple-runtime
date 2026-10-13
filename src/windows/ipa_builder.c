@@ -9,61 +9,174 @@
 #include <wchar.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
 
 enum {
-    ID_SOURCE = 101, ID_PICK_SOURCE, ID_DESTINATION, ID_PICK_DESTINATION,
-    ID_CATALOG, ID_PICK_CATALOG, ID_BUILD, ID_CANCEL, ID_OPEN_FOLDER, ID_LOG,
-    ID_PROGRESS, ID_STATE,
-    WM_APPEND_LOG = WM_APP + 1, WM_BUILD_DONE = WM_APP + 2,
-    WM_JOB_READY = WM_APP + 3
+    ID_TITLE = 101, ID_SUBTITLE,
+    ID_SOURCE_HINT, ID_SOURCE_LABEL, ID_SOURCE, ID_PICK_SOURCE,
+    ID_DESTINATION_LABEL, ID_DESTINATION, ID_PICK_DESTINATION,
+    ID_CATALOG_HINT, ID_CATALOG_LABEL, ID_CATALOG, ID_PICK_CATALOG,
+    ID_BUILD, ID_CANCEL, ID_OPEN_FOLDER,
+    ID_STATE, ID_DETAIL, ID_DETAILS_TOGGLE, ID_LOG, ID_LAST,
+    TIMER_ANIMATION = 1,
+    WM_APPEND_LOG = WM_APP + 1, WM_BUILD_DONE = WM_APP + 2
 };
 
-static HWND main_window;
-static HWND source_field, destination_field, catalog_field;
-static HWND browse_source, browse_destination, browse_catalog;
-static HWND build_button, cancel_button, open_button, log_field, status_field;
-static HWND progress_bar;
-static HFONT ui_font, heading_font;
-static HBRUSH white_brush;
-static WCHAR kit_path[MAX_PATH * 4], last_output[32768];
-static HANDLE active_job;
-static BOOL running, aborted;
+/* Palette: cool neutral surface, navy chrome, one gold accent. */
+#define COL_BACKGROUND  RGB(243, 246, 250)
+#define COL_CARD        RGB(255, 255, 255)
+#define COL_CARD_EDGE   RGB(221, 227, 236)
+#define COL_NAVY        RGB(15, 27, 45)
+#define COL_NAVY_MUTED  RGB(170, 183, 204)
+#define COL_TEXT        RGB(26, 37, 56)
+#define COL_MUTED       RGB(92, 104, 124)
+#define COL_DISABLED    RGB(138, 149, 168)
+#define COL_FIELD       RGB(247, 249, 252)
+#define COL_FIELD_OFF   RGB(237, 241, 246)
+#define COL_FIELD_EDGE  RGB(196, 205, 218)
+#define COL_EDGE_HOT    RGB(158, 170, 189)
+#define COL_HOVER       RGB(235, 240, 247)
+#define COL_PRESSED     RGB(222, 229, 240)
+#define COL_GOLD        RGB(245, 184, 28)
+#define COL_GOLD_HOT    RGB(250, 202, 70)
+#define COL_GOLD_DOWN   RGB(224, 164, 12)
+#define COL_TRACK       RGB(226, 232, 241)
+#define COL_IDLE        RGB(140, 152, 172)
+#define COL_GOOD        RGB(28, 148, 92)
+#define COL_BAD         RGB(205, 62, 58)
+
+typedef enum {
+    ROLE_TITLE, ROLE_SUBTITLE, ROLE_LABEL, ROLE_HINT, ROLE_FIELD,
+    ROLE_PRIMARY, ROLE_SECONDARY, ROLE_BROWSE, ROLE_LINK,
+    ROLE_STATUS, ROLE_DETAIL, ROLE_LOG
+} Role;
+
+typedef enum { FONT_TITLE, FONT_BODY, FONT_LABEL, FONT_SMALL, FONT_STATUS, FONT_MONO, FONT_COUNT } FontSlot;
+typedef enum { BRUSH_NAVY, BRUSH_CARD, BRUSH_FIELD, BRUSH_FIELD_OFF, BRUSH_COUNT } BrushSlot;
+typedef enum { STATE_IDLE, STATE_BUSY, STATE_OK, STATE_FAILED, STATE_STOPPED } UiState;
+
+typedef struct { int id; LPCWSTR kind; LPCWSTR text; DWORD style; Role role; } Spec;
+typedef struct { int label, hint, field, pick; } Row;
+
+#define LABEL_STYLE (WS_CHILD | WS_VISIBLE | SS_NOPREFIX | SS_ENDELLIPSIS)
+#define BUTTON_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW)
+#define FIELD_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_READONLY)
+
+/* Creation order is also the z-order and keyboard order. Each field is
+   preceded by its label so assistive technology can name it. */
+static const Spec specs[] = {
+    {ID_TITLE, L"STATIC", L"Minion Rush IPA Builder", LABEL_STYLE, ROLE_TITLE},
+    {ID_SUBTITLE, L"STATIC",
+     L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
+     LABEL_STYLE, ROLE_SUBTITLE},
+    {ID_SOURCE_HINT, L"STATIC", L"Drop a ZIP onto this window", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
+    {ID_SOURCE_LABEL, L"STATIC", L"Original game ZIP", LABEL_STYLE, ROLE_LABEL},
+    {ID_SOURCE, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
+    {ID_PICK_SOURCE, L"BUTTON", L"Browse ZIP...", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_DESTINATION_LABEL, L"STATIC", L"Save unsigned IPA to", LABEL_STYLE, ROLE_LABEL},
+    {ID_DESTINATION, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
+    {ID_PICK_DESTINATION, L"BUTTON", L"Save As...", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_CATALOG_HINT, L"STATIC", L"Optional hu.xlf, can be auto-detected", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
+    {ID_CATALOG_LABEL, L"STATIC", L"Hungarian translation", LABEL_STYLE, ROLE_LABEL},
+    {ID_CATALOG, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
+    {ID_PICK_CATALOG, L"BUTTON", L"Choose hu.xlf...", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_BUILD, L"BUTTON", L"Create IPA", BUTTON_STYLE, ROLE_PRIMARY},
+    {ID_CANCEL, L"BUTTON", L"Cancel", BUTTON_STYLE, ROLE_SECONDARY},
+    {ID_OPEN_FOLDER, L"BUTTON", L"Open output folder", BUTTON_STYLE, ROLE_SECONDARY},
+    {ID_STATE, L"STATIC", L"Ready. The output is unsigned and requires Sideloadly.", LABEL_STYLE, ROLE_STATUS},
+    {ID_DETAIL, L"STATIC", L"", LABEL_STYLE, ROLE_DETAIL},
+    {ID_DETAILS_TOGGLE, L"BUTTON", L"Show details", BUTTON_STYLE, ROLE_LINK},
+    {ID_LOG, L"EDIT", L"", WS_CHILD | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY, ROLE_LOG}
+};
+
+static const Row rows[3] = {
+    {ID_SOURCE_LABEL, ID_SOURCE_HINT, ID_SOURCE, ID_PICK_SOURCE},
+    {ID_DESTINATION_LABEL, 0, ID_DESTINATION, ID_PICK_DESTINATION},
+    {ID_CATALOG_LABEL, ID_CATALOG_HINT, ID_CATALOG, ID_PICK_CATALOG}
+};
+
+typedef struct {
+    RECT slot[ID_LAST];
+    RECT header, card, well[3], status_card, dot, track, log_well;
+} Geometry;
+
+typedef struct { HDC dc, target; HBITMAP bitmap, previous; RECT area; } Canvas;
 
 typedef struct {
     WCHAR python[32768], tool[32768], kit[32768];
     WCHAR source[32768], output[32768], catalog[32768], scratch[32768];
     HWND window;
-    HANDLE job;
+    HANDLE job; /* owned and closed by the UI thread */
 } Build;
 
-static void font(HWND window, HFONT face) {
-    SendMessageW(window, WM_SETFONT, (WPARAM)face, TRUE);
+static HWND main_window, hot_control, remembered_focus;
+static HWND ctl[ID_LAST];
+static HFONT fonts[FONT_COUNT];
+static HBRUSH brushes[BRUSH_COUNT];
+static Geometry geo;
+static UINT ui_dpi = 96;
+static int body_height;
+static WCHAR kit_path[MAX_PATH * 4], last_output[32768], pending_detail[512];
+static HANDLE active_job;
+static volatile LONG cancel_requested;
+static BOOL running, aborted, log_open, detail_dirty;
+static UiState ui_state = STATE_IDLE;
+
+typedef BOOL (WINAPI *DpiAwarenessSetter)(HANDLE);
+typedef UINT (WINAPI *WindowDpiGetter)(HWND);
+typedef HRESULT (WINAPI *WindowAttributeSetter)(HWND, DWORD, LPCVOID, DWORD);
+
+#define S(value) MulDiv((value), (int)ui_dpi, 96)
+
+static void bind_symbol(void *target, size_t size, HMODULE module, const char *name) {
+    FARPROC address = module ? GetProcAddress(module, name) : NULL;
+    memcpy(target, &address, size);
 }
 
-static HWND child(LPCWSTR kind, LPCWSTR text, DWORD style, int id) {
-    HWND window = CreateWindowExW(
-        0, kind, text, WS_CHILD | WS_VISIBLE | style, 0, 0, 100, 26,
-        main_window, (HMENU)(INT_PTR)id, GetModuleHandleW(NULL), NULL
-    );
-    font(window, ui_font);
-    return window;
+/* ---- Small utilities ------------------------------------------------ */
+
+static Role role_of(int id) {
+    for (size_t index = 0; index < sizeof(specs) / sizeof(specs[0]); index++)
+        if (specs[index].id == id) return specs[index].role;
+    return ROLE_LABEL;
 }
 
-static void label(LPCWSTR title, int left, int top, int width, int height) {
-    HWND widget = child(L"STATIC", title, SS_LEFT, 0);
-    SetWindowPos(widget, NULL, left, top, width, height, SWP_NOZORDER);
+static BOOL is_button_role(Role role) {
+    return role == ROLE_PRIMARY || role == ROLE_SECONDARY || role == ROLE_BROWSE || role == ROLE_LINK;
 }
 
-static void field(HWND *target, int id, LPCWSTR prompt) {
-    *target = child(L"EDIT", prompt, WS_BORDER | ES_AUTOHSCROLL | ES_READONLY | WS_TABSTOP, id);
+static HFONT font_for(Role role) {
+    switch (role) {
+    case ROLE_TITLE: return fonts[FONT_TITLE];
+    case ROLE_LABEL: case ROLE_PRIMARY: case ROLE_SECONDARY:
+    case ROLE_BROWSE: case ROLE_LINK: return fonts[FONT_LABEL];
+    case ROLE_HINT: case ROLE_DETAIL: return fonts[FONT_SMALL];
+    case ROLE_STATUS: return fonts[FONT_STATUS];
+    case ROLE_LOG: return fonts[FONT_MONO];
+    default: return fonts[FONT_BODY];
+    }
 }
 
-static void place(HWND child_window, int x, int y, int w, int h) {
-    MoveWindow(child_window, x, y, w, h, TRUE);
+static RECT make_rect(int left, int top, int right, int bottom) {
+    RECT rect;
+    rect.left = left; rect.top = top; rect.right = right; rect.bottom = bottom;
+    return rect;
 }
 
 static BOOL get_text(HWND field_window, WCHAR *buffer, size_t capacity) {
     return GetWindowTextW(field_window, buffer, (int)capacity) > 0;
+}
+
+/* Show the end of a long path, where the file name is. */
+static void set_path(HWND field_window, LPCWSTR text) {
+    SetWindowTextW(field_window, text);
+    int length = GetWindowTextLengthW(field_window);
+    SendMessageW(field_window, EM_SETSEL, (WPARAM)length, (LPARAM)length);
+    SendMessageW(field_window, EM_SCROLLCARET, 0, 0);
 }
 
 static BOOL is_zip(LPCWSTR filename) {
@@ -75,6 +188,514 @@ static BOOL regular_file(LPCWSTR file) {
     DWORD attrs = GetFileAttributesW(file);
     return attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
+
+static int text_width(Role role, LPCWSTR text) {
+    HDC dc = GetDC(main_window);
+    HFONT previous = (HFONT)SelectObject(dc, font_for(role));
+    SIZE extent = {0, 0};
+    GetTextExtentPoint32W(dc, text, (int)wcslen(text), &extent);
+    SelectObject(dc, previous);
+    ReleaseDC(main_window, dc);
+    return extent.cx;
+}
+
+static int button_width(int id, int minimum) {
+    WCHAR caption[64] = {0};
+    GetWindowTextW(ctl[id], caption, 64);
+    int wanted = text_width(role_of(id), caption) + S(40);
+    return wanted > S(minimum) ? wanted : S(minimum);
+}
+
+/* ---- GDI drawing primitives ---------------------------------------- */
+
+static void solid(HDC dc, int left, int top, int right, int bottom, COLORREF color) {
+    if (right <= left || bottom <= top) return;
+    RECT rect = make_rect(left, top, right, bottom);
+    SetBkColor(dc, color);
+    ExtTextOutW(dc, 0, 0, ETO_OPAQUE, &rect, NULL, 0, NULL);
+}
+
+static COLORREF blend(COLORREF below, COLORREF above, double alpha) {
+    int red = (int)(GetRValue(below) + (GetRValue(above) - GetRValue(below)) * alpha + 0.5);
+    int green = (int)(GetGValue(below) + (GetGValue(above) - GetGValue(below)) * alpha + 0.5);
+    int blue = (int)(GetBValue(below) + (GetBValue(above) - GetBValue(below)) * alpha + 0.5);
+    return RGB(red, green, blue);
+}
+
+static double coverage(double distance, double radius) {
+    double value = radius - distance + 0.5;
+    return value < 0.0 ? 0.0 : value > 1.0 ? 1.0 : value;
+}
+
+/* Rounded rectangle with anti-aliased corners. Every surface in this UI sits
+   on a flat colour, so corners are blended against that backdrop. */
+static void round_box(HDC dc, RECT box, int radius, COLORREF backdrop,
+                      COLORREF fill, COLORREF edge, int edge_width) {
+    int width = box.right - box.left, height = box.bottom - box.top;
+    if (radius * 2 > width) radius = width / 2;
+    if (radius * 2 > height) radius = height / 2;
+    if (edge_width < 0) edge_width = 0;
+    if (edge_width > 0) {
+        solid(dc, box.left + radius, box.top, box.right - radius, box.bottom, edge);
+        solid(dc, box.left, box.top + radius, box.right, box.bottom - radius, edge);
+    }
+    solid(dc, box.left + radius, box.top + edge_width, box.right - radius, box.bottom - edge_width, fill);
+    solid(dc, box.left + edge_width, box.top + radius, box.left + radius, box.bottom - radius, fill);
+    solid(dc, box.right - radius, box.top + radius, box.right - edge_width, box.bottom - radius, fill);
+    for (int corner = 0; corner < 4; corner++) {
+        int right_side = corner & 1, bottom_side = corner >> 1;
+        int x0 = right_side ? box.right - radius : box.left;
+        int y0 = bottom_side ? box.bottom - radius : box.top;
+        double cx = right_side ? box.right - radius : box.left + radius;
+        double cy = bottom_side ? box.bottom - radius : box.top + radius;
+        for (int y = y0; y < y0 + radius; y++) {
+            for (int x = x0; x < x0 + radius; x++) {
+                double dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+                double distance = sqrt(dx * dx + dy * dy);
+                COLORREF color = blend(backdrop, edge_width > 0 ? edge : fill,
+                                       coverage(distance, radius));
+                if (edge_width > 0)
+                    color = blend(color, fill, coverage(distance, radius - edge_width));
+                SetPixelV(dc, x, y, color);
+            }
+        }
+    }
+}
+
+/* Double-buffered drawing in the target's own coordinates. */
+static void canvas_open(Canvas *canvas, HDC target, RECT area) {
+    int width = area.right - area.left, height = area.bottom - area.top;
+    canvas->target = target;
+    canvas->area = area;
+    canvas->bitmap = NULL;
+    canvas->previous = NULL;
+    canvas->dc = CreateCompatibleDC(target);
+    if (canvas->dc) canvas->bitmap = CreateCompatibleBitmap(target, width, height);
+    if (!canvas->dc || !canvas->bitmap) {
+        if (canvas->bitmap) DeleteObject(canvas->bitmap);
+        if (canvas->dc) DeleteDC(canvas->dc);
+        canvas->bitmap = NULL;
+        canvas->dc = target; /* unbuffered fallback */
+        return;
+    }
+    canvas->previous = (HBITMAP)SelectObject(canvas->dc, canvas->bitmap);
+    SetViewportOrgEx(canvas->dc, -area.left, -area.top, NULL);
+}
+
+static void canvas_close(Canvas *canvas) {
+    if (!canvas->bitmap) return;
+    BitBlt(canvas->target, canvas->area.left, canvas->area.top,
+           canvas->area.right - canvas->area.left, canvas->area.bottom - canvas->area.top,
+           canvas->dc, canvas->area.left, canvas->area.top, SRCCOPY);
+    SelectObject(canvas->dc, canvas->previous);
+    DeleteObject(canvas->bitmap);
+    DeleteDC(canvas->dc);
+}
+
+/* ---- Geometry ------------------------------------------------------- */
+
+static void place_slot(Geometry *g, int id, int left, int top, int width, int height) {
+    g->slot[id] = make_rect(left, top, left + width, top + height);
+}
+
+/* Fills g for a client area and returns the natural (log hidden) height. */
+static int compute_geometry(Geometry *g, int width, int height) {
+    memset(g, 0, sizeof(*g));
+    int margin = S(28), pad = S(20), field_height = S(36), label_height = S(20);
+    int row_gap = S(12), inner = width - 2 * margin;
+    if (inner < S(320)) inner = S(320);
+    int right = margin + inner;
+    g->header = make_rect(0, 0, width, S(88));
+    place_slot(g, ID_TITLE, margin, S(14), inner, S(38));
+    place_slot(g, ID_SUBTITLE, margin, S(54), inner, S(22));
+
+    int row_height = label_height + S(4) + field_height;
+    int card_top = g->header.bottom + S(20);
+    int card_height = 2 * S(18) + 3 * row_height + 2 * row_gap;
+    g->card = make_rect(margin, card_top, right, card_top + card_height);
+    int pick_width = button_width(ID_PICK_SOURCE, 112);
+    if (button_width(ID_PICK_DESTINATION, 112) > pick_width) pick_width = button_width(ID_PICK_DESTINATION, 112);
+    if (button_width(ID_PICK_CATALOG, 112) > pick_width) pick_width = button_width(ID_PICK_CATALOG, 112);
+    int card_inner = inner - 2 * pad, label_width = card_inner * 45 / 100;
+    for (int index = 0; index < 3; index++) {
+        int top = card_top + S(18) + index * (row_height + row_gap);
+        int field_top = top + label_height + S(4);
+        int left = margin + pad;
+        place_slot(g, rows[index].label, left, top, label_width, label_height);
+        if (rows[index].hint)
+            place_slot(g, rows[index].hint, left + label_width, top, card_inner - label_width, label_height);
+        g->well[index] = make_rect(left, field_top, right - pad - pick_width - S(10), field_top + field_height);
+        place_slot(g, rows[index].pick, right - pad - pick_width, field_top, pick_width, field_height);
+        int edit_left = g->well[index].left + S(12);
+        int edit_width = g->well[index].right - S(12) - edit_left;
+        place_slot(g, rows[index].field, edit_left, field_top + (field_height - body_height) / 2,
+             edit_width, body_height);
+    }
+
+    int actions_top = g->card.bottom + S(16), actions_height = S(40);
+    int build_width = button_width(ID_BUILD, 132), cancel_width = button_width(ID_CANCEL, 96);
+    int open_width = button_width(ID_OPEN_FOLDER, 150);
+    place_slot(g, ID_BUILD, margin, actions_top, build_width, actions_height);
+    place_slot(g, ID_CANCEL, margin + build_width + S(10), actions_top, cancel_width, actions_height);
+    place_slot(g, ID_OPEN_FOLDER, right - open_width, actions_top, open_width, actions_height);
+
+    int status_top = actions_top + actions_height + S(16), status_pad = S(18);
+    int line_top = status_top + S(16), dot_size = S(10);
+    int toggle_width = text_width(ROLE_LINK, L"Show details");
+    if (text_width(ROLE_LINK, L"Hide details") > toggle_width) toggle_width = text_width(ROLE_LINK, L"Hide details");
+    toggle_width += S(28);
+    int dot_left = margin + status_pad;
+    g->dot = make_rect(dot_left, line_top + (S(24) - dot_size) / 2,
+                       dot_left + dot_size, line_top + (S(24) - dot_size) / 2 + dot_size);
+    int state_left = g->dot.right + S(10);
+    place_slot(g, ID_DETAILS_TOGGLE, right - status_pad - toggle_width, line_top - S(2), toggle_width, S(28));
+    place_slot(g, ID_STATE, state_left, line_top, g->slot[ID_DETAILS_TOGGLE].left - S(8) - state_left, S(24));
+    g->track = make_rect(dot_left, line_top + S(24) + S(12), right - status_pad, line_top + S(24) + S(12) + S(6));
+    place_slot(g, ID_DETAIL, dot_left, g->track.bottom + S(10), right - status_pad - dot_left, S(20));
+    g->status_card = make_rect(margin, status_top, right, g->slot[ID_DETAIL].bottom + S(16));
+    int natural = g->status_card.bottom + margin;
+
+    if (log_open) {
+        int log_top = g->status_card.bottom + S(14);
+        int log_bottom = height - margin;
+        if (log_bottom < log_top + S(90)) log_bottom = log_top + S(90);
+        g->log_well = make_rect(margin, log_top, right, log_bottom);
+        g->slot[ID_LOG] = make_rect(margin + S(12), log_top + S(10), right - S(6), log_bottom - S(10));
+    }
+    return natural;
+}
+
+static void relayout(void) {
+    RECT client;
+    GetClientRect(main_window, &client);
+    compute_geometry(&geo, client.right, client.bottom);
+    HDWP batch = BeginDeferWindowPos(ID_LAST);
+    for (int id = ID_TITLE; id < ID_LAST && batch; id++) {
+        RECT box = geo.slot[id];
+        if (box.right <= box.left) continue;
+        batch = DeferWindowPos(batch, ctl[id], NULL, box.left, box.top, box.right - box.left,
+                               box.bottom - box.top, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    if (batch) EndDeferWindowPos(batch);
+    InvalidateRect(main_window, NULL, FALSE);
+}
+
+static void window_frame(int *extra_width, int *extra_height) {
+    RECT outer, client;
+    GetWindowRect(main_window, &outer);
+    GetClientRect(main_window, &client);
+    *extra_width = (outer.right - outer.left) - client.right;
+    *extra_height = (outer.bottom - outer.top) - client.bottom;
+}
+
+static RECT work_area(void) {
+    MONITORINFO monitor;
+    monitor.cbSize = sizeof(monitor);
+    GetMonitorInfoW(MonitorFromWindow(main_window, MONITOR_DEFAULTTONEAREST), &monitor);
+    return monitor.rcWork;
+}
+
+/* Resizes to a client size, kept inside the work area. */
+static void resize_client(int client_width, int client_height, BOOL centre) {
+    RECT outer, area = work_area();
+    int extra_width, extra_height;
+    GetWindowRect(main_window, &outer);
+    window_frame(&extra_width, &extra_height);
+    int width = client_width < 0 ? outer.right - outer.left : client_width + extra_width;
+    int height = client_height + extra_height;
+    if (width > area.right - area.left) width = area.right - area.left;
+    if (height > area.bottom - area.top) height = area.bottom - area.top;
+    int left = centre ? area.left + (area.right - area.left - width) / 2 : outer.left;
+    int top = centre ? area.top + (area.bottom - area.top - height) / 3 : outer.top;
+    if (left + width > area.right) left = area.right - width;
+    if (top + height > area.bottom) top = area.bottom - height;
+    if (left < area.left) left = area.left;
+    if (top < area.top) top = area.top;
+    SetWindowPos(main_window, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+#define LOG_MINIMUM 90
+#define LOG_PREFERRED 210
+
+static void set_log_visible(BOOL visible) {
+    if (log_open == visible) return;
+    log_open = visible;
+    SetWindowTextW(ctl[ID_DETAILS_TOGGLE], visible ? L"Hide details" : L"Show details");
+    if (!visible && GetFocus() == ctl[ID_LOG]) SetFocus(ctl[ID_DETAILS_TOGGLE]);
+    ShowWindow(ctl[ID_LOG], visible ? SW_SHOW : SW_HIDE);
+    if (!IsZoomed(main_window)) {
+        RECT client;
+        Geometry probe;
+        GetClientRect(main_window, &client);
+        int natural = compute_geometry(&probe, client.right, 0);
+        resize_client(-1, visible ? natural + S(14) + S(LOG_PREFERRED) : natural, FALSE);
+    }
+    relayout();
+}
+
+/* ---- Painting ------------------------------------------------------- */
+
+static COLORREF state_color(void) {
+    switch (ui_state) {
+    case STATE_BUSY: return COL_GOLD;
+    case STATE_OK: return COL_GOOD;
+    case STATE_FAILED: return COL_BAD;
+    default: return COL_IDLE;
+    }
+}
+
+static void paint_progress(HDC dc) {
+    int height = geo.track.bottom - geo.track.top;
+    round_box(dc, geo.track, height / 2, COL_CARD, COL_TRACK, COL_TRACK, 0);
+    if (ui_state == STATE_OK || ui_state == STATE_FAILED) {
+        round_box(dc, geo.track, height / 2, COL_TRACK, state_color(), state_color(), 0);
+    } else if (ui_state == STATE_BUSY) {
+        int width = geo.track.right - geo.track.left, length = width * 30 / 100;
+        double phase = (double)(GetTickCount64() % 1600) / 1600.0;
+        int start = geo.track.left - length + (int)(phase * (width + length));
+        int left = start < geo.track.left ? geo.track.left : start;
+        int right = start + length > geo.track.right ? geo.track.right : start + length;
+        if (right - left >= 2)
+            round_box(dc, make_rect(left, geo.track.top, right, geo.track.bottom), height / 2,
+                      COL_TRACK, COL_GOLD, COL_GOLD, 0);
+    }
+}
+
+static void paint_scene(HDC dc) {
+    RECT client;
+    GetClientRect(main_window, &client);
+    solid(dc, 0, 0, client.right, client.bottom, COL_BACKGROUND);
+    solid(dc, 0, geo.header.top, geo.header.right, geo.header.bottom, COL_NAVY);
+    solid(dc, 0, geo.header.bottom - S(3), geo.header.right, geo.header.bottom, COL_GOLD);
+    round_box(dc, geo.card, S(12), COL_BACKGROUND, COL_CARD, COL_CARD_EDGE, 1);
+    for (int index = 0; index < 3; index++) {
+        HWND field_window = ctl[rows[index].field];
+        BOOL focused = GetFocus() == field_window;
+        round_box(dc, geo.well[index], S(8), COL_CARD,
+                  IsWindowEnabled(field_window) ? COL_FIELD : COL_FIELD_OFF,
+                  focused ? COL_NAVY : COL_FIELD_EDGE, focused ? 2 : 1);
+    }
+    round_box(dc, geo.status_card, S(12), COL_BACKGROUND, COL_CARD, COL_CARD_EDGE, 1);
+    round_box(dc, geo.dot, S(5), COL_CARD, state_color(), state_color(), 0);
+    paint_progress(dc);
+    if (log_open) round_box(dc, geo.log_well, S(10), COL_BACKGROUND, COL_FIELD, COL_FIELD_EDGE, 1);
+}
+
+static void paint_window(HWND window) {
+    PAINTSTRUCT paint;
+    HDC dc = BeginPaint(window, &paint);
+    Canvas canvas;
+    canvas_open(&canvas, dc, paint.rcPaint);
+    paint_scene(canvas.dc);
+    canvas_close(&canvas);
+    EndPaint(window, &paint);
+}
+
+static void draw_button(const DRAWITEMSTRUCT *item) {
+    Role role = role_of((int)item->CtlID);
+    BOOL disabled = (item->itemState & ODS_DISABLED) != 0;
+    BOOL pressed = (item->itemState & ODS_SELECTED) != 0;
+    BOOL focused = (item->itemState & ODS_FOCUS) != 0;
+    BOOL hot = hot_control == item->hwndItem && !disabled;
+    COLORREF backdrop = (role == ROLE_BROWSE || role == ROLE_LINK) ? COL_CARD : COL_BACKGROUND;
+    COLORREF fill = COL_CARD, edge = COL_FIELD_EDGE, text = COL_TEXT;
+    if (role == ROLE_PRIMARY) {
+        fill = pressed ? COL_GOLD_DOWN : hot ? COL_GOLD_HOT : COL_GOLD;
+        edge = fill;
+        text = COL_NAVY;
+    } else if (role == ROLE_LINK) {
+        fill = pressed ? COL_PRESSED : hot ? COL_HOVER : backdrop;
+        edge = fill;
+    } else {
+        fill = pressed ? COL_PRESSED : hot ? COL_HOVER : COL_CARD;
+        edge = hot ? COL_EDGE_HOT : COL_FIELD_EDGE;
+    }
+    if (disabled) {
+        fill = edge = COL_FIELD_OFF;
+        text = COL_DISABLED;
+    }
+    int edge_width = 1;
+    if (focused) {
+        edge = COL_NAVY;
+        edge_width = 2;
+    }
+    Canvas canvas;
+    canvas_open(&canvas, item->hDC, item->rcItem);
+    solid(canvas.dc, item->rcItem.left, item->rcItem.top, item->rcItem.right, item->rcItem.bottom, backdrop);
+    round_box(canvas.dc, item->rcItem, S(8), backdrop, fill, edge, edge_width);
+    WCHAR caption[64] = {0};
+    GetWindowTextW(item->hwndItem, caption, 64);
+    HFONT previous = (HFONT)SelectObject(canvas.dc, font_for(role));
+    SetBkMode(canvas.dc, TRANSPARENT);
+    SetTextColor(canvas.dc, text);
+    RECT label = item->rcItem;
+    if (pressed) OffsetRect(&label, 0, 1);
+    DrawTextW(canvas.dc, caption, -1, &label,
+              DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+    SelectObject(canvas.dc, previous);
+    canvas_close(&canvas);
+}
+
+static void paint_placeholder(HWND field_window, int id) {
+    if (GetWindowTextLengthW(field_window) > 0) return;
+    LPCWSTR hint = id == ID_SOURCE ? L"Choose your original ZIP..." :
+                   id == ID_DESTINATION ? L"Choose where to save..." :
+                   id == ID_CATALOG ? L"Not selected" : NULL;
+    if (!hint) return;
+    HDC dc = GetDC(field_window);
+    RECT area;
+    GetClientRect(field_window, &area);
+    HFONT previous = (HFONT)SelectObject(dc, fonts[FONT_BODY]);
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, COL_MUTED);
+    DrawTextW(dc, hint, -1, &area, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+    SelectObject(dc, previous);
+    ReleaseDC(field_window, dc);
+}
+
+static LRESULT control_colors(HDC dc, HWND control) {
+    int id = GetDlgCtrlID(control);
+    Role role = role_of(id);
+    COLORREF color = COL_TEXT, text = COL_TEXT;
+    BrushSlot brush_slot = BRUSH_CARD;
+    switch (role) {
+    case ROLE_TITLE: text = RGB(255, 255, 255); color = COL_NAVY; brush_slot = BRUSH_NAVY; break;
+    case ROLE_SUBTITLE: text = COL_NAVY_MUTED; color = COL_NAVY; brush_slot = BRUSH_NAVY; break;
+    case ROLE_HINT: case ROLE_DETAIL: text = COL_MUTED; color = COL_CARD; break;
+    case ROLE_FIELD:
+        text = IsWindowEnabled(control) ? COL_TEXT : COL_DISABLED;
+        color = IsWindowEnabled(control) ? COL_FIELD : COL_FIELD_OFF;
+        brush_slot = IsWindowEnabled(control) ? BRUSH_FIELD : BRUSH_FIELD_OFF;
+        break;
+    case ROLE_LOG: color = COL_FIELD; brush_slot = BRUSH_FIELD; break;
+    default: color = COL_CARD; break;
+    }
+    SetTextColor(dc, text);
+    SetBkColor(dc, color);
+    return (LRESULT)brushes[brush_slot];
+}
+
+/* ---- Fonts, DPI and controls --------------------------------------- */
+
+static HFONT make_font(int points, int weight, LPCWSTR face) {
+    return CreateFontW(-MulDiv(points, (int)ui_dpi, 72), 0, 0, 0, weight, FALSE, FALSE, FALSE,
+                       DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                       CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, face);
+}
+
+static void rebuild_fonts(void) {
+    HFONT previous[FONT_COUNT];
+    memcpy(previous, fonts, sizeof(previous));
+    fonts[FONT_TITLE] = make_font(20, FW_SEMIBOLD, L"Segoe UI");
+    fonts[FONT_BODY] = make_font(10, FW_NORMAL, L"Segoe UI");
+    fonts[FONT_LABEL] = make_font(10, FW_SEMIBOLD, L"Segoe UI");
+    fonts[FONT_SMALL] = make_font(9, FW_NORMAL, L"Segoe UI");
+    fonts[FONT_STATUS] = make_font(11, FW_SEMIBOLD, L"Segoe UI");
+    fonts[FONT_MONO] = make_font(9, FW_NORMAL, L"Consolas");
+    for (size_t index = 0; index < sizeof(specs) / sizeof(specs[0]); index++)
+        if (ctl[specs[index].id])
+            SendMessageW(ctl[specs[index].id], WM_SETFONT, (WPARAM)font_for(specs[index].role), TRUE);
+    for (int index = 0; index < FONT_COUNT; index++)
+        if (previous[index]) DeleteObject(previous[index]);
+    HDC dc = GetDC(main_window);
+    HFONT old = (HFONT)SelectObject(dc, fonts[FONT_BODY]);
+    TEXTMETRICW metrics;
+    GetTextMetricsW(dc, &metrics);
+    body_height = metrics.tmHeight;
+    SelectObject(dc, old);
+    ReleaseDC(main_window, dc);
+}
+
+static UINT query_dpi(HWND window) {
+    WindowDpiGetter getter;
+    bind_symbol(&getter, sizeof(getter), GetModuleHandleW(L"user32.dll"), "GetDpiForWindow");
+    if (getter) return getter(window);
+    HDC dc = GetDC(window);
+    UINT value = (UINT)GetDeviceCaps(dc, LOGPIXELSY);
+    ReleaseDC(window, dc);
+    return value;
+}
+
+static void declare_dpi_awareness(void) {
+    DpiAwarenessSetter setter;
+    bind_symbol(&setter, sizeof(setter), GetModuleHandleW(L"user32.dll"), "SetProcessDpiAwarenessContext");
+    /* -4 is DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 */
+    if (setter && setter((HANDLE)(INT_PTR)-4)) return;
+    SetProcessDPIAware();
+}
+
+/* Windows 11 honours these to colour the title bar like the header. */
+static void tint_title_bar(HWND window) {
+    HMODULE dwm = LoadLibraryExW(L"dwmapi.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!dwm) return;
+    WindowAttributeSetter setter;
+    bind_symbol(&setter, sizeof(setter), dwm, "DwmSetWindowAttribute");
+    if (setter) {
+        COLORREF caption = COL_NAVY, border = COL_NAVY, text = RGB(255, 255, 255);
+        setter(window, 35, &caption, sizeof(caption));
+        setter(window, 34, &border, sizeof(border));
+        setter(window, 36, &text, sizeof(text));
+    }
+    FreeLibrary(dwm);
+}
+
+static LRESULT CALLBACK control_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam,
+                                     UINT_PTR id, DWORD_PTR data) {
+    (void)data;
+    Role role = role_of((int)id);
+    switch (message) {
+    case WM_MOUSEMOVE:
+        if (is_button_role(role) && hot_control != window) {
+            HWND previous = hot_control;
+            TRACKMOUSEEVENT track;
+            hot_control = window;
+            if (previous) InvalidateRect(previous, NULL, FALSE);
+            InvalidateRect(window, NULL, FALSE);
+            track.cbSize = sizeof(track);
+            track.dwFlags = TME_LEAVE;
+            track.hwndTrack = window;
+            track.dwHoverTime = 0;
+            TrackMouseEvent(&track);
+        }
+        break;
+    case WM_MOUSELEAVE:
+        if (hot_control == window) {
+            hot_control = NULL;
+            InvalidateRect(window, NULL, FALSE);
+        }
+        break;
+    case WM_DROPFILES:
+        return SendMessageW(main_window, WM_DROPFILES, wparam, lparam);
+    case WM_PAINT: {
+        LRESULT result = DefSubclassProc(window, message, wparam, lparam);
+        if (role == ROLE_FIELD) paint_placeholder(window, (int)id);
+        return result;
+    }
+    case WM_NCDESTROY:
+        RemoveWindowSubclass(window, control_proc, id);
+        break;
+    }
+    return DefSubclassProc(window, message, wparam, lparam);
+}
+
+static void create_controls(HWND window) {
+    for (size_t index = 0; index < sizeof(specs) / sizeof(specs[0]); index++) {
+        const Spec *spec = &specs[index];
+        HWND created = CreateWindowExW(0, spec->kind, spec->text, spec->style, 0, 0, 10, 10,
+                                       window, (HMENU)(INT_PTR)spec->id,
+                                       GetModuleHandleW(NULL), NULL);
+        ctl[spec->id] = created;
+        if (!created) continue;
+        SetWindowSubclass(created, control_proc, (UINT_PTR)spec->id, 0);
+        DragAcceptFiles(created, TRUE);
+        if (spec->role == ROLE_FIELD)
+            SendMessageW(created, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
+    }
+    EnableWindow(ctl[ID_CANCEL], FALSE);
+    EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
+}
+
+/* ---- File dialogs --------------------------------------------------- */
 
 static BOOL choose_file(BOOL is_save, BOOL translation, WCHAR *path, size_t capacity) {
     IFileDialog *dialog = NULL;
@@ -117,36 +738,36 @@ static BOOL choose_file(BOOL is_save, BOOL translation, WCHAR *path, size_t capa
     return selected;
 }
 
-static void layout(int width, int height) {
-    int margin = 30;
-    int content = width - 2 * margin;
-    int button_width = 148;
-    int h = 32;
-    int w = content - button_width - 10;
-    if (w < 150) w = 150;
-    place(source_field, margin, 128, w, h);
-    place(browse_source, margin + w + 10, 128, button_width, h);
-    place(destination_field, margin, 202, w, h);
-    place(browse_destination, margin + w + 10, 202, button_width, h);
-    place(catalog_field, margin, 276, w, h);
-    place(browse_catalog, margin + w + 10, 276, button_width, h);
-    place(build_button, margin, 336, 170, 39);
-    place(cancel_button, margin + 184, 336, 100, 39);
-    place(open_button, margin + 297, 336, 166, 39);
-    place(progress_bar, margin, 387, content, 8);
-    place(status_field, margin, 405, content, 28);
-    place(log_field, margin, 435, content, height - 455);
+/* ---- Status and logging -------------------------------------------- */
+
+static void set_status(UiState state, LPCWSTR text) {
+    ui_state = state;
+    SetWindowTextW(ctl[ID_STATE], text);
+    InvalidateRect(main_window, &geo.dot, FALSE);
+    InvalidateRect(main_window, &geo.track, FALSE);
+}
+
+static void show_detail(LPCWSTR text) {
+    SetWindowTextW(ctl[ID_DETAIL], text);
+    detail_dirty = FALSE;
 }
 
 static void append_log(WCHAR *line) {
+    HWND log_field = ctl[ID_LOG];
     int size = GetWindowTextLengthW(log_field);
     if (size > 50000) {
         SetWindowTextW(log_field, L"Recent output:\r\n");
         size = GetWindowTextLengthW(log_field);
     }
-    SendMessageW(log_field, EM_SETSEL, size, size);
+    SendMessageW(log_field, EM_SETSEL, (WPARAM)size, (LPARAM)size);
     SendMessageW(log_field, EM_REPLACESEL, FALSE, (LPARAM)line);
     SendMessageW(log_field, EM_SCROLLCARET, 0, 0);
+    if (SUCCEEDED(StringCchCopyW(pending_detail, 512, line))) {
+        size_t length = wcslen(pending_detail);
+        while (length && (pending_detail[length - 1] == L'\r' || pending_detail[length - 1] == L'\n'))
+            pending_detail[--length] = 0;
+        detail_dirty = TRUE;
+    }
 }
 
 static void send_log(HWND window, const char *bytes, int length) {
@@ -165,6 +786,8 @@ static void send_log(HWND window, const char *bytes, int length) {
     if (!PostMessageW(window, WM_APPEND_LOG, 0, (LPARAM)line))
         HeapFree(GetProcessHeap(), 0, line);
 }
+
+/* ---- Build job ------------------------------------------------------ */
 
 static void remove_job_scratch(HWND window, LPCWSTR path) {
     WCHAR items[32768] = {0};
@@ -193,6 +816,20 @@ static BOOL create_job_scratch(WCHAR *destination, size_t capacity) {
                                  L"%sMinionRush-private-%s", temp, identifier)))
         return FALSE;
     return CreateDirectoryW(destination, NULL) != FALSE;
+}
+
+/* The UI thread creates, terminates and closes the job object, so the handle
+   it cancels with can never be stale or reused. */
+static HANDLE create_kill_job(void) {
+    HANDLE job = CreateJobObjectW(NULL, NULL);
+    if (!job) return NULL;
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {0};
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
+        CloseHandle(job);
+        return NULL;
+    }
+    return job;
 }
 
 static DWORD WINAPI run_build(LPVOID opaque) {
@@ -236,23 +873,16 @@ static DWORD WINAPI run_build(LPVOID opaque) {
             job->python, command, NULL, NULL, TRUE,
             CREATE_NO_WINDOW | CREATE_SUSPENDED,
             NULL, job->kit, &startup, &process)) {
-        job->job = CreateJobObjectW(NULL, NULL);
-        if (job->job) {
-            JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {0};
-            limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-            SetInformationJobObject(job->job, JobObjectExtendedLimitInformation,
-                                    &limits, sizeof(limits));
-            if (!AssignProcessToJobObject(job->job, process.hProcess)) {
-                const char *message = "Unable to protect child process tree.";
-                send_log(job->window, message, (int)strlen(message));
-                TerminateProcess(process.hProcess, 1);
-            } else {
-                PostMessageW(job->window, WM_JOB_READY, (WPARAM)job->job, 0);
-                ResumeThread(process.hThread);
-            }
-        } else {
-            TerminateProcess(process.hProcess, 1);
+        BOOL assigned = AssignProcessToJobObject(job->job, process.hProcess);
+        if (!assigned) {
+            const char *message = "Unable to protect child process tree.";
+            send_log(job->window, message, (int)strlen(message));
         }
+        // A cancel that arrived before assignment could not reach the process.
+        if (!assigned || InterlockedCompareExchange(&cancel_requested, 0, 0))
+            TerminateProcess(process.hProcess, 1);
+        else
+            ResumeThread(process.hThread);
         CloseHandle(process.hThread);
         CloseHandle(null_in);
         CloseHandle(write_pipe);
@@ -283,14 +913,28 @@ static DWORD WINAPI run_build(LPVOID opaque) {
 done:
     if (write_pipe) CloseHandle(write_pipe);
     if (read_pipe) CloseHandle(read_pipe);
-    if (job->job) {
-        CloseHandle(job->job);
-        job->job = NULL;
-    }
     remove_job_scratch(job->window, job->scratch);
     PostMessageW(job->window, WM_BUILD_DONE, result, 0);
     HeapFree(GetProcessHeap(), 0, job);
     return 0;
+}
+
+static void set_busy(BOOL busy) {
+    static const int locked[] = {ID_SOURCE, ID_DESTINATION, ID_CATALOG, ID_PICK_SOURCE,
+                                 ID_PICK_DESTINATION, ID_PICK_CATALOG, ID_BUILD};
+    for (size_t index = 0; index < sizeof(locked) / sizeof(locked[0]); index++)
+        EnableWindow(ctl[locked[index]], !busy);
+    EnableWindow(ctl[ID_CANCEL], busy);
+    if (busy) {
+        EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
+        SetTimer(main_window, TIMER_ANIMATION, 25, NULL);
+    } else {
+        KillTimer(main_window, TIMER_ANIMATION);
+    }
+    // Disabling the focused control drops focus; keep keyboard users oriented.
+    HWND focus = GetFocus();
+    if (!focus || focus == main_window) SetFocus(ctl[busy ? ID_CANCEL : ID_BUILD]);
+    InvalidateRect(main_window, NULL, FALSE);
 }
 
 static void start_build(void) {
@@ -302,13 +946,13 @@ static void start_build(void) {
     StringCchPrintfW(job->python, 32768, L"%s\\python\\python.exe", kit_path);
     StringCchPrintfW(job->tool, 32768,
                      L"%s\\runtime\\tools\\windows_native_package.py", kit_path);
-    if (!get_text(source_field, job->source, 32768) || !is_zip(job->source) ||
+    if (!get_text(ctl[ID_SOURCE], job->source, 32768) || !is_zip(job->source) ||
             !regular_file(job->source)) {
         MessageBoxW(main_window, L"Select an existing original .zip file.",
                     L"Source ZIP required", MB_OK | MB_ICONWARNING);
         goto failure;
     }
-    if (!get_text(destination_field, job->output, 32768) ||
+    if (!get_text(ctl[ID_DESTINATION], job->output, 32768) ||
             wcslen(job->output) < 5) {
         MessageBoxW(main_window, L"Choose an output .ipa path.",
                     L"Output required", MB_OK | MB_ICONWARNING);
@@ -325,7 +969,7 @@ static void start_build(void) {
                     L"Existing output", MB_OK | MB_ICONWARNING);
         goto failure;
     }
-    get_text(catalog_field, job->catalog, 32768);
+    get_text(ctl[ID_CATALOG], job->catalog, 32768);
     if (job->catalog[0] && !regular_file(job->catalog)) {
         MessageBoxW(main_window, L"The selected hu.xlf catalog was not found.",
                     L"Missing translation", MB_OK | MB_ICONWARNING);
@@ -341,20 +985,21 @@ static void start_build(void) {
                     L"Temporary storage unavailable", MB_OK | MB_ICONERROR);
         goto failure;
     }
-    SetWindowTextW(log_field, L"");
-    SetWindowTextW(status_field, L"Building native ARM64 IPA. Keep this window open.");
-    EnableWindow(source_field, FALSE);
-    EnableWindow(destination_field, FALSE);
-    EnableWindow(catalog_field, FALSE);
-    EnableWindow(browse_source, FALSE);
-    EnableWindow(browse_destination, FALSE);
-    EnableWindow(browse_catalog, FALSE);
-    EnableWindow(build_button, FALSE);
-    EnableWindow(open_button, FALSE);
-    EnableWindow(cancel_button, TRUE);
-    SendMessageW(progress_bar, PBM_SETMARQUEE, TRUE, 0);
+    active_job = create_kill_job();
+    if (!active_job) {
+        MessageBoxW(main_window, L"Unable to protect child process tree.",
+                    L"Build cannot start", MB_OK | MB_ICONERROR);
+        RemoveDirectoryW(job->scratch);
+        goto failure;
+    }
+    job->job = active_job;
+    SetWindowTextW(ctl[ID_LOG], L"");
+    show_detail(L"");
+    set_status(STATE_BUSY, L"Building native ARM64 IPA. Keep this window open.");
     running = TRUE;
     aborted = FALSE;
+    InterlockedExchange(&cancel_requested, 0);
+    set_busy(TRUE);
     StringCchCopyW(last_output, 32768, job->output);
     HANDLE thread = CreateThread(NULL, 0, run_build, job, 0, NULL);
     if (thread) {
@@ -362,16 +1007,10 @@ static void start_build(void) {
         return;
     }
     running = FALSE;
-    SendMessageW(progress_bar, PBM_SETMARQUEE, FALSE, 0);
-    EnableWindow(source_field, TRUE);
-    EnableWindow(destination_field, TRUE);
-    EnableWindow(catalog_field, TRUE);
-    EnableWindow(browse_source, TRUE);
-    EnableWindow(browse_destination, TRUE);
-    EnableWindow(browse_catalog, TRUE);
-    EnableWindow(build_button, TRUE);
-    EnableWindow(cancel_button, FALSE);
-    SetWindowTextW(status_field, L"Could not start build thread.");
+    CloseHandle(active_job);
+    active_job = NULL;
+    set_busy(FALSE);
+    set_status(STATE_FAILED, L"Could not start build thread.");
     RemoveDirectoryW(job->scratch);
 failure:
     HeapFree(GetProcessHeap(), 0, job);
@@ -382,109 +1021,146 @@ static void stop_build(void) {
     int choice = MessageBoxW(main_window,
         L"Stop creating the IPA? The unfinished temporary files may need to be removed.",
         L"Cancel build", MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
-    if (choice == IDYES) {
-        aborted = TRUE;
-        TerminateJobObject(active_job, 1);
-        SetWindowTextW(status_field, L"Cancelling...");
-        EnableWindow(cancel_button, FALSE);
+    // The build can finish while the question is open.
+    if (choice != IDYES || !running || !active_job) return;
+    aborted = TRUE;
+    InterlockedExchange(&cancel_requested, 1);
+    TerminateJobObject(active_job, 1);
+    set_status(STATE_BUSY, L"Cancelling...");
+    EnableWindow(ctl[ID_CANCEL], FALSE);
+    if (!GetFocus() || GetFocus() == main_window) SetFocus(ctl[ID_DETAILS_TOGGLE]);
+}
+
+static void finish_build(DWORD exit_code) {
+    running = FALSE;
+    if (active_job) {
+        CloseHandle(active_job);
+        active_job = NULL;
     }
+    set_busy(FALSE);
+    if (detail_dirty) show_detail(pending_detail);
+    if (exit_code == 0 && regular_file(last_output)) {
+        set_status(STATE_OK, L"Unsigned IPA created. Sign with Sideloadly before installing.");
+        show_detail(last_output);
+        EnableWindow(ctl[ID_OPEN_FOLDER], TRUE);
+        SetFocus(ctl[ID_OPEN_FOLDER]);
+        MessageBoxW(main_window, L"Unsigned IPA created successfully. It is ready for signing with Sideloadly.",
+                    L"Build complete", MB_OK | MB_ICONINFORMATION);
+    } else if (aborted) {
+        set_status(STATE_STOPPED, L"Build cancelled.");
+    } else {
+        set_status(STATE_FAILED, L"Build failed. Details are shown below.");
+        set_log_visible(TRUE);
+    }
+}
+
+static void pick_into(int target, BOOL is_save, BOOL translation) {
+    WCHAR selection[32768];
+    if (choose_file(is_save, translation, selection, 32768)) set_path(ctl[target], selection);
+}
+
+static void accept_drop(HDROP drop) {
+    WCHAR selected[32768] = {0};
+    if (!running && DragQueryFileW(drop, 0xFFFFFFFF, NULL, 0) == 1 &&
+        DragQueryFileW(drop, 0, selected, 32768) && is_zip(selected) && regular_file(selected))
+        set_path(ctl[ID_SOURCE], selected);
+    else if (!running) MessageBoxW(main_window, L"Drop exactly one original .zip file.",
+                                   L"ZIP required", MB_OK | MB_ICONWARNING);
+    DragFinish(drop);
+}
+
+/* Enter activates the focused button, otherwise the default action. */
+static void press_enter(void) {
+    HWND focus = GetFocus();
+    HWND target = ctl[ID_BUILD];
+    for (int id = ID_TITLE; id < ID_LAST; id++)
+        if (focus == ctl[id] && is_button_role(role_of(id))) target = focus;
+    if (IsWindowEnabled(target)) SendMessageW(target, BM_CLICK, 0, 0);
 }
 
 static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam) {
     switch (msg) {
     case WM_CREATE: {
         main_window = window;
-        white_brush = CreateSolidBrush(RGB(255, 255, 255));
-        HDC dc = GetDC(window);
-        int dpi = GetDeviceCaps(dc, LOGPIXELSY);
-        ReleaseDC(window, dc);
-        ui_font = CreateFontW(-MulDiv(10, dpi, 72), 0, 0, 0,
-                              FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                              OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                              DEFAULT_PITCH, L"Segoe UI");
-        heading_font = CreateFontW(-MulDiv(19, dpi, 72), 0, 0, 0,
-                                   FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                                   OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                   CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-        HWND title = child(L"STATIC", L"Minion Rush - native IPA builder", SS_LEFT, 0);
-        font(title, heading_font);
-        place(title, 30, 23, 650, 38);
-        label(L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",30,70,690,23);
-        label(L"Original game ZIP (drag a ZIP onto this window or browse)", 30, 106, 690, 22);
-        label(L"Save unsigned IPA to",30,180,400,22);
-        label(L"Hungarian translation - optional hu.xlf (can be auto-detected)",30,254,700,22);
-        field(&source_field, ID_SOURCE, L"Choose your original ZIP...");
-        field(&destination_field, ID_DESTINATION, L"Choose where to save...");
-        field(&catalog_field, ID_CATALOG, L"");
-        browse_source = child(L"BUTTON",L"Browse ZIP...", BS_PUSHBUTTON | WS_TABSTOP, ID_PICK_SOURCE);
-        browse_destination = child(L"BUTTON",L"Save As...", BS_PUSHBUTTON | WS_TABSTOP, ID_PICK_DESTINATION);
-        browse_catalog = child(L"BUTTON",L"Choose hu.xlf...", BS_PUSHBUTTON | WS_TABSTOP, ID_PICK_CATALOG);
-        build_button = child(L"BUTTON",L"Create IPA", BS_DEFPUSHBUTTON | WS_TABSTOP, ID_BUILD);
-        cancel_button = child(L"BUTTON",L"Cancel", BS_PUSHBUTTON | WS_TABSTOP, ID_CANCEL);
-        open_button = child(L"BUTTON",L"Open output folder", BS_PUSHBUTTON | WS_TABSTOP, ID_OPEN_FOLDER);
-        EnableWindow(cancel_button, FALSE);
-        EnableWindow(open_button, FALSE);
-        progress_bar = child(PROGRESS_CLASSW, L"", PBS_MARQUEE, ID_PROGRESS);
-        status_field = child(L"STATIC", L"Ready. The output is unsigned and requires Sideloadly.", SS_LEFT, ID_STATE);
-        log_field = child(L"EDIT", L"", WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL |
-                          ES_READONLY | WS_VSCROLL, ID_LOG);
+        static const COLORREF brush_colors[BRUSH_COUNT] = {COL_NAVY, COL_CARD, COL_FIELD, COL_FIELD_OFF};
+        for (int index = 0; index < BRUSH_COUNT; index++)
+            brushes[index] = CreateSolidBrush(brush_colors[index]);
+        ui_dpi = query_dpi(window);
+        create_controls(window);
+        rebuild_fonts();
+        tint_title_bar(window);
         DragAcceptFiles(window, TRUE);
         return 0;
     }
-    case WM_CTLCOLORSTATIC: {
-        HDC dc = (HDC)wparam;
-        SetBkColor(dc, RGB(255, 255, 255));
-        SetTextColor(dc, RGB(30, 39, 55));
-        return (LRESULT)white_brush;
-    }
-    case WM_ERASEBKGND: {
-        RECT r;
-        GetClientRect(window, &r);
-        FillRect((HDC)wparam, &r, white_brush);
+    case WM_ERASEBKGND:
         return 1;
-    }
+    case WM_PAINT:
+        paint_window(window);
+        return 0;
+    case WM_DRAWITEM:
+        if (((DRAWITEMSTRUCT *)lparam)->CtlType == ODT_BUTTON) {
+            draw_button((DRAWITEMSTRUCT *)lparam);
+            return TRUE;
+        }
+        break;
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLOREDIT:
+        return control_colors((HDC)wparam, (HWND)lparam);
     case WM_GETMINMAXINFO: {
         MINMAXINFO *limits = (MINMAXINFO *)lparam;
-        limits->ptMinTrackSize.x = 790;
-        limits->ptMinTrackSize.y = 610;
+        if (!ctl[ID_LOG]) break;
+        Geometry probe;
+        int extra_width, extra_height;
+        int natural = compute_geometry(&probe, S(640), 0);
+        window_frame(&extra_width, &extra_height);
+        limits->ptMinTrackSize.x = S(640) + extra_width;
+        limits->ptMinTrackSize.y = natural + (log_open ? S(14) + S(LOG_MINIMUM) : 0) + extra_height;
         return 0;
     }
     case WM_SIZE:
-        if (source_field) layout(LOWORD(lparam), HIWORD(lparam));
+        if (wparam != SIZE_MINIMIZED && ctl[ID_LOG]) relayout();
         return 0;
-    case WM_DROPFILES: {
-        HDROP drop = (HDROP)wparam;
-        WCHAR selected[32768] = {0};
-        if (!running && DragQueryFileW(drop, 0xFFFFFFFF, NULL, 0) == 1 &&
-            DragQueryFileW(drop, 0, selected, 32768) && is_zip(selected) && regular_file(selected))
-            SetWindowTextW(source_field, selected);
-        else if (!running) MessageBoxW(window,L"Drop exactly one original .zip file.",
-                                       L"ZIP required", MB_OK | MB_ICONWARNING);
-        DragFinish(drop);
+    case WM_DPICHANGED: {
+        const RECT *suggested = (const RECT *)lparam;
+        ui_dpi = HIWORD(wparam);
+        rebuild_fonts();
+        SetWindowPos(window, NULL, suggested->left, suggested->top,
+                     suggested->right - suggested->left, suggested->bottom - suggested->top,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+        relayout();
         return 0;
     }
+    case WM_ACTIVATE:
+        if (LOWORD(wparam) == WA_INACTIVE) {
+            HWND focus = GetFocus();
+            if (focus && IsChild(window, focus)) remembered_focus = focus;
+        } else {
+            HWND target = remembered_focus && IsWindowEnabled(remembered_focus) ?
+                          remembered_focus : ctl[running ? ID_CANCEL : ID_PICK_SOURCE];
+            if (IsWindowEnabled(target)) SetFocus(target);
+        }
+        return 0;
+    case WM_TIMER:
+        if (wparam == TIMER_ANIMATION) {
+            InvalidateRect(window, &geo.track, FALSE);
+            if (detail_dirty) show_detail(pending_detail);
+        }
+        return 0;
+    case WM_DROPFILES:
+        accept_drop((HDROP)wparam);
+        return 0;
     case WM_COMMAND:
         switch (LOWORD(wparam)) {
-        case ID_PICK_SOURCE: {
-            WCHAR selection[32768];
-            if (choose_file(FALSE, FALSE, selection, 32768))
-                SetWindowTextW(source_field, selection);
+        case ID_SOURCE: case ID_DESTINATION: case ID_CATALOG:
+            if (HIWORD(wparam) == EN_SETFOCUS || HIWORD(wparam) == EN_KILLFOCUS)
+                InvalidateRect(window, NULL, FALSE);
             return 0;
-        }
-        case ID_PICK_DESTINATION: {
-            WCHAR selection[32768];
-            if (choose_file(TRUE, FALSE, selection, 32768))
-                SetWindowTextW(destination_field, selection);
-            return 0;
-        }
-        case ID_PICK_CATALOG: {
-            WCHAR selection[32768];
-            if (choose_file(FALSE, TRUE, selection, 32768))
-                SetWindowTextW(catalog_field, selection);
-            return 0;
-        }
+        case ID_PICK_SOURCE: pick_into(ID_SOURCE, FALSE, FALSE); return 0;
+        case ID_PICK_DESTINATION: pick_into(ID_DESTINATION, TRUE, FALSE); return 0;
+        case ID_PICK_CATALOG: pick_into(ID_CATALOG, FALSE, TRUE); return 0;
         case ID_BUILD: start_build(); return 0;
         case ID_CANCEL: stop_build(); return 0;
+        case ID_DETAILS_TOGGLE: set_log_visible(!log_open); return 0;
         case ID_OPEN_FOLDER:
             if (last_output[0]) {
                 WCHAR explorer[32768];
@@ -492,36 +1168,16 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
                 ShellExecuteW(window, L"open", L"explorer.exe", explorer, NULL, SW_SHOWNORMAL);
             }
             return 0;
+        case IDOK: press_enter(); return 0;
+        case IDCANCEL: return 0;
         }
         break;
-    case WM_JOB_READY:
-        active_job = (HANDLE)wparam;
-        return 0;
     case WM_APPEND_LOG:
         append_log((WCHAR *)lparam);
         HeapFree(GetProcessHeap(), 0, (LPVOID)lparam);
         return 0;
     case WM_BUILD_DONE:
-        running = FALSE;
-        active_job = NULL;
-        SendMessageW(progress_bar, PBM_SETMARQUEE, FALSE, 0);
-        EnableWindow(source_field, TRUE);
-        EnableWindow(destination_field, TRUE);
-        EnableWindow(catalog_field, TRUE);
-        EnableWindow(browse_source, TRUE);
-        EnableWindow(browse_destination, TRUE);
-        EnableWindow(browse_catalog, TRUE);
-        EnableWindow(build_button, TRUE);
-        EnableWindow(cancel_button, FALSE);
-        if (wparam == 0 && regular_file(last_output)) {
-            SetWindowTextW(status_field, L"Unsigned IPA created. Sign with Sideloadly before installing.");
-            EnableWindow(open_button, TRUE);
-            MessageBoxW(window, L"Unsigned IPA created successfully. It is ready for signing with Sideloadly.",
-                        L"Build complete", MB_OK | MB_ICONINFORMATION);
-        } else {
-            SetWindowTextW(status_field, aborted ? L"Build cancelled." :
-                            L"Build failed. Read the details above.");
-        }
+        finish_build((DWORD)wparam);
         return 0;
     case WM_CLOSE:
         if (running) {
@@ -532,9 +1188,11 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         return 0;
     case WM_DESTROY:
         DragAcceptFiles(window, FALSE);
-        if (ui_font) DeleteObject(ui_font);
-        if (heading_font) DeleteObject(heading_font);
-        if (white_brush) DeleteObject(white_brush);
+        KillTimer(window, TIMER_ANIMATION);
+        for (int index = 0; index < FONT_COUNT; index++)
+            if (fonts[index]) DeleteObject(fonts[index]);
+        for (int index = 0; index < BRUSH_COUNT; index++)
+            if (brushes[index]) DeleteObject(brushes[index]);
         PostQuitMessage(0);
         return 0;
     }
@@ -558,9 +1216,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE unused, PWSTR arguments, int s
         if (!regular_file(location)) return 4;
         return 0;
     }
+    declare_dpi_awareness();
     if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED))) return 1;
-    INITCOMMONCONTROLSEX controls = {sizeof(controls), ICC_PROGRESS_CLASS};
-    InitCommonControlsEx(&controls);
     WNDCLASSEXW cls = {0};
     cls.cbSize = sizeof(cls);
     cls.hInstance = instance;
@@ -568,16 +1225,20 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE unused, PWSTR arguments, int s
     cls.lpszClassName = L"MinionRushNativeIpaBuilder";
     cls.hCursor = LoadCursorW(NULL, IDC_ARROW);
     cls.hIcon = LoadIconW(NULL, IDI_APPLICATION);
-    cls.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     if (!RegisterClassExW(&cls)) return 1;
     HWND window = CreateWindowExW(0, cls.lpszClassName, L"Minion Rush IPA Builder",
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 810, 650,
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 800, 640,
         NULL, NULL, instance, NULL);
     if (!window) return 1;
+    {
+        Geometry probe;
+        resize_client(S(760), compute_geometry(&probe, S(760), 0), TRUE);
+    }
     ShowWindow(window, show);
     UpdateWindow(window);
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0) > 0) {
+        if (IsDialogMessageW(window, &msg)) continue;
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
