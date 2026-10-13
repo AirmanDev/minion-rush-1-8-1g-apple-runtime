@@ -17,11 +17,15 @@ The Windows portable kit contains MinionRush Builder.exe. Extract all files,
 launch the GUI, drag an original ZIP onto the window or use Browse, select
 Save As to choose a new output IPA path, and select Create IPA. A private
 Hungarian hu.xlf can be selected optionally. The window shows the current
-step in a compact status panel; **Show details** opens the full log, and it
-opens by itself if a build fails. The GUI never overwrites an existing IPA
-and never signs automatically. Tab and Shift+Tab move between the fields and
-buttons, Enter presses the focused button, and the window scales with the
-display's DPI setting.
+step in a compact status panel. **Show details** expands build diagnostics,
+including paths, phase, transfer method and detailed error; it opens
+automatically on failure. Copy error, Copy full log and Save log provide
+local reporting. On failure the private workspace is retained, can be opened
+through Open temp folder and must be deleted manually afterwards. Do not
+share logs or temporary game files publicly. The GUI never overwrites an
+existing IPA and never signs automatically. Tab and Shift+Tab move between
+fields and buttons, Enter presses the focused button, and the window scales
+with the display's DPI setting.
 
 Use the independent [Sideloadly application](https://sideloadly.io/) to sign
 and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
