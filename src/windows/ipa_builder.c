@@ -896,6 +896,138 @@ static void send_log(HWND window, const char *bytes, int length) {
         HeapFree(GetProcessHeap(), 0, line);
 }
 
+
+/* ---- Diagnostic report and export ---------------------------------- */
+
+static void refresh_diagnostics(void) {
+    WCHAR source[2048] = {0}, output[2048] = {0}, catalog[2048] = {0};
+    WCHAR summary[16384] = {0};
+    GetWindowTextW(ctl[ID_SOURCE], source, 2048);
+    GetWindowTextW(ctl[ID_DESTINATION], output, 2048);
+    GetWindowTextW(ctl[ID_CATALOG], catalog, 2048);
+    LPCWSTR status = ui_state == STATE_BUSY ? L"Running" :
+                     ui_state == STATE_OK ? L"Completed" :
+                     ui_state == STATE_FAILED ? L"Failed" :
+                     ui_state == STATE_STOPPED ? L"Cancelled" : L"Ready";
+    StringCchPrintfW(summary, 16384,
+        L"Status: %s    Exit code: %lu\r\n"
+        L"Phase: %.180s\r\n"
+        L"Transport: %.170s\r\n"
+        L"Source ZIP: %.1900s\r\n"
+        L"Output IPA: %.1900s\r\n"
+        L"Language: %.1900s\r\n"
+        L"Private workspace: %.1900s\r\n"
+        L"Error: %.3800s",
+        status, (unsigned long)last_exit_code,
+        phase_text[0] ? phase_text : L"Not started",
+        transport_text[0] ? transport_text : L"Not reported",
+        source, output,
+        catalog[0] ? catalog : L"Auto-detect / none",
+        last_scratch[0] ? last_scratch : L"Not started",
+        last_error[0] ? last_error : L"None reported");
+    SetWindowTextW(ctl[ID_DIAGNOSTICS], summary);
+    diagnostics_dirty = FALSE;
+}
+
+static WCHAR *get_report(BOOL include_log) {
+    size_t max_log = include_log ? (size_t)GetWindowTextLengthW(ctl[ID_LOG]) : 0;
+    size_t capacity = max_log + 20000;
+    WCHAR *report = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, capacity * sizeof(WCHAR));
+    if (!report) return NULL;
+    refresh_diagnostics();
+    GetWindowTextW(ctl[ID_DIAGNOSTICS], report, 16000);
+    if (include_log) {
+        WCHAR *log = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                               (max_log + 1) * sizeof(WCHAR));
+        if (!log) { HeapFree(GetProcessHeap(), 0, report); return NULL; }
+        GetWindowTextW(ctl[ID_LOG], log, (int)max_log + 1);
+        StringCchCatW(report, capacity, L"\r\n\r\n--- Complete available build output ---\r\n");
+        StringCchCatW(report, capacity, log);
+        HeapFree(GetProcessHeap(), 0, log);
+    } else {
+        StringCchCatW(report, capacity, L"\r\n\r\nError details:\r\n");
+        StringCchCatW(report, capacity, last_error[0] ? last_error : L"No error recorded.");
+    }
+    return report;
+}
+
+static BOOL copy_to_clipboard(LPCWSTR value) {
+    size_t bytes = (wcslen(value) + 1) * sizeof(WCHAR);
+    HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
+    if (!memory) return FALSE;
+    void *target = GlobalLock(memory);
+    if (!target) { GlobalFree(memory); return FALSE; }
+    memcpy(target, value, bytes);
+    GlobalUnlock(memory);
+    if (!OpenClipboard(main_window)) { GlobalFree(memory); return FALSE; }
+    EmptyClipboard();
+    BOOL success = SetClipboardData(CF_UNICODETEXT, memory) != NULL;
+    CloseClipboard();
+    if (!success) GlobalFree(memory);
+    return success;
+}
+
+static void copy_report(BOOL error_only) {
+    WCHAR *report = get_report(!error_only);
+    if (!report) return;
+    if (!copy_to_clipboard(report))
+        MessageBoxW(main_window, L"Could not copy the report to the clipboard.",
+                    L"Clipboard unavailable", MB_OK | MB_ICONWARNING);
+    HeapFree(GetProcessHeap(), 0, report);
+}
+
+static void save_report(void) {
+    WCHAR path[32768] = {0};
+    IFileDialog *dialog = NULL;
+    if (FAILED(CoCreateInstance(&CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER,
+                                &IID_IFileDialog, (void **)&dialog))) return;
+    COMDLG_FILTERSPEC filter = {L"Text log (*.txt)", L"*.txt"};
+    IFileDialog_SetFileTypes(dialog, 1, &filter);
+    IFileDialog_SetDefaultExtension(dialog, L"txt");
+    IFileDialog_SetFileName(dialog, L"MinionRush-build-log.txt");
+    IFileDialog_SetTitle(dialog, L"Save local build diagnostics");
+    BOOL selected = FALSE;
+    if (SUCCEEDED(IFileDialog_Show(dialog, main_window))) {
+        IShellItem *item = NULL;
+        if (SUCCEEDED(IFileDialog_GetResult(dialog, &item))) {
+            PWSTR name = NULL;
+            if (SUCCEEDED(IShellItem_GetDisplayName(item, SIGDN_FILESYSPATH, &name))) {
+                selected = SUCCEEDED(StringCchCopyW(path, 32768, name));
+                CoTaskMemFree(name);
+            }
+            IShellItem_Release(item);
+        }
+    }
+    IFileDialog_Release(dialog);
+    if (!selected) return;
+    WCHAR *report = get_report(TRUE);
+    if (!report) return;
+    int bytes = WideCharToMultiByte(CP_UTF8, 0, report, -1, NULL, 0, NULL, NULL);
+    char *utf8 = bytes > 0 ? HeapAlloc(GetProcessHeap(), 0, (size_t)bytes) : NULL;
+    BOOL ok = FALSE;
+    if (utf8 && WideCharToMultiByte(CP_UTF8, 0, report, -1, utf8, bytes, NULL, NULL)) {
+        HANDLE file = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+                                  FILE_ATTRIBUTE_NORMAL, NULL);
+        if (file != INVALID_HANDLE_VALUE) {
+            DWORD written = 0;
+            static const BYTE bom[] = {0xEF, 0xBB, 0xBF};
+            ok = WriteFile(file, bom, 3, &written, NULL) && written == 3;
+            if (ok) ok = WriteFile(file, utf8, (DWORD)(bytes - 1), &written, NULL) &&
+                         written == (DWORD)(bytes - 1);
+            if (!CloseHandle(file)) ok = FALSE;
+        }
+    }
+    if (!ok) MessageBoxW(main_window, L"The diagnostic log could not be saved.",
+                         L"Save failed", MB_OK | MB_ICONERROR);
+    if (utf8) HeapFree(GetProcessHeap(), 0, utf8);
+    HeapFree(GetProcessHeap(), 0, report);
+}
+
+static void open_private_workspace(void) {
+    if (last_scratch[0] && GetFileAttributesW(last_scratch) != INVALID_FILE_ATTRIBUTES)
+        ShellExecuteW(main_window, L"open", last_scratch, NULL, NULL, SW_SHOWNORMAL);
+}
+
 /* ---- Build job ------------------------------------------------------ */
 
 static void remove_job_scratch(HWND window, LPCWSTR path) {
