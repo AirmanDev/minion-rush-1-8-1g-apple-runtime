@@ -76,5 +76,3 @@ def _utm_http_stream(url: str):
             response.close()
             raise ValueError("UTM HTTP ZIP exceeds supported size")
     return response
-
-
