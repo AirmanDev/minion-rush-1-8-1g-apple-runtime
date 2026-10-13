@@ -1,178 +1,79 @@
-# Windows IPA installation with Sideloadly
+# Windows IPA Builder
 
-The desktop tool is "Unofficial IPA Builder", an independent utility
-compatible with Minion Rush 1.8.1g. It is not endorsed by Gameloft.
+## Download and supported systems
 
-Two separate IPA preparation paths are supported in the source tree:
+The initial public release of **Unofficial IPA Builder v1.2.8** is
+available on [GitHub Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases/tag/builder-v1.2.8).
 
-- **Mac (maintained):** The portable SwiftUI Builder creates an unsigned
-  IPA without Xcode, and offers direct installation using a
-  compatible profile from the owner's local Xcode signing account. See [INSTALLER.md](INSTALLER.md).
-- **Windows (portable Builder):** A portable builder takes
-  the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
-  blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
-  packages the original assets. The EXE does not include the private
-  Hungarian game-text catalog or precomputed block tables. Its template is
-  game-independent; the original app icon comes from the user's ZIP. No Mac is needed for this build.
-  See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
-  IPA** and does not install or sign itself.
+Download `MinionRush-Builder-Windows-x64.exe`, the complete portable
+Windows 11 x64 Builder. It also runs on Windows 11 ARM using x64
+emulation. The EXE embeds the required Python runtime, native ARM64
+translator and generic unsigned iOS template. There is no system-wide
+installer, external Python requirement or bundled original game.
 
-To install directly from Mac, choose a device and select Install Game.
-For a private transfer, choose Save IPA instead.
-The portable Windows executable opens the native Builder. Drag an original
-ZIP onto the window or use Browse, choose an output IPA path with Save As,
-and select Create IPA. When an IPA already exists, the Windows Save dialog
-asks whether to replace it. Accepting this authorizes that file for one
-build only; if a path was selected earlier, the Builder asks before replacing
-it. The new IPA is assembled in a private folder on the same volume and
-replaces the old file only after successful verification. Build failures do
-not destroy the previous IPA.
+Check the SHA-256 digest before running the application. The executable
+is not Authenticode signed and may trigger a Windows SmartScreen
+unknown-publisher warning. Approve an individual downloaded file only
+after verifying its source and checksum. Never disable Windows
+Defender or bypass an actual malware warning.
 
-The Magyar game-language option is enabled by the bundled target-only
-Hungarian pack. It is compiled locally into a separate language table
-using the user's original ZIP. The
-Builder's English / Magyar interface switch is available independently.
-The original game's languages are always included. There is no
-separate language-file picker. The game lists only installed language packs
-on its initial and Settings language pages, and no XLIFF needs to be copied
-to the iPhone. Use English / Magyar in the Builder header to change the
-Windows interface language without changing the IPA language selection.
-The window shows the current step in a compact status panel. **Show details** expands build diagnostics,
-including paths, phase, transfer method and detailed error; it opens
-automatically on failure. Copy error, Copy full log and Save log provide
-local reporting. On failure the private workspace is retained, can be opened
-through Open temp folder and must be deleted manually afterwards. Do not
-share logs or temporary game files publicly. The GUI does not overwrite
-without confirmation and never signs automatically. Tab and Shift+Tab move between
-fields and buttons, Enter presses the focused button, and the window scales
-with the display's DPI setting.
+## Create IPA
 
-The Windows Builder GUI and portable EXE use the **same artwork** as the
-macOS Minion Rush Installer: gold background, dark package and arrow. The
-single drawing source is `tools/prepare_installer_icon.swift`. On a Mac,
-`python3 tools/build_windows_icon.py` renders that source into the checked-in
-Windows `src/windows/builder.ico`, at 16, 24, 32, 48, 64, 128 and 256 px.
-Run `python3 tools/build_windows_icon.py --verify` on macOS after changing
-the icon source, to ensure the Windows icon is still identical to the Mac
-design. Both Windows executables have embedded icon resources, with no
-sidecar image file required at runtime.
+1. Supply your own lawfully obtained, unmodified original Minion Rush
+   1.8.1g ZIP.
+2. Open the portable Builder.
+3. Select the ZIP and the destination for the unsigned IPA.
+4. Leave **Include additional languages** enabled if you want Magyar
+   added as a separate in-game language.
+5. Click **Create IPA**. Wait for translation and archive verification.
 
-Completed-build diagnostics now refresh before the success dialog opens;
-the diagnostic status therefore shows Completed rather than Running while
-the success dialog is displayed.
+The host translates the original ARM32/Thumb engine into native ARM64
+code ahead of time and assembles the IPA from the user's original data.
+No private game ZIP, precompiled game-specific native code, generated IPA
+or Apple credentials are included in the public Builder.
 
-The preferred Windows user-facing package is now a single portable EXE.
-It unpacks a verified temporary copy of the runtime (the embedded Python,
-native converter and unsigned iOS template) on launch, then runs the existing
-native Builder GUI. Closing the
-GUI removes its extracted runtime. This is a portable, self-contained
-launcher, not an installer and not a single standalone Windows process.
-Windows 11's built-in tar.exe is used locally. The 1.8.1g original game ZIP
-must still be supplied by the user. The standard 1.2.3 release candidate
-contains no private hu.xlf. A separately authorized, privately built kit can
-include a game-language catalog, but that kit is not a public download.
-The iPhone app does not need any external .xlf.
+The native iOS template and compiler match the Mac edition. The
+Hungarian target-only text pack is compiled locally after checking
+the original text-table fingerprint; it does not replace existing
+game languages or perform runtime translation.
 
-Two Windows build profiles are maintained. The standard release candidate
-does not include UTM/SPICE test transport, while the separately compiled
-private UTM test kit retains it for validating shared original ZIPs. Test
-kits must not be offered as standard release downloads.
+## Signing and installation
 
-Use the independent [Sideloadly application](https://sideloadly.io/) to sign
-and install the generated IPA on an iPhone or iPad. Sideloadly is not bundled
-or maintained by this project. A 2026-10-12 Windows 11 ARM user test on
-iOS 27 successfully signed and installed an unsigned native IPA using
-Sideloadly; the user confirmed gameplay, sound, saves, Hungarian text and
-the original icon. A follow-up private Windows 11 ARM test on 2026-10-13 also produced
-an unsigned IPA, installed it with Sideloadly v0.70.1, and confirmed that
-the game launches and Hungarian text works. On-device switching between
-all built-in languages was not exhaustively retested.
-This does not guarantee support for every device/version.
-The app requires iOS/iPadOS 17 or later. Changing a package's minimum OS does
-not make unsupported versions compatible.
+A Windows-created IPA is **unsigned**. Sign and install it with a
+compatible external tool such as
+[Sideloadly](https://sideloadly.io/). The tool is not bundled or
+maintained by this repository. Use your own Apple account and device.
+Free Apple-account profiles often expire after seven days.
 
-A private IPA contains the original game engine and assets. Never upload a
-completed IPA to a public GitHub release, issue, or public sharing service.
-The generic v3 template avoids bundling game-derived address metadata.
-An end-to-end review of the distributor's rights and the generated IPA requires a legal
-review before publication. The private Mac Builder also creates unsigned IPAs without Xcode, using
-SwiftUI. Public GitHub Releases distribute the separate asset-free Mac
-installer for the Xcode-based signing and installation path.
+A private Windows 11 ARM/x64-emulation test generated an IPA and
+installed it on an iPhone with Sideloadly, confirming working gameplay,
+audio, Hungarian text and save continuity. This does not guarantee
+every device and operating-system version.
 
-## Portable Builder download and integrity
+The Mac edition additionally supports direct Install Game with a local
+Xcode signing identity and a selected physical device. That feature is
+not available in Windows because Xcode's local signing environment
+and devicectl are macOS tools.
 
-Download MinionRush-Builder-Windows-x64.exe and SHA256SUMS.txt from
-the same published GitHub Release. From version 1.2.4 onward, the GUI
-displays the app version. The Windows version string is derived from the
-Mac Info.plist at build time so both desktop editions agree.
-In PowerShell run:
+## Diagnostics and source builds
 
-    (Get-FileHash -LiteralPath 'MinionRush-Builder-Windows-x64.exe' -Algorithm SHA256).Hash
+The Builder shows progress and logs for native AOT compilation and
+archive creation. The full log can be saved locally. A failed build
+does not overwrite a previously completed IPA without explicit
+replacement handling. The Windows portable kit unpacks into a
+temporary location on launch and cleans up after exit.
 
-Compare that hexadecimal value with the matching line in SHA256SUMS.txt.
-The EXE is unsigned and may trigger an unknown-publisher or SmartScreen
-warning. Approve that individual file only if its origin and checksum are
-trusted. Do not disable Windows Defender or override a malware warning.
-Keep the original game archive private.
+Project maintainers can build the Win32 GUI, kit and single executable
+using `tools/build_windows_gui.sh`, `tools/build_windows_kit.py`
+and `tools/build_windows_onefile.py` on a configured build host.
+Private UTM transport fixtures and original game assets must not be
+included in public packages. Run the full source and packaging
+validators and verify the final PE self-test.
 
-## Set up Windows
+The project is independent of Gameloft and the game's other
+rightsholders. Original-game use and locally generated IPAs remain
+subject to copyright and contract rules. The Hungarian target-only
+translation may carry separate rights obligations.
 
-1. Download Sideloadly only from [its official website](https://sideloadly.io/).
-2. Follow that website's current Windows prerequisites. Its instructions
-   require the **web versions of both iTunes and iCloud**, not the Microsoft
-   Store versions. Use its Apple download links rather than third-party driver
-   packages. If replacing installed Apple software, review its effects on your
-   existing setup; this project does not remove or reconfigure that software.
-3. Connect the iPhone or iPad by USB, unlock it, and accept **Trust This Computer**.
-4. Enable Developer Mode on the device when required and approve the developer
-   under Settings > General > VPN & Device Management if prompted.
-
-Do not disable Windows security protections or run a download flagged as
-malware. Consult the official Sideloadly support information for installation
-or security errors.
-
-## Sign and install
-
-1. Open Sideloadly and select the connected device.
-2. Drop the private IPA into its archive area.
-3. Use its **Apple ID sideload** mode and enter your own Apple Account. Complete
-   authentication or two-factor approval when requested.
-4. Start sideloading and keep the device connected and unlocked until it finishes.
-5. Open the game and check the intro, portrait orientation, menus, and gameplay.
-
-Apple ID sideloading re-signs the IPA for the selected device using your account.
-The device does not need to be included in the Mac export's original profile
-when a new valid profile is created by Sideloadly. Its **normal install** mode
-instead relies on the existing signature and profile; it cannot fix an expired
-profile or an unregistered device.
-
-Enter credentials only into a tool you trust. This project's installer neither
-handles that login nor controls Sideloadly's credential storage. Do not enable
-tweak injection, minimum-OS overrides, or restriction-removal options for this
-runtime. No jailbreak or JIT-enabling step is required.
-
-Use a consistent final bundle identifier and signing account when refreshing
-the same app. A different identifier installs a separate app with separate data.
-Changing signing teams may prevent an in-place update; back up important data
-before changing signing identity. Do not uninstall an existing game to resolve
-an error without considering the loss of its local save.
-
-## Expiration and troubleshooting
-
-Free-account sideloads expire after seven days. Re-sign with the same account
-and identifier before expiration, or configure Sideloadly's optional automatic
-refresh. Automatic refresh depends on its own service, computer availability,
-and device connection; this project does not run that service.
-
-Use [Sideloadly's FAQ](https://sideloadly.io/faq) for account limits, pairing,
-drivers, signing errors, and refresh configuration. Review its logs before
-sharing them: they can contain account, device, and signing information.
-
-The Mac installer tests are separate from the Windows sideload workflow.
-A physical-device test using UTM Windows 11 ARM, USB forwarding and Sideloadly
-v0.70.1 successfully installed and ran the unsigned IPA on an iPhone with
-iOS 27. The user also reported repeated extended gameplay without stability
-problems. Signing renewal and installation on additional Windows PCs and
-iPads remain untested. The current native Windows GUI was tested for private IPA generation and
-file replacement. More Windows PCs, cancellation paths and signing refresh
-still require device-level coverage.
+See [Mac Builder](INSTALLER.md), [release scope](RELEASE_SCOPE.md),
+[additional languages](LOCALIZATION.md) and [legal context](LEGAL.md).
