@@ -21,7 +21,9 @@ enum {
     ID_DESTINATION_LABEL, ID_DESTINATION, ID_PICK_DESTINATION,
     ID_CATALOG_HINT, ID_CATALOG_LABEL, ID_CATALOG, ID_PICK_CATALOG,
     ID_BUILD, ID_CANCEL, ID_OPEN_FOLDER,
-    ID_STATE, ID_DETAIL, ID_DETAILS_TOGGLE, ID_LOG, ID_LAST,
+    ID_STATE, ID_DETAIL, ID_DETAILS_TOGGLE,
+    ID_DIAGNOSTICS, ID_COPY_ERROR, ID_COPY_LOG, ID_SAVE_LOG, ID_OPEN_TEMP,
+    ID_LOG, ID_LAST,
     TIMER_ANIMATION = 1,
     WM_APPEND_LOG = WM_APP + 1, WM_BUILD_DONE = WM_APP + 2
 };
@@ -91,6 +93,12 @@ static const Spec specs[] = {
     {ID_STATE, L"STATIC", L"Ready. The output is unsigned and requires Sideloadly.", LABEL_STYLE, ROLE_STATUS},
     {ID_DETAIL, L"STATIC", L"", LABEL_STYLE, ROLE_DETAIL},
     {ID_DETAILS_TOGGLE, L"BUTTON", L"Show details", BUTTON_STYLE, ROLE_LINK},
+    {ID_DIAGNOSTICS, L"EDIT", L"", WS_CHILD | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE |
+     ES_AUTOVSCROLL | ES_READONLY, ROLE_LOG},
+    {ID_COPY_ERROR, L"BUTTON", L"Copy error", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_COPY_LOG, L"BUTTON", L"Copy full log", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_SAVE_LOG, L"BUTTON", L"Save log...", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_OPEN_TEMP, L"BUTTON", L"Open temp folder", BUTTON_STYLE, ROLE_BROWSE},
     {ID_LOG, L"EDIT", L"", WS_CHILD | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY, ROLE_LOG}
 };
 
@@ -102,7 +110,7 @@ static const Row rows[3] = {
 
 typedef struct {
     RECT slot[ID_LAST];
-    RECT header, card, well[3], status_card, dot, track, log_well;
+    RECT header, card, well[3], status_card, dot, track, details_card, log_well;
 } Geometry;
 
 typedef struct { HDC dc, target; HBITMAP bitmap, previous; RECT area; } Canvas;
@@ -121,7 +129,10 @@ static HBRUSH brushes[BRUSH_COUNT];
 static Geometry geo;
 static UINT ui_dpi = 96;
 static int body_height;
-static WCHAR kit_path[MAX_PATH * 4], last_output[32768], pending_detail[512];
+static WCHAR kit_path[MAX_PATH * 4], last_output[32768], last_scratch[32768];
+static WCHAR last_error[4096], phase_text[192], transport_text[192], pending_detail[512];
+static DWORD last_exit_code;
+static BOOL diagnostics_dirty, log_truncated;
 static HANDLE active_job;
 static volatile LONG cancel_requested;
 static BOOL running, aborted, log_open, detail_dirty;
@@ -403,11 +414,26 @@ static int compute_geometry(Geometry *g, int width, int height) {
     int natural = g->status_card.bottom + margin;
 
     if (log_open) {
-        int log_top = g->status_card.bottom + S(14);
-        int log_bottom = height - margin;
-        if (log_bottom < log_top + S(90)) log_bottom = log_top + S(90);
-        g->log_well = make_rect(margin, log_top, right, log_bottom);
-        g->slot[ID_LOG] = make_rect(margin + S(12), log_top + S(10), right - S(6), log_bottom - S(10));
+        int top = g->status_card.bottom + S(14);
+        int inner_left = margin + S(14), inner_right = right - S(14);
+        int diag_top = top + S(14);
+        place_slot(g, ID_DIAGNOSTICS, inner_left, diag_top,
+                   inner_right - inner_left, S(126));
+        int toolbar_top = diag_top + S(136);
+        int x = inner_left;
+        const int actions[] = {ID_COPY_ERROR, ID_COPY_LOG, ID_SAVE_LOG, ID_OPEN_TEMP};
+        for (size_t i = 0; i < sizeof(actions) / sizeof(actions[0]); i++) {
+            int button = button_width(actions[i], 92);
+            place_slot(g, actions[i], x, toolbar_top, button, S(34));
+            x += button + S(8);
+        }
+        int log_top = toolbar_top + S(46);
+        int log_bottom = height - margin - S(14);
+        if (log_bottom < log_top + S(60)) log_bottom = log_top + S(60);
+        g->details_card = make_rect(margin, top, right, log_bottom + S(14));
+        g->log_well = make_rect(inner_left, log_top, inner_right, log_bottom);
+        g->slot[ID_LOG] = make_rect(inner_left + S(10), log_top + S(8),
+                                   inner_right - S(8), log_bottom - S(8));
     }
     return natural;
 }
@@ -461,23 +487,32 @@ static void resize_client(int client_width, int client_height, BOOL centre) {
     SetWindowPos(main_window, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-#define LOG_MINIMUM 90
-#define LOG_PREFERRED 210
+#define LOG_MINIMUM 60
+#define LOG_PREFERRED 205
+#define DETAILS_EXTRA (14 + 14 + 126 + 10 + 34 + 12 + 14)
 
 static void set_log_visible(BOOL visible) {
     if (log_open == visible) return;
     log_open = visible;
     SetWindowTextW(ctl[ID_DETAILS_TOGGLE], visible ? L"Hide details" : L"Show details");
-    if (!visible && GetFocus() == ctl[ID_LOG]) SetFocus(ctl[ID_DETAILS_TOGGLE]);
+    if (!visible && (GetFocus() == ctl[ID_LOG] || GetFocus() == ctl[ID_DIAGNOSTICS] ||
+                      GetFocus() == ctl[ID_COPY_ERROR] || GetFocus() == ctl[ID_COPY_LOG] ||
+                      GetFocus() == ctl[ID_SAVE_LOG] || GetFocus() == ctl[ID_OPEN_TEMP]))
+        SetFocus(ctl[ID_DETAILS_TOGGLE]);
+    const int details[] = {ID_DIAGNOSTICS, ID_COPY_ERROR, ID_COPY_LOG,
+                           ID_SAVE_LOG, ID_OPEN_TEMP};
+    for (size_t i = 0; i < sizeof(details) / sizeof(details[0]); i++)
+        ShowWindow(ctl[details[i]], visible ? SW_SHOW : SW_HIDE);
     ShowWindow(ctl[ID_LOG], visible ? SW_SHOW : SW_HIDE);
     if (!IsZoomed(main_window)) {
         RECT client;
         Geometry probe;
         GetClientRect(main_window, &client);
         int natural = compute_geometry(&probe, client.right, 0);
-        resize_client(-1, visible ? natural + S(14) + S(LOG_PREFERRED) : natural, FALSE);
+        resize_client(-1, visible ? natural + S(DETAILS_EXTRA + LOG_PREFERRED) : natural, FALSE);
     }
     relayout();
+    diagnostics_dirty = TRUE;
 }
 
 /* ---- Painting ------------------------------------------------------- */
@@ -525,7 +560,10 @@ static void paint_scene(HDC dc) {
     round_box(dc, geo.status_card, S(12), COL_BACKGROUND, COL_CARD, COL_CARD_EDGE, 1);
     round_box(dc, geo.dot, S(5), COL_CARD, state_color(), state_color(), 0);
     paint_progress(dc);
-    if (log_open) round_box(dc, geo.log_well, S(10), COL_BACKGROUND, COL_FIELD, COL_FIELD_EDGE, 1);
+    if (log_open) {
+        round_box(dc, geo.details_card, S(12), COL_BACKGROUND, COL_CARD, COL_CARD_EDGE, 1);
+        round_box(dc, geo.log_well, S(8), COL_CARD, COL_FIELD, COL_FIELD_EDGE, 1);
+    }
 }
 
 static void paint_window(HWND window) {
@@ -740,6 +778,14 @@ static void create_controls(HWND window) {
     }
     EnableWindow(ctl[ID_CANCEL], FALSE);
     EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
+    EnableWindow(ctl[ID_OPEN_TEMP], FALSE);
+    EnableWindow(ctl[ID_COPY_ERROR], FALSE);
+    const int details[] = {ID_DIAGNOSTICS, ID_COPY_ERROR, ID_COPY_LOG,
+                           ID_SAVE_LOG, ID_OPEN_TEMP};
+    for (size_t i = 0; i < sizeof(details) / sizeof(details[0]); i++)
+        ShowWindow(ctl[details[i]], SW_HIDE);
+    SendMessageW(ctl[ID_LOG], EM_SETLIMITTEXT, 4 * 1024 * 1024, 0);
+    SendMessageW(ctl[ID_DIAGNOSTICS], EM_SETLIMITTEXT, 16384, 0);
 }
 
 /* ---- File dialogs --------------------------------------------------- */
@@ -802,9 +848,14 @@ static void show_detail(LPCWSTR text) {
 static void append_log(WCHAR *line) {
     HWND log_field = ctl[ID_LOG];
     int size = GetWindowTextLengthW(log_field);
-    if (size > 50000) {
-        SetWindowTextW(log_field, L"Recent output:\r\n");
-        size = GetWindowTextLengthW(log_field);
+    if (size + (int)wcslen(line) > 4 * 1024 * 1024) {
+        if (!log_truncated) {
+            log_truncated = TRUE;
+            const WCHAR *notice = L"\r\n[Log display reached 4 MB. Additional output omitted.]\r\n";
+            SendMessageW(log_field, EM_SETSEL, (WPARAM)size, (LPARAM)size);
+            SendMessageW(log_field, EM_REPLACESEL, FALSE, (LPARAM)notice);
+        }
+        return;
     }
     SendMessageW(log_field, EM_SETSEL, (WPARAM)size, (LPARAM)size);
     SendMessageW(log_field, EM_REPLACESEL, FALSE, (LPARAM)line);
@@ -815,6 +866,17 @@ static void append_log(WCHAR *line) {
             pending_detail[--length] = 0;
         detail_dirty = TRUE;
     }
+    if (wcsncmp(line, L"1/3:", 4) == 0 || wcsncmp(line, L"2/3:", 4) == 0 ||
+        wcsncmp(line, L"3/3:", 4) == 0)
+        StringCchCopyW(phase_text, 192, line);
+    if (wcsncmp(line, L"Import transport:", 17) == 0)
+        StringCchCopyW(transport_text, 192, line + 17);
+    if (wcsstr(line, L"Windows native IPA build failed:") ||
+        wcsncmp(line, L"Error:", 6) == 0) {
+        StringCchCopyW(last_error, 4096, line);
+        EnableWindow(ctl[ID_COPY_ERROR], TRUE);
+    }
+    diagnostics_dirty = TRUE;
 }
 
 static void send_log(HWND window, const char *bytes, int length) {
@@ -853,14 +915,13 @@ static void remove_job_scratch(HWND window, LPCWSTR path) {
 
 static BOOL create_job_scratch(WCHAR *destination, size_t capacity) {
     WCHAR temp[MAX_PATH * 4] = {0};
-    WCHAR identifier[64] = {0};
     GUID guid;
     DWORD length = GetTempPathW(MAX_PATH * 4, temp);
     if (!length || length >= MAX_PATH * 4 || FAILED(CoCreateGuid(&guid)))
         return FALSE;
-    if (!StringFromGUID2(&guid, identifier, 64)) return FALSE;
     if (FAILED(StringCchPrintfW(destination, capacity,
-                                 L"%sMinionRush-private-%s", temp, identifier)))
+                                 L"%sMR-%08lX%04X", temp,
+                                 (unsigned long)guid.Data1, (unsigned int)guid.Data2)))
         return FALSE;
     return CreateDirectoryW(destination, NULL) != FALSE;
 }
@@ -960,7 +1021,12 @@ static DWORD WINAPI run_build(LPVOID opaque) {
 done:
     if (write_pipe) CloseHandle(write_pipe);
     if (read_pipe) CloseHandle(read_pipe);
-    remove_job_scratch(job->window, job->scratch);
+    if (result == 0 || InterlockedCompareExchange(&cancel_requested, 0, 0))
+        remove_job_scratch(job->window, job->scratch);
+    else {
+        const char *note = "Build failed. Private workspace retained for inspection. Delete it after troubleshooting.";
+        send_log(job->window, note, (int)strlen(note));
+    }
     PostMessageW(job->window, WM_BUILD_DONE, result, 0);
     HeapFree(GetProcessHeap(), 0, job);
     return 0;
@@ -1046,6 +1112,14 @@ static void start_build(void) {
     }
     job->job = active_job;
     SetWindowTextW(ctl[ID_LOG], L"");
+    SetWindowTextW(ctl[ID_DIAGNOSTICS], L"");
+    last_error[0] = phase_text[0] = transport_text[0] = 0;
+    log_truncated = FALSE;
+    last_exit_code = 0;
+    StringCchCopyW(last_scratch, 32768, job->scratch);
+    diagnostics_dirty = TRUE;
+    EnableWindow(ctl[ID_COPY_ERROR], FALSE);
+    EnableWindow(ctl[ID_OPEN_TEMP], FALSE);
     show_detail(L"");
     set_status(STATE_BUSY, L"Building native ARM64 IPA. Keep this window open.");
     running = TRUE;
@@ -1085,6 +1159,8 @@ static void stop_build(void) {
 
 static void finish_build(DWORD exit_code) {
     running = FALSE;
+    last_exit_code = exit_code;
+    diagnostics_dirty = TRUE;
     if (active_job) {
         CloseHandle(active_job);
         active_job = NULL;
@@ -1101,9 +1177,12 @@ static void finish_build(DWORD exit_code) {
     } else if (aborted) {
         set_status(STATE_STOPPED, L"Build cancelled.");
     } else {
-        set_status(STATE_FAILED, L"Build failed. Details are shown below.");
+        set_status(STATE_FAILED, L"Build failed. Review the diagnostic details below.");
+        EnableWindow(ctl[ID_OPEN_TEMP], last_scratch[0] &&
+                    GetFileAttributesW(last_scratch) != INVALID_FILE_ATTRIBUTES);
         set_log_visible(TRUE);
     }
+    refresh_diagnostics();
 }
 
 static void pick_into(int target, BOOL is_save, BOOL translation) {
@@ -1171,7 +1250,7 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         int natural = compute_geometry(&probe, S(640), 0);
         window_frame(&extra_width, &extra_height);
         limits->ptMinTrackSize.x = S(640) + extra_width;
-        limits->ptMinTrackSize.y = natural + (log_open ? S(14) + S(LOG_MINIMUM) : 0) + extra_height;
+        limits->ptMinTrackSize.y = natural + (log_open ? S(DETAILS_EXTRA + LOG_MINIMUM) : 0) + extra_height;
         return 0;
     }
     case WM_SIZE:
@@ -1201,6 +1280,7 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         if (wparam == TIMER_ANIMATION) {
             InvalidateRect(window, &geo.track, FALSE);
             if (detail_dirty) show_detail(pending_detail);
+            if (diagnostics_dirty && log_open) refresh_diagnostics();
         }
         return 0;
     case WM_DROPFILES:
@@ -1224,7 +1304,14 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         case ID_PICK_CATALOG: pick_into(ID_CATALOG, FALSE, TRUE); return 0;
         case ID_BUILD: start_build(); return 0;
         case ID_CANCEL: stop_build(); return 0;
-        case ID_DETAILS_TOGGLE: set_log_visible(!log_open); return 0;
+        case ID_DETAILS_TOGGLE:
+            set_log_visible(!log_open);
+            if (log_open) refresh_diagnostics();
+            return 0;
+        case ID_COPY_ERROR: copy_report(TRUE); return 0;
+        case ID_COPY_LOG: copy_report(FALSE); return 0;
+        case ID_SAVE_LOG: save_report(); return 0;
+        case ID_OPEN_TEMP: open_private_workspace(); return 0;
         case ID_OPEN_FOLDER:
             if (last_output[0]) {
                 WCHAR explorer[32768];
