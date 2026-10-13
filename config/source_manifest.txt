@@ -126,6 +126,7 @@ tests/test_tools.py
 tests/test_windows_icon.py
 tests/test_windows_native.py
 third_party_licenses/mingw-w64-COPYING.txt
+third_party_licenses/mingw-w64-runtime-COPYING.txt
 tools/asset_contract.py
 tools/build_builder_palette.py
 tools/build_generic_bindings.py

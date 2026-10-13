@@ -6,10 +6,10 @@ Create IPA action is unavailable without a portable runtime kit. It can
 import the user's original ZIP and use local Xcode signing to export a signed
 IPA or install to a connected iPhone/iPad.
 
-The new 1.2.0 source tree can compile this same separate Xcode-based Mac
+The current 1.2.3 source tree can compile this same separate Xcode-based Mac
 installer; full portable Mac/Windows Builder candidates are packaged via
 `tools/build_portable_mac_builder.py` and `tools/build_windows_onefile.py`,
-not this download. The 1.2.0 portable candidate has not yet passed every
+not this download. The 1.2.3 portable candidate has not yet passed every
 legal or physical-device release gate.
 
 ## Requirements

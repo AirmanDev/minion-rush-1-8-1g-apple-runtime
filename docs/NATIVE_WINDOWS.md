@@ -87,7 +87,7 @@ python3 tools/build_windows_kit.py \
 python3 tools/build_windows_onefile.py \
   --launcher "$PWD/build/windows/MinionRush Portable.exe" \
   --kit "$PWD/build/ios-generic/windows-kit-1.2" \
-  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.2.exe"
+  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.3.exe"
 ```
 
 Outputs are created only in new, nonexistent paths. The normal release

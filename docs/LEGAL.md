@@ -114,8 +114,9 @@ A specific inventory and validation gate is described in
 
 The project-specific rights and license-release checklist is maintained in
 [THIRD_PARTY_AND_RELEASE_GATE.md](THIRD_PARTY_AND_RELEASE_GATE.md).
-The candidate includes CPython and project license texts on Mac/Windows;
-final third-party license and MinGW-w64 notices review remains open.
+The candidate includes CPython, project and upstream MinGW-w64 runtime
+licensing notices on Mac/Windows;
+review of remaining bundled third-party dependencies and toolchain notices remains open.
 The European Court of Justice's judgment C-406/10 distinguishes program
 functionality and data formats from protectable source/object-code
 expression, but does not make all game-derived interfaces automatically

@@ -1,6 +1,6 @@
 # Portable Builder release scope
 
-## Candidate 1.2.2 (generic AOT runtime, actual-stage loading UI)
+## Candidate 1.2.3 (packaging and license attribution)
 
 The next portable Builder candidate supports the same local workflow on both
 platforms: a user imports their own unmodified Minion Rush 1.8.1g ZIP and
@@ -32,6 +32,27 @@ The profile format, bounds and ABI are documented by:
 and `src/native/game_profile.h`. Only version 3 is accepted. There is no
 fallback to the game-derived v2 template.
 
+### 1.2.3 release packaging changes
+
+This release candidate updates license attributions only. It does not
+change the native engine, iOS loading overlay, ARM64 translation format or
+gameplay. The upstream MinGW-w64 runtime licensing text is bundled intact,
+with its original copyright signs and a pinned SHA-256. Package validation
+rejects a missing or altered notice in both Mac and Windows bundles.
+Only that upstream license file is exempted from the ASCII source rule.
+
+The owner reported that the 1.2.2 Windows-built IPA launched, displayed
+its loading overlay and ran on a physical iPhone. No code-side regression
+is expected from this notice-only update, but 1.2.3 must still be checked
+as a packaged deliverable before public distribution.
+
+On the development Mac, only Apple Development and Apple Distribution
+signing identities are installed; no Developer ID certificate is
+available. The ad hoc-signed Mac Builder fails a Gatekeeper assessment.
+The 1.2.2 Windows executable was checked in the guest using
+Get-AuthenticodeSignature and returned NotSigned. Neither application
+is currently ready for a friction-free, publisher-authenticated download.
+
 ### 1.2.2 actual-stage loading view
 
 On iOS, a native UIKit overlay appears immediately after attaching the
@@ -54,7 +75,8 @@ ARM guest with x64 emulation: the native Create IPA action generated
 367,839,044 bytes from the user's local original ZIP; a separate Windows
 ZIP/profile audit confirmed 1,369 entries, v3, 109 bindings, 942,744 AOT
 blocks and 164,353,244 ARM64 code bytes. Windows onefile --self-test passed.
-Physical-device regression of the new loading UI is still required.
+The owner subsequently confirmed that the 1.2.2 loading screen and
+gameplay work on a physical iPhone. Audio/save continuity remain open.
 
 ### 1.2.1 startup defect and Simulator regression
 
@@ -88,11 +110,11 @@ loader. The final 1.2.1 Windows EXE was copied to the UTM Z: share and
 passed SHA-256 verification plus a zero-exit portable self-test directly
 from the guest. The previous 1.2.0 exe was removed from the share.
 
-The owner subsequently confirmed that their self-built 1.2.1 IPA
-installed and displayed running gameplay on a physical iPhone. This is
-user-reported evidence, not a supervised device-side trace, and does not
-clear the new 1.2.2 overlay for physical hardware. Existing user saves
-must not be overwritten without explicit approval.
+The owner confirmed that their Windows-built 1.2.1 IPA installed and
+ran on a physical iPhone, then independently confirmed that the 1.2.2
+loading overlay appeared and handed over to gameplay. These observations
+are user-reported evidence, not supervised device-side traces. Existing
+user saves must not be overwritten without explicit approval.
 
 ## Build the candidate locally
 
@@ -111,11 +133,11 @@ Then build the portable host executables as described in
 ```bash
 mkdir -p build/portable-releases
 python3 tools/package_portable_builders.py \
-  --app "$PWD/build/ios-generic/Minion Rush IPA Builder 1.2.2.app" \
-  --windows-exe "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.2.exe" \
-  --version 1.2.2 \
-  --output "$PWD/build/portable-releases/1.2.2"
-(cd build/portable-releases/1.2.2 && shasum -a 256 -c SHA256SUMS.txt)
+  --app "$PWD/build/ios-generic/Minion Rush IPA Builder 1.2.3.app" \
+  --windows-exe "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.3.exe" \
+  --version 1.2.3 \
+  --output "$PWD/build/portable-releases/1.2.3"
+(cd build/portable-releases/1.2.3 && shasum -a 256 -c SHA256SUMS.txt)
 ```
 
 The packager verifies the Mac bundle's version, signature (including after
@@ -195,6 +217,6 @@ Primary references:
 
 The already published GitHub 1.1.0 RC1 is a separate, Xcode-based Mac
 import/sign/install application. It does not contain the v3 generic portable
-runtime or Windows EXE. Do not replace or mislabel it before the 1.2.2
+runtime or Windows EXE. Do not replace or mislabel it before the 1.2.3
 candidate's remaining gates are passed. Do not publish any user ZIP,
 generated IPA, private translation, signing credentials or device identifiers.

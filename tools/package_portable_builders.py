@@ -31,6 +31,8 @@ APP = "Minion Rush IPA Builder.app"
 WIN = "MinionRush-Builder-Windows-x64.exe"
 MAC = "MinionRush-Builder-macOS-arm64.zip"
 RELEASE_DIR = ROOT / "build/portable-releases"
+RUNTIME_LICENSE_NAME = "third_party_licenses/mingw-w64-runtime-COPYING.txt"
+RUNTIME_LICENSE_SHA256 = "1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f"
 
 
 def verify_generic_template(contents: bytes) -> None:
@@ -77,6 +79,10 @@ def verify_windows(executable: Path) -> None:
             raise ValueError("Windows portable Python license is missing")
         if not any(name.endswith("/runtime/LICENSE") for name in names):
             raise ValueError("Windows project license is missing")
+        notices = [name for name in names if name.endswith("/runtime/" + RUNTIME_LICENSE_NAME)]
+        if (len(notices) != 1 or hashlib.sha256(kit.read(notices[0])).hexdigest()
+                != RUNTIME_LICENSE_SHA256):
+            raise ValueError("MinGW-w64 runtime attribution is missing or modified")
         templates = [name for name in names
                      if name.endswith("/MinionRush-native-template-unsigned.zip")]
         if len(templates) != 1:
@@ -101,6 +107,9 @@ def verify_mac(app: Path, version: str) -> None:
         raise ValueError("Mac portable Python license is missing")
     if not (resources / "Runtime/LICENSE").is_file():
         raise ValueError("Mac project license is missing")
+    notices = resources / "Runtime" / RUNTIME_LICENSE_NAME
+    if (not notices.is_file() or file_sha256(notices) != RUNTIME_LICENSE_SHA256):
+        raise ValueError("bundled MinGW-w64 runtime attribution is missing or modified")
     info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
     if info.get("CFBundleShortVersionString") != version:
         raise ValueError("Mac Builder version does not match release")

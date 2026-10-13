@@ -30,7 +30,7 @@ release 1.8.1g. See `docs/LEGAL.md`.
   SDK, developer tools and local Python interpreter.
 
 The currently published [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
-contain the older 1.1.0 Mac-only Xcode importer. The corrected 1.2.2 portable
+contain the older 1.1.0 Mac-only Xcode importer. The 1.2.3 portable
 Mac/Windows candidate is being validated and is not a published Release.
 Its generic unsigned iOS template is compiled without the original game,
 precomputed game address tables, game assets, or the private Hungarian XLIFF.
@@ -41,6 +41,12 @@ See [release scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
 
 ## Runtime test status
 
+Version 1.2.3 is a packaging and license-notice update; it does not
+modify the iOS engine, loading overlay or ARM64 compiler. The official
+MinGW-w64 runtime copyright notices are retained in the Windows kit,
+with a checksum check before packaging. The 1.2.2 working baseline
+remains available privately for comparison.
+
 Version 1.2.1 fixed a black screen caused by the missing
 `MR_RUNTIME_PROFILE` setting in the iOS entry point. The owner confirmed that an IPA built with
 1.2.1 started on a physical iPhone.
@@ -49,7 +55,8 @@ Version 1.2.2 adds a startup overlay with game-data, graphics and engine
 initialization messages. It closes after the first rendered frame rather
 than a fixed delay. The overlay and gameplay rendering were tested on the
 iOS 27.0 Simulator; the profile-based runtime was also tested on iOS 18.6.
-A physical-device test of the 1.2.2 overlay is still outstanding.
+The owner confirmed the 1.2.2 loading overlay and gameplay on an iPhone.
+Audio, save continuity and a clean-device install were not separately audited.
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -106,12 +113,12 @@ the native ARM64 code, block map, engine bindings, and game assets locally.
 The phone reads a validated address profile and executes the already compiled
 ARM64 blocks; it never translates or JIT-compiles original instructions.
 
-**Mac portable candidate (1.2.2):** self-contained, ad hoc signed arm64
+**Mac portable candidate (1.2.3):** self-contained, ad hoc signed arm64
 `.app` with SwiftUI, pinned Python, host AOT compiler and unsigned generic
 iOS template. No Xcode is required to make an unsigned IPA. The optional
 Xcode signing/install route is separate. See [Mac Builder](docs/INSTALLER.md).
 
-**Windows portable candidate (1.2.2):** self-contained Windows x64 `.exe`
+**Windows portable candidate (1.2.3):** self-contained Windows x64 `.exe`
 with native Win32 UI, embedded Python, host AOT compiler and the same
 unsigned generic iOS template. Windows 11 ARM uses x64 emulation. Sign the
 result with a separately installed signing tool. See
@@ -139,7 +146,7 @@ See [release scope](docs/RELEASE_SCOPE.md) for the test record.
 The remaining rights and license-review blockers are inventoried in
 [third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
 
-The 1.2.2 binaries must not be described as legally cleared or fully
+The 1.2.3 binaries must not be described as legally cleared or fully
 device-tested until the outstanding rights and physical-device checks
 described in [release scope](docs/RELEASE_SCOPE.md) are complete.
 

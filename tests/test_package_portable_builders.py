@@ -41,7 +41,9 @@ def synthetic_windows(path: Path, names: list[str]) -> None:
             archive.writestr(name, generic_template() if name.endswith(
                 "MinionRush-native-template-unsigned.zip") else
                 (b"synthetic Python license" * 80 if name.endswith("/python/LICENSE.txt")
-                 else b"synthetic non-game data"))
+                 else (ROOT / "third_party_licenses/mingw-w64-runtime-COPYING.txt").read_bytes()
+                 if name.endswith("/mingw-w64-runtime-COPYING.txt") else
+                 b"synthetic non-game data"))
     payload = packed.getvalue()
     launcher = b"MZ" + b"\0" * 62
     path.write_bytes(launcher + payload + FOOTER.pack(
@@ -55,6 +57,7 @@ NAMES = [
     "MinionRush-Portable-Windows/python/python314.zip",
     "MinionRush-Portable-Windows/python/LICENSE.txt",
     "MinionRush-Portable-Windows/runtime/LICENSE",
+    "MinionRush-Portable-Windows/runtime/third_party_licenses/mingw-w64-runtime-COPYING.txt",
 ]
 
 
@@ -103,6 +106,14 @@ class PortableBuilderPackagingTests(unittest.TestCase):
                 synthetic_windows(exe, [item for item in NAMES if not item.endswith(removed)])
                 with self.assertRaisesRegex(ValueError, "license"):
                     verify_windows(exe)
+
+    def test_rejects_missing_runtime_attribution(self):
+        with tempfile.TemporaryDirectory() as location:
+            executable = Path(location) / "Builder.exe"
+            synthetic_windows(executable, [x for x in NAMES
+                                           if not x.endswith("/mingw-w64-runtime-COPYING.txt")])
+            with self.assertRaisesRegex(ValueError, "runtime attribution"):
+                verify_windows(executable)
 
     def test_rejects_modified_embedded_kit(self):
         with tempfile.TemporaryDirectory() as location:

@@ -5,7 +5,7 @@ Two separate IPA preparation paths are supported in the source tree:
 - **Mac (maintained):** The portable SwiftUI Builder creates an unsigned
   IPA without Xcode, and optionally signs/installs via Xcode and the owner's
   Apple signing account. See [INSTALLER.md](INSTALLER.md).
-- **Windows (portable Builder 1.2.2 candidate):** A portable builder takes
+- **Windows (portable Builder 1.2.3 candidate):** A portable builder takes
   the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
   blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
   packages the original assets. The EXE does not include the private

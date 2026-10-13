@@ -229,8 +229,19 @@ def check_python_syntax(tree: dict[str, str]) -> None:
                 raise SystemExit(f"invalid Python source: {relative}: {exc}") from exc
 
 
+RUNTIME_LICENSE = "third_party_licenses/mingw-w64-runtime-COPYING.txt"
+RUNTIME_LICENSE_SHA256 = "1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f"
+
+
 def check_text_style(tree: dict[str, str]) -> None:
-    found = sorted(relative for relative, source in tree.items() if not source.isascii())
+    # Retain the exact upstream license, including its copyright signs.
+    # All project-authored text must remain ASCII.
+    license_text = tree.get(RUNTIME_LICENSE)
+    if (license_text is None or hashlib.sha256(license_text.encode("utf-8")).hexdigest()
+            != RUNTIME_LICENSE_SHA256):
+        raise SystemExit("MinGW-w64 runtime license does not match the upstream notice")
+    found = sorted(relative for relative, source in tree.items()
+                   if relative != RUNTIME_LICENSE and not source.isascii())
     if found:
         raise SystemExit("non-ASCII text in maintained source: " + ", ".join(found))
 
