@@ -28,7 +28,7 @@ license audit or actual redistribution rights.
 - [x] Both Builders generate user-specific native ARM64 code locally, no on-device JIT.
 - [x] Mac/Windows bundle-integrity tests and source checks; bundled Python and project license notices present.
 - [x] iOS 18.6 and iOS 27 simulator rendering tests for the profile-based runtime.
-- [x] Windows 11 ARM/x64-emulation EXE self-test and native GUI Create IPA on the 1.2.2 candidate; 1,369 entries and validated native v3 profile.
+- [x] Windows 11 ARM/x64-emulation EXE self-test and native GUI Create IPA on both 1.2.2 and 1.2.3; 1,369 entries and validated native v3 profile.
 - [ ] Collect evidence of the historical 1.8.1g original ZIP's lawful acquisition and its applicable license terms; evaluate user-side copying/adaptation, including relevant local exceptions.
 - [ ] Have qualified legal counsel assess whether the particular AOT transformation, public symbol/interface use and individually generated IPAs are permitted under Hungarian/EU law and any controlling contract.
 - [ ] Verify trademark/product naming and rights if the public Builder is advertised under a third-party game name or character artwork.
@@ -36,7 +36,7 @@ license audit or actual redistribution rights.
 - [ ] Finish independent review of all bundled Python extensions, GCC/toolchain components and any other required copyright notices.
 - [x] Intended channel is direct GitHub Releases download, not App Store submission. Apple 5.2 remains applicable if an App Store submission is later pursued.
 - [ ] Assess the conditions for direct downloadable Windows/macOS Builders, including the actual product name and game-specific interfaces.
-- [x] Check signing state: Mac Gatekeeper rejects the ad hoc signature; no Developer ID identity is installed. Windows Get-AuthenticodeSignature reported NotSigned for 1.2.2.
+- [x] Check signing state: Mac Gatekeeper rejects the ad hoc signature; no Developer ID identity is installed. Windows Get-AuthenticodeSignature reported NotSigned for the final 1.2.3 Builder.
 - [ ] Obtain suitable signing identities and decide whether to issue Developer ID/notarized Mac and Authenticode-signed Windows packages; test both on clean machines.
 - [x] Owner reported successful physical iPhone gameplay and loading overlay from the 1.2.2 Windows-built IPA.
 - [ ] Finish audio, save continuity, accessibility, orientation and failure-path device tests; do not overwrite existing saves without backup.

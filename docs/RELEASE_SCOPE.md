@@ -43,15 +43,25 @@ Only that upstream license file is exempted from the ASCII source rule.
 
 The owner reported that the 1.2.2 Windows-built IPA launched, displayed
 its loading overlay and ran on a physical iPhone. No code-side regression
-is expected from this notice-only update, but 1.2.3 must still be checked
-as a packaged deliverable before public distribution.
+was introduced by this notice-only update. The actual 1.2.3 packages
+were subsequently built and validated on Mac and Windows, including the
+entire original-ZIP-to-unsigned-IPA process.
 
 On the development Mac, only Apple Development and Apple Distribution
 signing identities are installed; no Developer ID certificate is
 available. The ad hoc-signed Mac Builder fails a Gatekeeper assessment.
-The 1.2.2 Windows executable was checked in the guest using
+The final 1.2.3 Windows executable was checked in the guest using
 Get-AuthenticodeSignature and returned NotSigned. Neither application
 is currently ready for a friction-free, publisher-authenticated download.
+
+The packaged 1.2.3 Mac Builder passed ZIP-to-IPA conversion and generated
+1,369 entries and 942,744 native blocks. The 1.2.3 Windows EXE passed
+its SHA-256 and self-test directly on the UTM Z: share. Its interactive
+Create IPA action then produced an unsigned 367,839,044-byte IPA, independently
+verified with the v3 profile: 109 bindings, 942,744 blocks, and
+164,353,244 bytes of ARM64 code. The guest test IPA and scheduled task were
+removed afterward. The Z: share now contains only the 1.2.3 Builder and
+unaltered original ZIP.
 
 ### 1.2.2 actual-stage loading view
 

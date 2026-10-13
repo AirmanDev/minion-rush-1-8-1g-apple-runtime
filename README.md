@@ -138,7 +138,7 @@ the full portable Mac Builder is packaged using
 `tools/build_portable_mac_builder.py`. Unsigned IPA creation is disabled
 in the separate asset-free Xcode-only installer.
 
-The 1.2.2 Mac and Windows Builders passed unsigned IPA creation from the
+The 1.2.3 Mac and Windows Builders passed unsigned IPA creation from the
 original ZIP. The Windows test used the native GUI in a Windows 11 ARM VM
 with x64 emulation. IPA contents and checksums were checked separately.
 See [release scope](docs/RELEASE_SCOPE.md) for the test record.

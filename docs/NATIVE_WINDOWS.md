@@ -141,9 +141,12 @@ portable EXE self-test passed, and its normal Win32 GUI generated a
 367,839,044-byte native unsigned IPA through Create IPA using the
 owner's local source ZIP. Independent Windows ZipArchive and v3 profile
 header checks passed (1,369 entries; 109 bindings; 942,744 AOT blocks;
-164,353,244 bytes of ARM64 code). The loading overlay still needs a
-physical-device test, including audio and save continuity. Tests of older builds do not establish 1.2.2
-device compatibility.
+164,353,244 bytes of ARM64 code). The owner separately confirmed the
+1.2.2 loading overlay and running gameplay on a physical iPhone; audio
+and save continuity require further verification. The 1.2.3 Windows EXE
+also passed its SHA-256 self-test and native GUI ZIP-to-IPA conversion,
+producing the same 1,369-entry, 367,839,044-byte IPA on the Windows VM.
+The packaged 1.2.3 license-only update does not alter the iOS runtime.
 
 The Windows candidate is not Authenticode signed. Apple-side code signing
 or sideloading requires the user's own account; the Builder does not sign.
