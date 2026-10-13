@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unpack a pinned, relocatable Apple Silicon Python for a private Mac app."""
+"""Unpack a pinned, relocatable Apple Silicon Python for a portable Mac app."""
 
 from __future__ import annotations
 

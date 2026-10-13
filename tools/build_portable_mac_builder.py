@@ -30,9 +30,9 @@ def build_portable_app(source: Path, template: Path, catalog: Path | None,
                                 or catalog.name != "hu.xlf"):
         raise ValueError("private Hungarian hu.xlf is invalid")
     if output.exists() or output.is_symlink() or output.suffix != ".app":
-        raise ValueError("private output must be a new .app")
+        raise ValueError("portable output must be a new .app")
     if output.parent.is_symlink() or not output.parent.is_dir():
-        raise ValueError("private output parent is invalid")
+        raise ValueError("portable output parent is invalid")
     try:
         shutil.copytree(source, output, symlinks=False)
         kit = output / "Contents/Resources/NativeKit"
@@ -78,7 +78,7 @@ def main() -> int:
         build_portable_app(args.app, args.template, args.hungarian_xlf, args.output,
                           args.python_runtime_archive)
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
-        print("Mac private Builder packaging failed:", exc, file=sys.stderr)
+        print("Mac portable Builder packaging failed:", exc, file=sys.stderr)
         return 1
     print("Portable Mac Builder:", args.output)
     print("It requires a legally obtained original ZIP to generate an IPA.")

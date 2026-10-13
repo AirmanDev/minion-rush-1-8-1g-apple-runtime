@@ -139,7 +139,7 @@ def package(app: Path, windows: Path, output: Path, version: str) -> None:
     for line in (output / "SHA256SUMS.txt").read_text().splitlines():
         digest, filename = line.split("  ", 1)
         if file_sha256(output / filename) != digest:
-            raise ValueError("private release checksum mismatch")
+            raise ValueError("portable release checksum mismatch")
     print("Validated portable Mac and Windows Builders:", output)
     print("No complete game IPA or original game ZIP bundled.")
     print("Legal and device review required before public publishing.")
@@ -155,7 +155,7 @@ def main() -> int:
     try:
         package(args.app, args.windows_exe, args.output, args.version)
     except (OSError, ValueError, subprocess.SubprocessError, zipfile.BadZipFile) as e:
-        print(f"Private Builder package rejected: {e}", file=sys.stderr)
+        print(f"Portable Builder package rejected: {e}", file=sys.stderr)
         return 1
     return 0
 
