@@ -4,9 +4,13 @@ Review updated: 2026-10-13. Scope: the historical Minion Rush 1.8.1g
 compatibility runtime, native Windows ZIP-to-IPA builder, source-derived
 iOS executable template, optional translations and distribution packaging.
 
-This is an independent project, not affiliated with Gameloft, Illumination
-or Universal Products & Experiences. The Minion Rush name identifies the
-historical title being studied, not an official or endorsed product.
+This is an independent, unofficial compatibility tool, not affiliated with
+Gameloft, Illumination or Universal Products & Experiences. The desktop app
+uses the product title "Unofficial IPA Builder". "Minion Rush 1.8.1g" is used
+to identify the compatible original game, not to claim approval or ownership.
+The ZIP and application bundle filenames retain their existing identifiers
+for compatibility. The app icon is drawn from project source as a package
+and arrow; original character imagery and game logos are not included.
 
 ## Project source and third-party rights
 
@@ -27,25 +31,74 @@ A SHA-256 engine fingerprint and original file-format description can
 support verification. Neither proves permission to use or redistribute
 the corresponding protected content.
 
-## Private Windows build
+## Portable generic Windows build
 
-The native Win32 GUI accepts a user's separately obtained original ZIP.
-It delegates to the existing local Python validator, AOT translator and
-unsigned IPA assembler. The user selects the output location. The optional
-hu.xlf catalog stays local. No game content or Apple Account credentials
-are bundled or sent to a remote service.
+The portable native Win32 GUI imports a user's separately obtained original
+ZIP. It uses the bundled Python interpreter and host AOT compiler to
+generate all ARM64 machine code, engine binding values and block-map offsets
+only on the user's computer, then assembles a local unsigned IPA. The generic
+template is compiled without game-derived addresses, game assets, the original
+game code or a private XLIFF source catalog. The public candidate includes
+a target-only Hungarian language pack without the original English source
+strings. That pack is compiled solely with the user's local original ZIP;
+its distribution is a separate translation-rights question. No source APK,
+Apple Account credentials or user content are uploaded.
 
-The prebuilt iOS template is described as asset-free and uses a zeroed
-code section. It still contains a static game-derived block map and
-binding addresses. Such derived information may itself raise copyright
-and contractual questions. Technical removal of assets and original
-instructions does not establish that the template is cleared for public
-distribution. The complete Windows kit includes the template and is
-therefore held back on the same basis.
+The generated IPA still contains the user's game assets and translated
+machine code, and is a distinct legal issue from the Builder software.
+The public target-only Hungarian pack also raises an independent translation
+rights question. Excluding the original English text from the pack does not
+establish ownership of or authorization to distribute the translation.
+Signing it externally does not grant redistribution rights.
 
-The generated IPA contains the user's private game assets and translated
-machine code and cannot be treated as a publicly distributable output.
-External sideload signing does not grant redistribution rights.
+## Separation of the Builder from user-supplied game content
+
+The published repository and generic Mac/Windows packages distribute the
+project's compatibility code, host tools, interpreter dependencies and a
+generic, game-data-free iOS template. They do not distribute the historical
+game archive, original executable or assets, game-derived ARM64 output,
+binding addresses, a completed IPA or editable private XLIFF. The included
+Hungarian target-only pack contains translated text that may itself be
+copyright-relevant. The user supplies an independently obtained archive
+locally; compilation and IPA packaging run
+on that user's computer without downloading the original game from this
+project. The resulting IPA is not part of any public release.
+
+This narrows direct redistribution of protected game content, but it is not
+a blanket legal exemption for creating adaptation tools or using the tools.
+A lawfully held archive is relevant to lawful-user exceptions, but is not
+itself permission to translate the whole executable. A user's own conversion,
+any relevant contractual restrictions, the necessary scope of interoperability
+or error repair, and the project's distribution can require separate analysis.
+The repository must not promise that every resulting IPA is authorized.
+
+## Interface identifiers and referential trademark use
+
+`src/native/game_symbols.def` lists required JNI and C++ symbol names,
+including Android package identifiers containing "gameloft". They are
+lookup keys used to resolve binding addresses from the user-provided input.
+The distributed generic code slot contains no game-derived addresses or
+translated engine instructions. These functional identifiers are not
+themselves a shipped copy of the executable, but their origin and context
+matter. Removing or arbitrarily renaming them would break native conversion
+and is not supported by a technical or legal finding.
+
+CJEU C-406/10 distinguishes unprotected functionality, programming language
+and file formats from protected program expression. It does not categorically
+clear copied executable instructions, individual identifiers or decompilation.
+The use here was audited for purpose and packaging; it is not an assertion of
+legal ownership of game APIs.
+
+EU Regulation 2017/1001 Article 14(1)(c) permits certain third-party
+references to marks to identify goods or their intended purpose, subject to
+honest practices in Article 14(2). The desktop product name is therefore
+neutral, while the compatible game's name remains in the help text, file
+selection and documentation. The repository and release assets must not use
+official game logos, Minion character art, or wording implying endorsement.
+This limits confusion; it is not a trademark license or a legal ruling.
+
+Primary trademark text:
+- https://eur-lex.europa.eu/eli/reg/2017/1001/oj/eng
 
 ## Gameloft license and acquisition history
 
@@ -73,10 +126,15 @@ decompilation only where indispensable to obtain information necessary
 to make an independently created program interoperate with others.
 The conditions include lawful access, unavailable interoperability
 information, limits to necessary program portions and restrictions
-on later use or communication of the information.
+on later use or communication of the information. The CJEU in Top System
+(C-13/20) also acknowledged narrowly necessary decompilation for error
+repair by a lawful acquirer, but did not authorize distribution of a
+translated copy of the whole application to third parties.
 
-Hungary's Copyright Act, Act LXXVI of 1999, sections 59 and 60,
-implements specific software exceptions and constraints. In particular,
+Hungary's Copyright Act, Act LXXVI of 1999, section 58(2) expressly
+includes software rewriting from one programming language into another
+among the acts governed by the adaptation provisions. Sections 59 and 60
+implement specific software exceptions and constraints. In particular,
 section 60 does not permit using interoperability information for an
 unrelated purpose or for making a substantially similar program.
 
@@ -93,88 +151,59 @@ exception alone resolves this particular project.
 
 Primary sources:
 - https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0024
-- https://njt.jog.gov.hu/jogszabaly/1999-76-00-00
+- https://njt.hu/jogszabaly/1999-76-00-00.42
+- https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62020CJ0013
 
-## Private Mac Builder
+## Portable generic Mac Builder
 
-The private macOS Builder adds a prebuilt asset-free iOS template and the
-locally supplied Hungarian XLIFF file to the public macOS application.
-Although it does not embed the original game APK, the template contains
-engine-derived metadata. The translated XLIFF can also contain protected
-game text. Neither should be treated as freely redistributable.
+The macOS portable Builder uses the same asset-free, address-free
+iOS v3 template and host AOT assembly as Windows. The pinned arm64
+CPython 3.14.8 runtime, C compiler, SwiftUI application and iOS SDK-built
+generic template ship locally. The original game ZIP and the private
+Hungarian language catalog do not ship in the portable package.
 
-The private Mac .app includes arm64 CPython 3.14.8 from
-python-build-standalone. Retain its CPython license, bundled dependency
-licenses and upstream provenance. The pinned archive SHA-256 is verified before
-packaging; the embedded Mach-O libraries and outer .app are ad-hoc signed.
-This is not notarization or an App Store distribution.
+Retain CPython's license and dependent licenses and verify the upstream
+archive fingerprint and code signature. The assembled Mac .app is ad hoc
+signed; this is not notarization.
 
-The private .app is ad-hoc signed and is not Apple-notarized. It must not
-be placed in a public download or a GitHub release without independent
-rights clearance, binary license review and applicable macOS signing and
-notarization work. The original ZIP remains separately supplied by the
-user. A successful on-device or private build test does not authorize
-public distribution.
+A specific inventory and validation gate is described in
+[RELEASE_SCOPE.md](RELEASE_SCOPE.md).
 
-## Windows binary licensing and distribution
+## Reviewed rights sources and packaging evidence
 
-The kit bundles an official Python embeddable runtime. Retain its
-license text and applicable copyright/attribution notices and check
-every separately bundled dependency before public distribution.
-Review the compiler, native GUI, template and archive contents against
-a complete file inventory. Do not assume that an Apache license on
-this repository licenses third-party runtime binaries.
-
-Windows SmartScreen may warn about a new executable even after valid
-publisher signing. Unsigned executables may additionally be blocked
-by Smart App Control on some systems. Provide checksums and a verified
-publisher identity where appropriate; never instruct users to disable
-Windows security protections to run the tool.
-
-Sideloadly is an independent signing and installation utility. Do not
-bundle it, claim an association, or collect Apple Account credentials
-through the project's GUI.
-
-References:
-- https://docs.python.org/3/license.html
-- https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation
-- https://sideloadly.io/
-
-A detailed inventory of the current Mac/Windows private packages and
-the two options for a public full Builder release are maintained in
-[RELEASE_SCOPE.md](RELEASE_SCOPE.md). The private packages were built and
-tested locally; readiness to run does not establish distribution rights.
+The project-specific rights and license-release checklist is maintained in
+[THIRD_PARTY_AND_RELEASE_GATE.md](THIRD_PARTY_AND_RELEASE_GATE.md).
+The candidate includes CPython, project and upstream MinGW-w64 runtime
+licensing notices on Mac/Windows;
+review of remaining bundled third-party dependencies and toolchain notices remains open.
+The European Court of Justice's judgment C-406/10 distinguishes program
+functionality and data formats from protectable source/object-code
+expression, but does not make all game-derived interfaces automatically
+free to use. Apple's App Review Guideline 5.2 demands third-party rights
+for a third-party game submitted through that channel. A standalone
+Builder distributed from GitHub is a different product and distribution
+channel, yet remains subject to applicable intellectual-property and
+contractual rules. A successful user's private iPhone gameplay test does
+not prove redistribution rights.
 
 ## Release decision
 
-The public GitHub release may include the project source and the asset-free,
-ad hoc signed Mac installer already supported by the public source manifest.
-This public installer uses the separate Xcode signing/import workflow and
-does not contain the private unsigned iOS template, compiler, Hungarian
-catalog or original game data. Its unsigned IPA action is unavailable.
-The private portable Mac and Windows Builder binaries must stay off the public
-release until the template-derived metadata, language translation and all
-bundled third-party component licenses receive appropriate review.
+The already-published 1.1.0 RC1 is a distinct, Xcode-based Mac-only
+installer. The portable Builder candidate supplies portable native IPA creation
+on both Mac and Windows using a generic runtime template without
+precomputed game-derived bindings or a bundled private XLIFF.
 
-Public Windows GUI and complete private portable-kit publication is on hold
-until these issues are resolved:
+Removing those bundled materials materially reduces direct redistribution
+risks, but does not determine whether every private ARM32-to-ARM64 game
+translation, generated IPA, reverse engineering act or historical
+contract is permitted. A case-specific legal review is still necessary
+before publicly representing full distribution clearance.
 
-1. Confirm lawful acquisition, the historical license and the exact
-   uses for which copyright exceptions or authorization are claimed.
-2. Obtain qualified review of the source-derived block map, binding
-   metadata and complete asset-free template before redistributing it.
-3. Check licenses and attribution obligations for every shipped binary.
-4. Verify build provenance, dependency integrity, checksums, signing
-   and absence of private materials in the release archive.
-5. Run interactive native Windows GUI tests, Windows x64 and ARM64
-   compatibility checks, failure/cancellation/cleanup scenarios, and
-   physical-device sideload and signing-renewal tests.
+Windows GUI E2E testing and local package checksum validation are complete
+for the 1.2.3 candidate. Public release still requires completing the
+third-party notice and distribution-rights assessment, inspecting exposed
+engine symbols, and additional device regressions (including iPad, save
+continuity, accessibility and failure handling).
 
-Windows 11 ARM private tests on 2026-10-12 and 2026-10-13 confirmed
-unsigned IPA preparation and Sideloadly installation on one device.
-The newer GUI also passed local ZIP-to-IPA and overwrite testing.
-This does not establish public redistribution rights or compatibility
-across other machines and devices.
-
-This is a documented release assessment, not legal advice. Public
-distribution needs appropriate legal review or rightsholder permission.
+Do not publish original game ZIPs, generated user IPAs, saved games,
+private XLIFF catalogs, or account credentials.

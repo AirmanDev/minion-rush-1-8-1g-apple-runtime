@@ -1,5 +1,9 @@
 # Native installer
 
+The Mac interface is titled "Unofficial IPA Builder" and identifies
+Minion Rush 1.8.1g only as the compatible input. It is not affiliated
+with or endorsed by the game's rightsholders.
+
 The Mac installer is a native SwiftUI application for creating an unsigned
 IPA from the user-owned original 1.8.1g ZIP. Its optional Xcode workflow
 continues to sign and install on connected Apple devices. It is not the game,
@@ -8,16 +12,17 @@ an asset downloader, or a signing service.
 ## Requirements
 
 - Apple Silicon, macOS 26.6 or later; macOS 27 is included in the target range
-- For unsigned IPA creation, the private Mac Builder includes a verified AOT
+- For unsigned IPA creation, the portable Mac Builder includes a verified AOT
   translator and prebuilt unsigned iOS template; Xcode is not required at runtime.
 - For the optional signed export/install, Xcode 27, an Apple Account signed
   into Xcode and a paired iPhone or iPad remain required.
 - A legally obtained, unmodified 1.8.1g release ZIP containing its APK and data
 - Space for extraction, validated assets, compiled code, and Xcode build products
 
-The private Mac .app includes its own arm64 CPython 3.14 runtime, the native
-AOT translator, the unsigned iOS template and the Hungarian catalog. The user
-does not need to install Python, Homebrew, Xcode or anything else to build an
+The portable Mac .app includes its own arm64 CPython 3.14 runtime, the native
+AOT translator and a generic unsigned iOS template. The Builder interface
+supports Hungarian and includes a target-only translation pack, not the
+private editable XLIFF or original English source texts. The user does not need to install Python, Homebrew, Xcode or anything else to build an
 unsigned IPA; the only user-supplied input is the original 1.8.1g ZIP. Apple
 signing credentials, Xcode and device pairing remain required only for the
 optional signed IPA export or direct iPhone installation. The private app is
@@ -26,14 +31,40 @@ request explicit approval if the app carries download quarantine.
 macOS 26.6 or later is required.
 This does not change the game executable's macOS 14 deployment minimum.
 
+## Portable Mac download and integrity
+
+The 1.2.3 portable Mac ZIP is a local candidate, not yet a public Release.
+After rights clearance and publication, download both
+MinionRush-Builder-macOS-arm64.zip and SHA256SUMS.txt from the same
+GitHub Release. In Terminal run:
+
+    shasum -a 256 MinionRush-Builder-macOS-arm64.zip
+
+Compare the result with the Mac archive line in SHA256SUMS.txt. This
+checks integrity against the published digest, not publisher identity.
+Extract the .app, select your lawfully obtained original ZIP and create
+the unsigned IPA. macOS may require explicit per-app approval in System
+Settings > Privacy & Security > Open Anyway. Do not disable Gatekeeper
+or remove download quarantine; managed Macs may prohibit approval.
+Sign the resulting IPA separately before installation. Back up existing
+saves before changing an app identifier or signing team.
+
 ## Build and use
+
+The generic v3 template is created once on the developer Mac without
+supplying the original game:
+
+```bash
+mkdir -p build/ios-generic
+./tools/build_ios_template.sh \
+  "$PWD/build/ios-generic/MinionRush-generic-template-unsigned.zip"
+```
 
 ```bash
 ./tools/build_installer.sh
 ./tools/test_installer.sh
-python3 tools/build_private_mac_builder.py --app "build/installer/Minion Rush Installer.app" \
-  --template "build/native-template/MinionRush-native-template-unsigned.zip" \
-  --hungarian-xlf "localizations/hu.xlf" \
+python3 tools/build_portable_mac_builder.py --app "build/installer/Minion Rush Installer.app" \
+  --template "build/ios-generic/MinionRush-generic-template-unsigned.zip" \
   --python-runtime-archive "build/private-runtime-cache/cpython-3.14.8-aarch64-macos.tar.gz" \
   --output "build/private/Minion Rush IPA Builder.app"
 open "build/private/Minion Rush IPA Builder.app"
@@ -45,21 +76,23 @@ release](https://github.com/astral-sh/python-build-standalone/releases/tag/20261
 and the macOS Apple Silicon CPython 3.14.8 install_only_stripped archive.
 The packager checks its SHA-256 against
 `ed14e9042f36c0aa18383f5d9729bcbf17847e842666a793b5a5a5d8505c0ca1`
-before embedding the runtime. CPython and dependency licenses are retained
-in the embedded library. The private .app uses the embedded Python directly
+before embedding the runtime. CPython's original license and pinned component
+notices are included in the portable package's PythonRuntime and Runtime
+license directories. The portable .app uses the embedded Python directly
 and refuses to run without it, rather than silently using the user's Python.
 Only the standard library modules required by the Builder are packaged:
 unused Tcl/Tk, pip, IDLE, `ensurepip`, and their development files are
 excluded. Their removal does not modify the verified upstream archive,
-which is kept as a developer-side build input. The private app is about
-56 MB, and its unsigned IPA workflow does not create redundant cached
+which is kept as a developer-side build input. The portable app is about
+51 MB, and its unsigned IPA workflow does not create redundant cached
 public source snapshots. The Xcode signing path retains source validation.
 
-The public app is built without private assets or a native iOS template.
+The separate public Xcode-only app is built without game assets or a native iOS template.
 Its **Create IPA** action is therefore disabled; it supports the existing
 Xcode-based import, signed IPA export, and device installation instead.
-The separately built private app includes a verified unsigned template,
-native ARM64 translator, Python runtime, and optional Hungarian catalog.
+The separately built portable app includes a verified game-independent iOS
+template, the native ARM64 translator, and an embedded Python runtime.
+No translated game text or precomputed engine-derived metadata is bundled.
 It does not embed the original game ZIP. In the private app, select your ZIP
 and use **Create IPA** for unsigned output. For Xcode signing, choose
 **Import ZIP for signed installation**. Existing assets are replaced only after
@@ -142,7 +175,8 @@ owner-only permissions and persist after the app closes.
 The public app includes the maintained public source, bilingual UI contract,
 native executable and generic project icon. The optional private Mac Builder
 additionally packages an unsigned iOS template, a host-native ARM compiler and
-the owner-provided Hungarian catalog. The private resources are SHA-256-verified.
+the locally configured, optional user-provided catalog. The bundled
+runtime and compiler are SHA-256-verified.
 Neither version includes the original release ZIP, Apple credentials or
 provisioning profiles; public distribution of the private kit needs separate
 rights clearance.
@@ -171,10 +205,12 @@ and trailing newlines cannot pass one layer and fail another.
 
 ## Native Mac and Windows consistency
 
-The private Mac Builder offers the same primary workflow as Windows: choose
-the original ZIP, select the IPA destination, toggle the included Hungarian
-language, create an unsigned IPA and inspect the detailed log. English and
-Magyar switch the builder interface separately from the IPA's languages.
+The portable Mac Builder offers the same primary workflow as Windows:
+choose the original ZIP and unsigned IPA destination, create the IPA and
+inspect the detailed log. The optional game-language toggle is enabled
+by the included Hungarian target-only translation pack.
+English and Magyar switch the Builder interface independently of the
+game's language resources.
 The primary action is gold; selected language indicators are solid green,
 with no tick. Both apps use the same icon source. The shared palette is
 `config/builder_theme.json`, which generates native C and Swift color
@@ -189,30 +225,32 @@ Xcode and Apple provisioning, not a Windows sideloading dependency.
 The macOS ZIP and save dialogs retain native focus, accessibility and
 overwrite-confirmation behavior. Logs can be copied, opened and exported.
 
-Build the private version only with locally authorized inputs:
+Build the portable v3 Builder without private game material:
 
 ```bash
-python3 tools/build_private_mac_builder.py \
+python3 tools/build_portable_mac_builder.py \
   --app "build/installer/Minion Rush Installer.app" \
-  --template "build/native-template/MinionRush-native-template-unsigned.zip" \
-  --hungarian-xlf "localizations/hu.xlf" \
+  --template "build/ios-generic/MinionRush-generic-template-unsigned.zip" \
   --python-runtime-archive "build/private-runtime-cache/cpython-3.14.8-aarch64-macos.tar.gz" \
   --output "build/private/Minion Rush IPA Builder.app"
 ```
 
-The private output path must not exist before packaging. The archive is
-pinned and hash-checked, and the resulting private `.app` is ad hoc signed.
+The portable output path must not exist before packaging. The archive is
+pinned and hash-checked, and the resulting portable `.app` is ad hoc signed.
 
-This is a private, ad-hoc signed artifact, not a notarized public release.
+This is an ad hoc signed candidate, not a notarized public release.
 The project-owned executable contains no original game data before a user
 supplies the game ZIP. The unsigned native IPA is assembled using the same
 prepare_native_aot.py and native_ipa.py modules as the Windows builder.
-The private bundle validates its compiler, template and catalog hashes.
+The portable bundle validates its compiler and generic template hashes and
+an optional separately supplied language catalog, if present.
 Its embedded Python runtime is version- and checksum-pinned, independently
 ad-hoc signed and relocatable inside the signed .app.
 The previous IPA is protected: a candidate is completed and verified in an
 isolated destination-side directory before atomic replacement.
-The original ZIP must always be supplied by the user.
+The original ZIP must always be supplied by the user. The 1.2.3 generic
+runtime is compiled independently of that ZIP; its engine-specific map and
+binding values are generated only during the user's local IPA build.
 
 ## Verification and distribution
 
@@ -228,7 +266,7 @@ IPA export tests cover bundle layout, byte and executable-permission preservatio
 invalid input, rejected links, atomic replacement, and cleanup after failed writes.
 These checks do not validate a third-party signing tool or Windows USB drivers.
 
-Current Builder validation (2026-10-13) includes native SwiftUI process,
+Historical Builder validation (1.1.0, 2026-10-13) includes native SwiftUI process,
 control and layout tests, Mac and Windows source/format checks, and an
 end-to-end private Mac IPA build and overwrite using the original ZIP. The
 resulting unsigned IPA passed ZIP-integrity and Hungarian resource checks.
@@ -268,17 +306,15 @@ detects changes relative to that file; it does not authenticate the publisher.
 Never ask users to disable Gatekeeper, remove quarantine, or override a malware
 or invalid-signature alert.
 
-Before publishing a binary release, test the browser-downloaded ZIP on a clean
-Mac: checksum, extraction, first-launch warning, manual approval, import, and
-installation. Local build and archive verification do not cover that Gatekeeper
-workflow. A clean-Mac download test remains a release check.
+A browser-downloaded ZIP should also be tested on a clean Mac: checksum,
+extraction, first-launch warning, optional user approval, and ZIP-to-IPA
+creation. This is a documentation and compatibility check, not a requirement
+to obtain publisher credentials. Approval may be unavailable on managed Macs.
 
-Developer ID signing and notarization are optional for a contributor with paid
-membership who wants Apple's standard verified distribution path. The builder
-accepts `--identity "Developer ID Application: Your Name (TEAMID)"` and adds a
-secure timestamp for that identity. Such a release needs notarization, stapling,
-and a fresh final archive; the ad-hoc packaging command does not perform those
-steps. Neither workflow changes macOS or device signing/trust protections.
+The release build uses ad hoc signing only. The packaging script has no
+publisher-signing or notarization mode. This does not affect the independent
+signing required to install an IPA on an iPhone or iPad. Neither the Builder
+nor this guide disables operating-system trust protections.
 
 Apple references are listed in `TECHNICAL_SOURCES.md`. Asset ownership and the
 project's legal scope are described in `LEGAL.md`.

@@ -1,5 +1,5 @@
 {
-  "title": "Minion Rush IPA Builder",
+  "title": "Unofficial IPA Builder",
   "subtitle": "Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
   "minimumWidth": 700.0,
   "signingRules": {
@@ -75,8 +75,8 @@
     "sourceHint": "Drop or select the original ZIP",
     "outputLabel": "Save unsigned IPA to",
     "languageTitle": "Additional languages in IPA",
-    "languageHint": "Original languages are always included",
-    "hungarian": "Magyar (Hungarian)",
+    "languageHint": "Original languages stay available. Includes Magyar.",
+    "hungarian": "Include additional languages",
     "openOutput": "Open output folder",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
@@ -98,7 +98,7 @@
     "noSource": "Choose the original 1.8.1g ZIP",
     "statusLabel": "Status",
     "sourceHelp": "The original ZIP stays private and is never bundled in the Builder.",
-    "headerSubtitle": "Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
+    "headerSubtitle": "For Minion Rush 1.8.1g. Use your own original ZIP.",
     "importForSigning": "Import ZIP for signed installation"
   },
   "hungarianLabels": {
@@ -108,8 +108,8 @@
     "sourceHint": "H\u00fazd ide vagy v\u00e1laszd ki az eredeti ZIP-et",
     "outputLabel": "Al\u00e1\u00edratlan IPA ment\u00e9si helye",
     "languageTitle": "Tov\u00e1bbi nyelvek az IPA-ban",
-    "languageHint": "Az eredeti nyelvek mindig el\u00e9rhet\u0151k",
-    "hungarian": "Magyar",
+    "languageHint": "Az eredeti nyelvek megmaradnak. Magyar is el\u00e9rhet\u0151.",
+    "hungarian": "Tov\u00e1bbi nyelvek hozz\u00e1ad\u00e1sa",
     "openOutput": "Kimeneti mappa megnyit\u00e1sa",
     "showDetails": "R\u00e9szletek",
     "hideDetails": "R\u00e9szletek elrejt\u00e9se",
@@ -179,7 +179,7 @@
     "quitHelp": "A megszak\u00edt\u00e1s nem t\u00f6rli a kor\u00e1bban telep\u00edtett j\u00e1t\u00e9kot.",
     "quit": "Megszak\u00edt\u00e1s \u00e9s kil\u00e9p\u00e9s",
     "keepRunning": "Folytat\u00e1s",
-    "headerSubtitle": "K\u00e9sz\u00edts al\u00e1\u00edratlan iPhone IPA-t az eredeti 1.8.1g ZIP-b\u0151l.",
+    "headerSubtitle": "Minion Rush 1.8.1g: a saj\u00e1t eredeti ZIP-f\u00e1jlodb\u00f3l.",
     "importForSigning": "ZIP import\u00e1l\u00e1sa al\u00e1\u00edrt telep\u00edt\u00e9shez"
   }
 }

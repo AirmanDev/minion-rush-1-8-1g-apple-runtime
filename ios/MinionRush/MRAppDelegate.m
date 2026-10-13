@@ -1,6 +1,10 @@
 #import <UIKit/UIKit.h>
 
 #include "engine.h"
+#include "platform_window.h"
+#ifdef MR_RUNTIME_PROFILE
+#include "game_profile.h"
+#endif
 #include "shim_gl.h"
 #include "shim_libc.h"
 #include "window_ios.h"
@@ -76,6 +80,13 @@ static BOOL configure_engine(void) {
     }
 
     redirect_logs(logs);
+#ifdef MR_RUNTIME_PROFILE
+    NSString *profile = [resources stringByAppendingPathComponent:@"game-profile.bin"];
+    if (mr_game_profile_load(profile.fileSystemRepresentation) != 0) {
+        fprintf(stderr, "ERROR: native ARM64 build profile missing or invalid\n");
+        return NO;
+    }
+#endif
     NSURL *capture = [logs URLByAppendingPathComponent:@"startup.png"];
     if (getenv("MR_DIAGNOSTICS")) {
         mr_gl_set_startup_capture(capture.fileSystemRepresentation);
@@ -113,7 +124,10 @@ static void *engine_thread(void *unused) {
     dispatch_async(dispatch_get_main_queue(), ^{
       UIApplication.sharedApplication.idleTimerDisabled = NO;
     });
-    if (result != 0) fprintf(stderr, "ERROR: engine stopped (%d)\n", result);
+    if (result != 0) {
+        mr_win_loading_stage(5u);
+        fprintf(stderr, "ERROR: engine stopped (%d)\n", result);
+    }
     return NULL;
 }
 

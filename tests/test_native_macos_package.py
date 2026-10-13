@@ -28,7 +28,7 @@ class NativeMacPackageTests(unittest.TestCase):
             (kit / name).write_bytes(content)
         (kit / "a64-compiler").chmod(0o755)
         (kit / "manifest.json").write_text(json.dumps({
-            "version": 1,
+            "version": 2,
             "template_sha256": hashlib.sha256((kit / "template.zip").read_bytes()).hexdigest(),
             "compiler_sha256": hashlib.sha256((kit / "a64-compiler").read_bytes()).hexdigest(),
             "hungarian_sha256": hashlib.sha256((kit / "hu.xlf").read_bytes()).hexdigest(),
@@ -38,7 +38,7 @@ class NativeMacPackageTests(unittest.TestCase):
     def test_private_kit_rejects_tampering(self):
         with tempfile.TemporaryDirectory() as directory:
             kit = self.kit(Path(directory))
-            self.assertEqual(validate_native_kit(kit)["version"], 1)
+            self.assertEqual(validate_native_kit(kit)["version"], 2)
             (kit / "hu.xlf").write_bytes(b"tampered")
             with self.assertRaisesRegex(ValueError, "checksum mismatch"):
                 validate_native_kit(kit)

@@ -1,70 +1,72 @@
-# Minion Rush Installer 1.1.0 RC1 (macOS)
+# Mac Xcode Installer - downloads and local builds
 
-This public download is the limited Xcode-based Mac installer, not the
-full portable Builder. The full Mac and Windows Builder binaries are not
-public release assets pending separate distribution-rights review.
-This is an asset-free Mac installer. It imports a lawfully
-obtained original Minion Rush 1.8.1g ZIP, signs the iOS app using the owner's
-Xcode setup, and installs it on a connected device or exports a signed IPA.
-It does not contain the original game, an Apple account, signing credentials,
-or the private prebuilt iOS template.
+The published 1.1.0 RC1 is the separate asset-free, Xcode-based Mac
+installer, NOT the standalone Mac/Windows native IPA Builder. Its unsigned
+Create IPA action is unavailable without a portable runtime kit. It can
+import the user's original ZIP and use local Xcode signing to export a signed
+IPA or install to a connected iPhone/iPad.
+
+The current 1.2.3 source tree can compile this same separate Xcode-based Mac
+installer; full portable Mac/Windows Builder candidates are packaged via
+`tools/build_portable_mac_builder.py` and `tools/build_windows_onefile.py`,
+not this download. The 1.2.3 portable candidate has not yet passed every
+legal or physical-device release gate.
 
 ## Requirements
 
-- Apple Silicon Mac running macOS 26.6 or later
-- Xcode 27 with iOS platform support and an Apple Account configured for signing
-- Paired iPhone or iPad running iOS/iPadOS 17 or later for installation
-- User-supplied, unmodified original 1.8.1g release ZIP
+- Apple Silicon with macOS 26.6 or later
+- Xcode 27 or later, iOS SDK and an Apple Account configured for signing
+- Unmodified original Minion Rush 1.8.1g ZIP supplied by the user
+- Paired iPhone/iPad running iOS/iPadOS 17 or later for installation
 
-The private, standalone Mac and Windows IPA Builders have a separate,
-Xcode-free unsigned-IPA workflow. Those complete binaries are **not**
-distributed in this public release because their template and optional
-Hungarian translation have unresolved redistribution questions. The public
-Mac app therefore displays the unsigned Create IPA action as unavailable.
-Its Xcode-based import, signed export, and device installation remain usable.
+## Existing public download
 
-## Download
-
-Get the following files from the official
-[GitHub release](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases):
-
-- `minion-rush-installer-1.1.0-macos-arm64.zip`
-- `minion-rush-installer-1.1.0-macos-arm64.zip.sha256`
-
-Keep both files in the same folder. Verify the downloaded ZIP in Terminal:
+The current public Mac-only Xcode Installer 1.1.0 RC1 is available from
+[GitHub Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases/tag/installer-v1.1.0-rc.1).
+Download its ZIP and the matching `.zip.sha256` checksum attachment.
+Keep both files together and verify the ZIP in Terminal:
 
 ```bash
 shasum -a 256 -c minion-rush-installer-1.1.0-macos-arm64.zip.sha256
 ```
 
-The checksum detects file changes, but does not authenticate the publisher.
-Extract the ZIP and move `Minion Rush Installer.app` to Applications.
+This verifies file integrity but does not authenticate the publisher.
 
-The application is ad hoc signed, not Developer ID signed or notarized.
-macOS may block the first launch. If you trust the verified download, try
-opening it and then use System Settings > Privacy & Security > Open Anyway.
-Do not disable Gatekeeper, remove quarantine, or override a malware warning
-or invalid-signature warning. Apple's instructions:
+## Build this installer locally
+
+With the supported Apple toolchain:
+
+```bash
+./tools/package_installer.sh
+```
+
+The output is under `build/releases/`, named for the current source
+version, together with its matching `.zip.sha256` file. Verify that
+checksum before unpacking the downloaded archive.
+
+The Xcode-only installer is ad hoc signed, not Developer ID signed or
+notarized. macOS may block the initial launch of a trusted downloaded
+copy. Use System Settings > Privacy & Security > Open Anyway after
+confirming the expected download and checksum. Do not disable Gatekeeper,
+remove quarantine or disregard a malware/invalid-signature warning.
+See Apple's official instructions:
 https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac
 
-## Use
+## Sign or install from the Xcode workflow
 
-1. Open Xcode once, sign in to your Apple Account and finish initial setup.
-2. Connect and unlock the device, trust the Mac and enable Developer Mode.
-3. Open the app, select your original ZIP, and expand
-   **Sign and install with Xcode**.
-4. Choose **Import ZIP for signed installation**, then select the device,
-   signing team, and bundle identifier.
-5. Choose **Install** or **Export signed IPA**. Keep the same team and bundle
-   identifier when updating an existing installation.
+1. Launch Xcode once, sign into an Apple Account and complete first-run setup.
+2. Connect/unlock the device, trust the Mac and enable Developer Mode.
+3. Open the installer; choose the original ZIP and expand the
+   **Sign and install with Xcode** section.
+4. Import ZIP for signed installation and choose the device, signing team
+   and bundle identifier.
+5. Choose Install or Export signed IPA. Retain the same team/identifier
+   when updating an existing installation, as save data can depend on both.
 
-A new Personal Team may need a one-time test project launched from Xcode to
-create a development profile. Free-account signatures typically expire after
-seven days. Existing save data may depend on the bundle identifier and
-signing identity.
+A free-account signing profile may expire after seven days. This program
+does not distribute original game assets, translated game strings, signed
+IPAs or Apple account information.
 
-The app and original game content are independent third-party works. This
-project is not endorsed by Gameloft. Never publish a completed IPA, private
-game archive, translation catalog or credentials. For detailed setup and
-limitations, see [Mac installer documentation](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/blob/main/docs/INSTALLER.md)
-and [legal scope](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/blob/main/docs/LEGAL.md).
+For the complete portable Builder workflow and limitations see
+[INSTALLER.md](INSTALLER.md), [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md),
+and [RELEASE_SCOPE.md](RELEASE_SCOPE.md).

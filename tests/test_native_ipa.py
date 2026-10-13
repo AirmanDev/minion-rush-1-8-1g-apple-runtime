@@ -19,6 +19,7 @@ sys.path.insert(0, str(TOOLS))
 
 from native_macho import find_code_slot, require_zero_slot, normalized_text_sha256
 from ios_private_icon import ICON_DIMENSIONS, _chunk, _read_rgba, install_private_icon
+from native_profile import symbol_names, inspect_profile
 from native_ipa import (
     APP_NAME, TEMPLATE_MANIFEST, TEMPLATE_PREFIX, _check_template_zip,
     assemble_unsigned_ipa, create_template,
@@ -42,7 +43,8 @@ def macho(slot_size=256):
 def synthetic_app(root: Path) -> Path:
     app = root / APP_NAME
     app.mkdir()
-    (app / "MinionRush").write_bytes(macho())
+    (app / "MinionRush").write_bytes(
+        macho() + b"game-profile.bin\0native ARM64 build profile missing or invalid\0")
     (app / "Info.plist").write_bytes(plistlib.dumps({
         "CFBundleExecutable": "MinionRush",
         "CFBundleIdentifier": "example.native.runtime",
@@ -54,12 +56,23 @@ def synthetic_app(root: Path) -> Path:
 def synthetic_compiled(root: Path) -> Path:
     compiled = root / "compiled"
     compiled.mkdir()
-    for name, value in (
-        ("minion_code.bin", b"\x1f\x20\x03\xd5" * 64),
-        ("minion_map.inc", b"A32_BLOCK(0x1000u, 0u)\n"),
-        ("game_bindings.h", b"#define MR_GAME_BINDING_HASH 0u\n"),
-    ):
-        (compiled / name).write_bytes(value)
+    (compiled / "minion_code.bin").write_bytes(b"\x1f\x20\x03\xd5" * 64)
+    (compiled / "minion_map.inc").write_text(
+        "#define MR_GAME_BLOCK_HASH UINT64_C(0x1111111111111111)\n"
+        "A32_BLOCK(0x00001000u, 0u)\n", encoding="ascii")
+    names = symbol_names(TOOLS.parent / "src/native/game_symbols.def")
+    lines = ["#define MR_GAME_BINDING_HASH UINT64_C(0x1111111111111111)",
+             f"#define MR_GAME_SYMBOL_COUNT {len(names)}u"]
+    lines += [f"#define MR_GAME_{name} 0x{index + 1:08x}u"
+              for index, name in enumerate(names)]
+    lines += ["static const uint32_t MR_GAME_BLOCKED_FUNCTIONS[] = {",
+              "0x00000010u, 0x00000020u,", "};",
+              "#define MR_GAME_BLOCKED_FUNCTION_COUNT 2u",
+              "#define MR_GAME_EXACT_BLOCKED_FUNCTION_COUNT 1u",
+              "static const uint32_t MR_GAME_OFFLINE_HOOK_FUNCTIONS[] = {",
+              "0x00000010u, 0x00000020u, 0x00000030u,", "};",
+              "#define MR_GAME_OFFLINE_HOOK_FUNCTION_COUNT 3u"]
+    (compiled / "game_bindings.h").write_text("\n".join(lines)+"\n", encoding="ascii")
     return compiled
 
 
@@ -89,6 +102,14 @@ class NativeMachoTests(unittest.TestCase):
         data = data[:0x1000] + b"\x01" + data[0x1001:]
         with self.assertRaisesRegex(ValueError, "nonzero"):
             require_zero_slot(data, slot)
+
+    def test_template_without_runtime_profile_loader_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = synthetic_app(root)
+            (app / "MinionRush").write_bytes(macho())
+            with self.assertRaisesRegex(ValueError, "lacks the native game-profile startup loader"):
+                create_template(app, root / "template.zip")
 
     def test_rejects_truncation_invalid_cpu_nonexecutable_and_bad_ranges(self):
         samples = [
@@ -123,13 +144,13 @@ class NativeIpaTests(unittest.TestCase):
             compiled = synthetic_compiled(root)
             (app / "Assets.car").write_bytes(b"compiled neutral icon")
             with self.assertRaisesRegex(ValueError, "unexpected file"):
-                create_template(app, compiled, root / "template.zip")
+                create_template(app, root / "template.zip")
             (app / "Assets.car").unlink()
             info = plistlib.loads((app / "Info.plist").read_bytes())
             info["CFBundleIcons"] = {"CFBundlePrimaryIcon": {"CFBundleIconName": "AppIcon"}}
             (app / "Info.plist").write_bytes(plistlib.dumps(info))
             with self.assertRaisesRegex(ValueError, "must not contain app icon metadata"):
-                create_template(app, compiled, root / "template.zip")
+                create_template(app, root / "template.zip")
 
     def test_private_icon_requires_validated_source_and_unsigned_template(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -153,7 +174,7 @@ class NativeIpaTests(unittest.TestCase):
         app = synthetic_app(root)
         compiled = synthetic_compiled(root)
         template = root / "unsigned-template.zip"
-        create_template(app, compiled, template)
+        create_template(app, template)
         return app, compiled, template
 
     def test_template_is_asset_free_and_has_verified_empty_slot(self):
@@ -167,6 +188,9 @@ class NativeIpaTests(unittest.TestCase):
                 manifest = json.loads(archive.read(TEMPLATE_MANIFEST))
                 self.assertEqual(manifest["slot_size"], 256)
                 self.assertEqual(manifest["slot_offset"], 0x1000)
+                self.assertEqual(manifest["profile_version"], 3)
+                self.assertNotIn("references", manifest)
+                self.assertNotIn("engine_sha256", manifest)
 
     def test_template_rejects_original_assets_and_nonempty_code(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -176,7 +200,7 @@ class NativeIpaTests(unittest.TestCase):
             (app / "game").mkdir()
             (app / "game" / "private.bin").write_bytes(b"secret")
             with self.assertRaisesRegex(ValueError, "game files"):
-                create_template(app, compiled, root / "template.zip")
+                create_template(app, root / "template.zip")
             (app / "game" / "private.bin").unlink()
             (app / "game").rmdir()
             executable = app / "MinionRush"
@@ -184,7 +208,7 @@ class NativeIpaTests(unittest.TestCase):
             data[0x1000] = 1
             executable.write_bytes(data)
             with self.assertRaisesRegex(ValueError, "nonzero"):
-                create_template(app, compiled, root / "template.zip")
+                create_template(app, root / "template.zip")
 
     def test_template_rejects_archive_path_traversal_and_duplicates(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -230,6 +254,9 @@ class NativeIpaTests(unittest.TestCase):
                 assemble_unsigned_ipa(template, private, output)
             with zipfile.ZipFile(output) as archive:
                 self.assertIn("Payload/MinionRush.app/lib/game.so", archive.namelist())
+                profile = archive.read("Payload/MinionRush.app/game-profile.bin")
+                self.assertEqual(inspect_profile(profile, TOOLS.parent / "src/native/game_symbols.def")
+                                 ["blocks"], 1)
                 self.assertEqual(archive.read("Payload/MinionRush.app/game/files/text/hu.texts"),
                                  localized.read_bytes())
                 self.assertEqual(
@@ -265,9 +292,9 @@ class NativeIpaTests(unittest.TestCase):
                 assemble_unsigned_ipa(template, private, output)
             self.assertEqual(output.read_bytes(), b"keep")
             output.unlink()
-            (private / "compiled/minion_code.bin").write_bytes(b"\x01" * 256)
+            (private / "compiled/minion_code.bin").write_bytes(b"\x01" * 260)
             with mock.patch("native_ipa._validate_private_assets", return_value=[]):
-                with self.assertRaisesRegex(ValueError, "match"):
+                with self.assertRaisesRegex(ValueError, "fit"):
                     assemble_unsigned_ipa(template, private, output)
             self.assertFalse(output.exists())
 

@@ -17,12 +17,18 @@
 
 #define THUMB_SLOTS 32768u
 
+#ifdef MR_RUNTIME_PROFILE
+#include "game_profile.h"
+typedef mr_profile_block block_desc;
+#define GAME_BLOCKS (mr_profile_blocks)
+#define BLOCK_COUNT (mr_profile_block_count)
+#define MR_GAME_BLOCK_HASH (mr_profile_fingerprint)
+#else
 typedef struct {
     uint32_t pc;
     uint32_t offset;
     uint8_t thumb;
 } block_desc;
-
 #define A32_BLOCK(pc, offset) {(pc), (offset), 0},
 #define THUMB_BLOCK(pc, offset) {(pc), (offset), 1},
 static const block_desc GAME_BLOCKS[] = {
@@ -30,8 +36,8 @@ static const block_desc GAME_BLOCKS[] = {
 };
 #undef A32_BLOCK
 #undef THUMB_BLOCK
-
 #define BLOCK_COUNT (sizeof(GAME_BLOCKS) / sizeof(GAME_BLOCKS[0]))
+#endif
 
 #define ENTRY_HOOK_BIT ((uintptr_t)1)
 
@@ -134,6 +140,13 @@ int mr_a64_init(mr_cpu *cpu, uint32_t code_end, uint64_t fingerprint) {
     }
 
     size_t code_size = (size_t)(mr_game_code_end - mr_game_code);
+#ifdef MR_RUNTIME_PROFILE
+    if (!BLOCK_COUNT || !mr_profile_code_size || mr_profile_code_size > code_size) {
+        mr_a64_shutdown();
+        return -1;
+    }
+    code_size = mr_profile_code_size;
+#endif
     for (size_t n = 0; n < BLOCK_COUNT; n++) {
         const block_desc *block = &GAME_BLOCKS[n];
         if (block->offset >= code_size) {
@@ -271,7 +284,7 @@ int mr_a64_report(void) {
         printf("ARM64 code: not linked\n");
         return 1;
     }
-    printf("ARM64 code: %zu blocks, %llu instructions executed natively\n", BLOCK_COUNT,
+    printf("ARM64 code: %zu blocks, %llu instructions executed natively\n", (size_t)BLOCK_COUNT,
            (unsigned long long)NATIVE_INSNS);
     printf("dispatcher: %llu entries, average %.1f guest instructions per entry\n",
            (unsigned long long)DISPATCHES,

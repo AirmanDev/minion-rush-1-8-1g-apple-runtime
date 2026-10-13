@@ -25,7 +25,7 @@ struct InstallerApp: App {
   @State private var startupError: String?
 
   var body: some Scene {
-    Window("Minion Rush IPA Builder", id: "installer") {
+    Window("Unofficial IPA Builder", id: "installer") {
       Group {
         if let model {
           InstallerView(model: model)

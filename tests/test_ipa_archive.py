@@ -46,6 +46,23 @@ class IPAArchiveTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(mode), 0o755)
         self.assert_no_temporary_archives()
 
+    def test_portable_export_uses_common_deflate_level(self) -> None:
+        real_zipfile = zipfile.ZipFile
+        observed = []
+
+        def capture_zipfile(*args, **kwargs):
+            observed.append((kwargs.get("compression"), kwargs.get("compresslevel")))
+            return real_zipfile(*args, **kwargs)
+
+        with mock.patch("ipa_archive.zipfile.ZipFile", side_effect=capture_zipfile):
+            export_ipa(self.application, self.archive)
+        self.assertEqual(observed, [(zipfile.ZIP_DEFLATED, 3)])
+        with real_zipfile(self.archive) as archive:
+            self.assertIsNone(archive.testzip())
+            self.assertEqual(archive.getinfo("Payload/MinionRush.app/MinionRush").compress_type,
+                             zipfile.ZIP_DEFLATED)
+        self.assert_no_temporary_archives()
+
     def test_replaces_an_existing_archive_on_success(self) -> None:
         self.archive.write_bytes(b"previous archive")
         export_ipa(self.application, self.archive)

@@ -123,28 +123,31 @@ typedef struct {
     uint32_t claim_process;
 } event_api;
 
-static const event_api API = {
-    .start_loading = MR_GAME_EVENTS_START_LOADING,
-    .update = MR_GAME_EVENTS_UPDATE,
-    .is_loading = MR_GAME_EVENTS_IS_LOADING,
-    .reader_ctor = MR_GAME_JSON_READER_CTOR,
-    .reader_dtor = MR_GAME_JSON_READER_DTOR,
-    .reader_parse = MR_GAME_JSON_READER_PARSE,
-    .value_ctor = MR_GAME_JSON_VALUE_CTOR,
-    .value_dtor = MR_GAME_JSON_VALUE_DTOR,
-    .event_ctor = MR_GAME_SOCIAL_EVENT_CTOR,
-    .event_dtor = MR_GAME_SOCIAL_EVENT_DTOR,
-    .add_event = MR_GAME_EVENTS_ADD_EVENT,
-    .mission_singleton = MR_GAME_MISSION_SINGLETON,
-    .weekly_category = MR_GAME_WEEKLY_CATEGORY,
-    .event_version = MR_GAME_EVENT_VERSION,
-    .mission_sync = MR_GAME_MISSION_SYNC,
-    .mission_first_ending = MR_GAME_MISSION_FIRST_ENDING,
-    .mission_remaining = MR_GAME_MISSION_REMAINING,
-    .mission_find = MR_GAME_MISSION_FIND,
-    .claim_start = MR_GAME_CLAIM_START,
-    .claim_process = MR_GAME_CLAIM_PROCESS,
-};
+static event_api API;
+static void initialize_api(void) {
+    API = (event_api){
+        .start_loading = MR_GAME_EVENTS_START_LOADING,
+        .update = MR_GAME_EVENTS_UPDATE,
+        .is_loading = MR_GAME_EVENTS_IS_LOADING,
+        .reader_ctor = MR_GAME_JSON_READER_CTOR,
+        .reader_dtor = MR_GAME_JSON_READER_DTOR,
+        .reader_parse = MR_GAME_JSON_READER_PARSE,
+        .value_ctor = MR_GAME_JSON_VALUE_CTOR,
+        .value_dtor = MR_GAME_JSON_VALUE_DTOR,
+        .event_ctor = MR_GAME_SOCIAL_EVENT_CTOR,
+        .event_dtor = MR_GAME_SOCIAL_EVENT_DTOR,
+        .add_event = MR_GAME_EVENTS_ADD_EVENT,
+        .mission_singleton = MR_GAME_MISSION_SINGLETON,
+        .weekly_category = MR_GAME_WEEKLY_CATEGORY,
+        .event_version = MR_GAME_EVENT_VERSION,
+        .mission_sync = MR_GAME_MISSION_SYNC,
+        .mission_first_ending = MR_GAME_MISSION_FIRST_ENDING,
+        .mission_remaining = MR_GAME_MISSION_REMAINING,
+        .mission_find = MR_GAME_MISSION_FIND,
+        .claim_start = MR_GAME_CLAIM_START,
+        .claim_process = MR_GAME_CLAIM_PROCESS,
+    };
+}
 static event_manager MANAGER;
 static uint64_t ACTIVE_EVENTS;
 static uint64_t START_CALLS;
@@ -558,6 +561,7 @@ static void service_manager(mr_cpu *cpu, event_manager *state, uint32_t category
 
 int mr_offline_events_init(void) {
     mr_offline_events_shutdown();
+    initialize_api();
     INITIALIZED = 1;
     return 0;
 }

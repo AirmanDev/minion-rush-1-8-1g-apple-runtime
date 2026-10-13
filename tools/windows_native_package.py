@@ -36,7 +36,7 @@ def validate_kit(kit: Path) -> dict:
         "version", "mode", "hungarian_xlf_sha256", "engine_sha256", "template_sha256", "compiler_sha256", "gui_sha256",
         "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
         "python_files_sha256",
-    } or config["version"] != 4 or config["mode"] not in ("release", "utm-test"):
+    } or config["version"] != 5 or config["mode"] not in ("release", "utm-test"):
         raise ValueError("Windows kit manifest format is invalid")
     if config["engine_sha256"] != OFFICIAL_ENGINE_SHA256:
         raise ValueError("Windows kit targets the wrong game engine")
@@ -199,6 +199,10 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
                     else kit.parent / "MinionRush-Private-Languages" / "hu.xlf")
         if optional.is_file() and not optional.is_symlink():
             translations_root = optional.parent
+        else:
+            public_packs = kit / "runtime/language_packs"
+            if (public_packs / "hu.json").is_file():
+                translations_root = public_packs
     if scratch_root is not None:
         if (not scratch_root.is_absolute() or scratch_root.is_symlink()
                 or not scratch_root.is_dir()):
@@ -243,7 +247,8 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True, help="new unsigned IPA")
     parser.add_argument("--hungarian-xlf", type=Path,
                         help="optional private hu.xlf translation catalog")
-    parser.add_argument("--no-hungarian", action="store_true",
+    parser.add_argument("--no-additional-languages", "--no-hungarian",
+                        dest="no_hungarian", action="store_true",
                         help="exclude the bundled Hungarian language from this IPA")
     parser.add_argument("--overwrite", action="store_true",
                         help="replace a confirmed existing IPA after successful assembly")

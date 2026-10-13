@@ -30,10 +30,6 @@ if (( $# != 0 )); then
   usage >&2
   exit 2
 fi
-if (( template )) && [[ "$platform" != "device" ]]; then
-  printf 'ERROR: the native AOT template supports physical iOS devices only.\n' >&2
-  exit 2
-fi
 case "$platform" in
   device)
     sdk="iphoneos"
@@ -53,7 +49,11 @@ esac
 
 OUT_DIR="$default_output"
 if (( template )); then
-  OUT_DIR="$OUT/ios-template"
+  if [[ "$platform" == "simulator" ]]; then
+    OUT_DIR="$OUT/ios-template-simulator"
+  else
+    OUT_DIR="$OUT/ios-template"
+  fi
 fi
 [[ ! -L "$OUT" ]] || {
   printf 'ERROR: the build directory must not be a symbolic link.\n' >&2
@@ -84,9 +84,15 @@ require_generated_code() {
 }
 
 project_require_command "$CC"
-require_generated_code
+if (( ! template )); then
+  require_generated_code
+fi
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
+if (( template )); then
+  python3 -B tools/build_generic_bindings.py --output "$OUT_DIR/game_bindings.h"
+  FLAGS=("-I$OUT_DIR" -DMR_RUNTIME_PROFILE "${FLAGS[@]}")
+fi
 
 printf '== iOS %s engine library (%s) ==\n' "$platform" "$target"
 objects=()
@@ -96,6 +102,10 @@ for source in "${PORTABLE_NATIVE_SOURCES[@]}"; do
   "$CC" -c "${FLAGS[@]}" -o "$OUT_DIR/$name.o" "$SRC/$source"
   objects+=("$OUT_DIR/$name.o")
 done
+if (( template )); then
+  "$CC" -c "${FLAGS[@]}" -o "$OUT_DIR/game_profile.o" "$SRC/game_profile.c"
+  objects+=("$OUT_DIR/game_profile.o")
+fi
 for source in "${IOS_NATIVE_SOURCES[@]}"; do
   name="${source%.*}"
   printf 'Compile: %s\n' "$source"
@@ -106,8 +116,7 @@ done
 printf 'Compile: game_code.S%s\n' "$( (( template )) && printf ' (unsigned template)' || true )"
 code_options=("-I$PROJECT_ROOT")
 if (( template )); then
-  slot_bytes="$(stat -f %z "$OUT/minion_code.bin")"
-  project_validate_positive_int "$slot_bytes"
+  slot_bytes="$(python3 -B tools/native_profile.py --code-slot-bytes)"
   code_options+=(-DMR_IOS_AOT_TEMPLATE "-DMR_AOT_SLOT_BYTES=$slot_bytes")
 fi
 "$CC" -c -std=c11 -isysroot "$SDK" -target "$target" \

@@ -46,6 +46,10 @@ static double SCENE_ASPECT;
 static UIWindow *WINDOW;
 static UIView *CONTAINER;
 static UIView *VIEW;
+static UIView *LOADING_OVERLAY;
+static UILabel *LOADING_STATUS;
+static UIActivityIndicatorView *LOADING_SPINNER;
+static unsigned LOADING_STAGE;
 static void *GL_CONTEXT;
 static GLuint WINDOW_FBO;
 static GLuint COLOR_RENDERBUFFER;
@@ -175,6 +179,108 @@ int mr_win_next_touch(mr_touch *out) {
 
 void mr_win_enable_input(void) {
     atomic_store_explicit(&INPUT_ENABLED, true, memory_order_release);
+}
+
+static BOOL loading_hungarian(void) {
+    NSString *language = NSLocale.preferredLanguages.firstObject;
+    return [language hasPrefix:@"hu"];
+}
+
+static NSString *loading_text(unsigned stage) {
+    BOOL hu = loading_hungarian();
+    switch (stage) {
+    case 1:
+        return hu ? @"J\u00e1t\u00e9kadatok bet\u00f6lt\u00e9se\u2026" : @"Loading game data\u2026";
+    case 2:
+        return hu ? @"Grafika el\u0151k\u00e9sz\u00edt\u00e9se\u2026" : @"Preparing graphics\u2026";
+    case 3:
+        return hu ? @"J\u00e1t\u00e9k ind\u00edt\u00e1sa\u2026" : @"Starting game\u2026";
+    case 5:
+        return hu ? @"A j\u00e1t\u00e9k nem indult el. Ind\u00edtsd \u00fajra."
+                  : @"The game could not start. Please restart.";
+    default:
+        return hu ? @"El\u0151k\u00e9sz\u00edt\u00e9s\u2026" : @"Preparing\u2026";
+    }
+}
+
+void mr_win_loading_stage(unsigned stage) {
+    if (stage < 1u || stage > 5u) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (LOADING_STAGE == 4u || LOADING_STAGE == 5u || (stage < LOADING_STAGE && stage != 5u))
+          return;
+      LOADING_STAGE = stage;
+      if (!LOADING_OVERLAY) return;
+      if (stage == 4u) {
+          UIView *overlay = LOADING_OVERLAY;
+          LOADING_OVERLAY = nil;
+          LOADING_STATUS = nil;
+          LOADING_SPINNER = nil;
+          [UIView animateWithDuration:0.25
+              animations:^{
+                overlay.alpha = 0.0;
+              }
+              completion:^(BOOL finished) {
+                (void)finished;
+                [overlay removeFromSuperview];
+              }];
+      } else {
+          LOADING_STATUS.text = loading_text(stage);
+          if (stage == 5u) [LOADING_SPINNER stopAnimating];
+      }
+    });
+}
+
+static void install_loading_overlay(void) {
+    if (!CONTAINER || LOADING_OVERLAY || LOADING_STAGE == 4u) return;
+    UIView *overlay = [[UIView alloc] initWithFrame:CONTAINER.bounds];
+    overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    overlay.backgroundColor = [UIColor colorWithRed:0.055 green:0.075 blue:0.11 alpha:1.0];
+    overlay.accessibilityIdentifier = @"game.loading.overlay";
+
+    UILabel *title = [[UILabel alloc] init];
+    title.text = @"MINION RUSH";
+    title.textColor = UIColor.whiteColor;
+    title.font = [UIFont systemFontOfSize:27 weight:UIFontWeightBold];
+    title.textAlignment = NSTextAlignmentCenter;
+    title.adjustsFontForContentSizeCategory = YES;
+    title.accessibilityIdentifier = @"game.loading.title";
+
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc]
+        initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
+    spinner.color = [UIColor colorWithRed:0.95 green:0.78 blue:0.26 alpha:1.0];
+    [spinner startAnimating];
+
+    UILabel *status = [[UILabel alloc] init];
+    status.text = loading_text(LOADING_STAGE);
+    status.textColor = [UIColor colorWithWhite:0.82 alpha:1.0];
+    status.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    status.adjustsFontForContentSizeCategory = YES;
+    status.numberOfLines = 2;
+    status.textAlignment = NSTextAlignmentCenter;
+    status.accessibilityIdentifier = @"game.loading.status";
+
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[ title, spinner, status ]];
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.spacing = 24;
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    NSLayoutConstraint *preferredWidth =
+        [stack.widthAnchor constraintEqualToAnchor:overlay.widthAnchor multiplier:0.82];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
+    [overlay addSubview:stack];
+    [CONTAINER addSubview:overlay];
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.centerXAnchor constraintEqualToAnchor:overlay.centerXAnchor],
+        [stack.centerYAnchor constraintEqualToAnchor:overlay.centerYAnchor],
+        [stack.leadingAnchor constraintGreaterThanOrEqualToAnchor:overlay.leadingAnchor
+                                                         constant:22],
+        [stack.trailingAnchor constraintLessThanOrEqualToAnchor:overlay.trailingAnchor
+                                                       constant:-22],
+        [stack.widthAnchor constraintLessThanOrEqualToConstant:420], preferredWidth
+    ]];
+    LOADING_OVERLAY = overlay;
+    LOADING_STATUS = status;
+    LOADING_SPINNER = spinner;
 }
 
 unsigned mr_win_dropped_touches(void) {
@@ -643,6 +749,7 @@ void mr_ios_attach_scene(UIWindowScene *scene) {
     VIEW = [[MRGameView alloc] initWithFrame:CONTAINER.bounds];
     VIEW.multipleTouchEnabled = NO;
     [CONTAINER addSubview:VIEW];
+    install_loading_overlay();
 
     CAEAGLLayer *layer = (CAEAGLLayer *)VIEW.layer;
     layer.opaque = YES;

@@ -18,7 +18,8 @@ def export_ipa(application: Path, destination: Path) -> None:
     descriptor, temporary = tempfile.mkstemp(prefix=".minion-rush-", suffix=".ipa", dir=destination.parent)
     try:
         with os.fdopen(descriptor, "wb") as output:
-            with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
+            # Balance package size and build time across zlib and zlib-ng.
+            with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=3) as archive:
                 for source in sorted(application.rglob("*")):
                     if source.is_symlink():
                         raise ValueError("Linked files cannot be exported in the application.")

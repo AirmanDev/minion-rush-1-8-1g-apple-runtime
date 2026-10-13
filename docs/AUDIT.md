@@ -1,5 +1,8 @@
 # Code audit
 
+This document records historical findings. For the current 1.2.2 candidate,
+see [release scope](RELEASE_SCOPE.md).
+
 Historical review: 2026-09-27. Scope: the maintained public source, native runtime,
 Apple platform layers, installer, build and packaging tools, tests, and docs.
 Private assets were validated locally but are not part of the public repository.

@@ -24,7 +24,7 @@ def validate_native_kit(directory: Path) -> dict:
     config = json.loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(config, dict) or set(config) != {
         "version", "template_sha256", "compiler_sha256", "hungarian_sha256",
-    } or config["version"] != 1:
+    } or config["version"] != 2:
         raise ValueError("unsupported private Mac native kit")
     expected = {"manifest.json", "template.zip", "a64-compiler"}
     if config["hungarian_sha256"] is not None:
@@ -55,14 +55,16 @@ def build_unsigned(source: Path, destination: Path, kit: Path, *,
     config = validate_native_kit(kit)
     if not source.is_file() or source.is_symlink() or source.suffix.lower() != ".zip":
         raise ValueError("choose an original local 1.8.1g ZIP")
-    if hungarian and config["hungarian_sha256"] is None:
+    public_packs = kit.parent / "Runtime/language_packs"
+    has_private = config["hungarian_sha256"] is not None
+    if hungarian and not has_private and not (public_packs / "hu.json").is_file():
         raise ValueError("Hungarian is not included in this Mac Builder")
     with tempfile.TemporaryDirectory(prefix="minion-mac-private-") as scratch:
         private = Path(scratch).resolve() / "private-aot"
         print("1/3: Validating original ZIP and preparing native ARM64 blocks", flush=True)
         prepare(source, private, prebuilt_compiler=kit / "a64-compiler",
                 compiler_sha256=config["compiler_sha256"],
-                translations_root=kit if hungarian else None,
+                translations_root=(kit if has_private else public_packs) if hungarian else None,
                 enable_localizations=hungarian)
         print("2/3: Assembling unsigned IPA and original game data", flush=True)
         assemble_output(

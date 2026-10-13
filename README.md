@@ -10,32 +10,69 @@ update moved the current game to Unity with a new visual system and redesigned
 game modes. The two codebases and data formats are incompatible and are not
 combined here.
 
-The public repository does not include the original engine, DLC, graphics, or
-audio. Each user must install these assets from a lawfully obtained copy of
-release 1.8.1g. See `docs/LEGAL.md`.
+The public repository and generic desktop Builders do not include the original
+engine, DLC, graphics, audio or any completed game IPA. Each user supplies
+their own lawfully obtained release 1.8.1g ZIP. Conversion and IPA assembly
+occur locally on that user's computer. This tool is independent of Gameloft
+and does not authorize otherwise restricted copying or adaptation. See
+`docs/LEGAL.md`.
 
 ## Supported environment
 
 - Apple Silicon for the native Mac runtime and Builder.
 - macOS 26.6 or later for the Builder and current Xcode 27 toolchain. The
   separately compiled macOS game runtime targets macOS 14 or later.
-- Windows 11 x64 or Windows 11 ARM (x64 emulation) for the private portable
+- Windows 11 x64 or Windows 11 ARM (x64 emulation) for the portable
   Windows Builder. The original game ZIP must be supplied by the user.
 - iOS/iPadOS 17 or later for the resulting ARM64 application.
-- The private Mac and Windows Builders need neither Xcode nor a separately
+- The portable Mac and Windows Builders need neither Xcode nor a separately
   installed Python runtime to produce an **unsigned IPA**. Signing is separate:
   the optional Mac Xcode route uses an Apple Account and device provisioning;
   Windows users can sign and install with Sideloadly.
 - Source development and native Apple signing still require the appropriate
   SDK, developer tools and local Python interpreter.
 
-The public [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
-contain an asset-free Mac application for the **Xcode signing/import route**.
-The standalone unsigned-IPA Builders are maintained and tested privately but
-are not public downloads: their prepared iOS template contains source-derived
-game metadata, and the bundled Hungarian catalog may contain protected text.
-See [release scope and requirements](docs/RELEASE_SCOPE.md) and
-[legal context](docs/LEGAL.md).
+The currently published [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
+contain the older 1.1.0 Mac-only Xcode importer. The 1.2.3 portable
+Mac/Windows candidate is being validated and is not a published Release.
+Its generic unsigned iOS template is compiled without the original game,
+precomputed game address tables, game assets, or the private Hungarian XLIFF.
+A separate target-only Hungarian JSON pack is included, with no original
+English source strings, and is compiled using the user's original ZIP.
+The desktop Builder generates the entire user-specific AOT profile and code
+before assembling the unsigned IPA. This reduces risks associated with
+distributing game-derived data but does not grant rights to a game's port.
+See [release scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
+
+## Runtime test status
+
+The distribution target is direct GitHub download: the Mac Builder is
+ad hoc signed and the Windows EXE is unsigned. No Developer ID,
+notarization or Authenticode signing is planned. On some Macs, the user
+can explicitly approve the application in Privacy & Security; managed
+systems may prevent it. Signing an iOS IPA for device installation is
+separate and still required.
+
+Version 1.2.3 finalizes third-party notices, independent desktop branding
+and bundled source-stripped language packs. It does not modify the iOS engine,
+loading overlay or ARM64 compiler.
+The portable application is titled "Unofficial IPA Builder", with Minion Rush
+1.8.1g named solely as the supported original game. Source-controlled and
+bundled MinGW-w64, Python and GCC runtime notices are checksum-checked. The 1.2.2 working baseline
+remains available privately for comparison.
+
+Version 1.2.1 fixed a black screen caused by the missing
+`MR_RUNTIME_PROFILE` setting in the iOS entry point. The owner confirmed that an IPA built with
+1.2.1 started on a physical iPhone.
+
+Version 1.2.2 adds a startup overlay with game-data, graphics and engine
+initialization messages. It closes after the first rendered frame rather
+than a fixed delay. The overlay and gameplay rendering were tested on the
+iOS 27.0 Simulator; the profile-based runtime was also tested on iOS 18.6.
+The owner confirmed the 1.2.2 loading overlay and gameplay on an iPhone.
+The owner additionally confirmed gameplay, audio and preserved saves on an
+iPhone 17 Pro. Clean-device installation and broader device/OS coverage remain
+separate tests.
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -76,6 +113,7 @@ game data. The complete smoke test fails if a final network guard is reached.
 | `assets/game` | Original game data, stored locally only |
 | `config/graphics.json` | Single graphics configuration |
 | `config/builder_theme.json` | Shared Mac/Windows Builder color palette |
+| `config/native_profile.json` | Single native AOT profile and code-slot contract |
 | `config/localizations` | Public metadata for optional community languages |
 | `localizations` | Local XLIFF 2.1 translations, excluded from Git |
 | `config/source_manifest.txt` | Manifest of maintained public text files |
@@ -84,39 +122,51 @@ game data. The complete smoke test fails if a final network guard is reached.
 
 ## Builders and installation
 
-The Mac and Windows applications have matching colors, icons and IPA workflow,
-with platform-native controls. Both private editions create a native, unsigned
-ARM64 IPA from a lawfully obtained original 1.8.1g ZIP.
+The Mac and Windows applications share the desktop-only ARM32/Thumb to
+ARM64 compiler and the generic iOS template ABI. A user supplies their own
+original ZIP and selects an unsigned IPA destination. The Builder generates
+the native ARM64 code, block map, engine bindings, and game assets locally.
+The phone reads a validated address profile and executes the already compiled
+ARM64 blocks; it never translates or JIT-compiles original instructions.
 
-**Private Mac Builder:** one portable, ad-hoc signed `.app`, including the
-Python runtime, ARM64 compiler, iOS template and optional Hungarian catalog.
-No Xcode is needed for unsigned IPA creation. The app retains a separate Xcode
-signing, export and direct-device-install section. See
-[Mac Builder](docs/INSTALLER.md).
+**Mac portable candidate (1.2.3):** self-contained, ad hoc signed arm64
+`.app` with SwiftUI, pinned Python, host AOT compiler and unsigned generic
+iOS template. No Xcode is required to make an unsigned IPA. The optional
+Xcode signing/install route is separate. See [Mac Builder](docs/INSTALLER.md).
 
-**Private Windows Builder:** one portable x64 `.exe`, with the same local
-translator and prepared template. Windows 11 ARM uses x64 emulation.
-The standalone UTM test build is separate from the standard EXE. The generated
-IPA must be signed before installation, for example using
-[Sideloadly](https://sideloadly.io/). See
-[Windows Builder](docs/NATIVE_WINDOWS.md) and [signing guide](docs/INSTALLER_WINDOWS.md).
+**Windows portable candidate (1.2.3):** self-contained Windows x64 `.exe`
+with native Win32 UI, embedded Python, host AOT compiler and the same
+unsigned generic iOS template. Windows 11 ARM uses x64 emulation. Sign the
+result with a separately installed signing tool. See
+[Windows Builder](docs/NATIVE_WINDOWS.md) and
+[signing guide](docs/INSTALLER_WINDOWS.md).
 
-**Public macOS installer:** build the asset-free source package locally with:
+The public portable candidates intentionally have no original game,
+precomputed code/map/binding profile, or translated game text. The
+Builder UI itself supports English and Hungarian. The original game's
+languages come from the user-supplied ZIP. Optional third-party language
+catalogs must be provided separately with appropriate rights; they are not
+distributed with these candidates.
 
-```bash
-./tools/package_installer.sh
-```
+The previously published 1.1.0 Xcode-only Mac application remains a separate
+download. Build the asset-free Mac installer with `./tools/package_installer.sh`;
+the full portable Mac Builder is packaged using
+`tools/build_portable_mac_builder.py`. Unsigned IPA creation is disabled
+in the separate asset-free Xcode-only installer.
 
-The public `.app` does **not** embed the private iOS template, translator
-or Hungarian translation, so its unsigned Create IPA action is unavailable.
-Its existing Xcode-based ZIP import, signed IPA export and connected-device
-installation remain available. The current public download, checksum and
-Gatekeeper instructions are in [INSTALLER_DOWNLOAD.md](docs/INSTALLER_DOWNLOAD.md).
-An Apple Account and Xcode 27 are required for the public install/export flow.
+The 1.2.3 Mac and Windows Builders passed unsigned IPA creation from the
+original ZIP. The Windows test used the native GUI in a Windows 11 ARM VM
+with x64 emulation. IPA contents and checksums were checked separately.
+See [release scope](docs/RELEASE_SCOPE.md) for the test record.
 
-The private Builders and their generated IPAs must not be uploaded to a public
-release. The source code and public Mac package contain no original game assets,
-private translation or signing credentials.
+The identified Python components and GCC runtime-license texts are included
+in the candidate and checked against pinned digests. Residual user-side
+transformation rights and release-decision considerations are tracked in
+[third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
+
+The 1.2.3 binaries must not be described as legally cleared or fully
+device-tested until the outstanding rights and physical-device checks
+described in [release scope](docs/RELEASE_SCOPE.md) are complete.
 
 For the command-line workflow, create the ignored `assets` directory:
 
@@ -279,9 +329,11 @@ share one centered, automatically extending grid, and community flags use the
 same rounded silhouette and inactive tint as the original controls. Only the
 selected language uses its full flag colors and orange selection border.
 
-The Hungarian pack is created locally from `localizations/hu.xlf`. Its game
-strings remain outside Git with the other proprietary assets. XLIFF validation
-and deterministic compilation are part of every build. See
+The portable Builders include a versioned Hungarian target-only JSON pack,
+without the private editable XLIFF or original English source text. Its 2,483
+translated targets are verified against the user's source ZIP and compiled
+into a separate game language table during IPA creation. Additional languages
+use the same data-driven packaging and native menu. See
 `docs/LOCALIZATION.md` for the translation workflow and the configuration-only
 steps needed to add another banded flag and language without changing runtime
 code.
@@ -436,8 +488,9 @@ The original source code, tools, tests, and documentation in this repository
 are licensed under the Apache License 2.0. See `LICENSE`.
 
 The source license does not grant rights to distribute the original game,
-name, or assets. Resolve the required rights and App Store compliance
-separately before any public binary or commercial release.
+name, or assets. Resolve the rights necessary for direct GitHub distribution
+before publishing any binary. The Builder itself is not submitted to the
+App Store.
 
 The optional native Windows IPA template build uses the Xcode-only override
 MR_IOS_LIB_DIR=ios-template; the standard builds retain MR_IOS_LIB_DIR=ios.

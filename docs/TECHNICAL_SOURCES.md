@@ -25,6 +25,10 @@ and does not distribute that binary.
 
 ## iOS and iPadOS
 
+- Apple's recommendations for loading screens and indeterminate indicators:
+  https://developer.apple.com/design/human-interface-guidelines/loading
+  https://developer.apple.com/design/human-interface-guidelines/progress-indicators
+
 - Configuring an app icon using an asset catalog:
   https://developer.apple.com/documentation/xcode/configuring-your-app-icon
 - App icon layout and appearance specifications:
@@ -98,6 +102,18 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/technotes/tn3183-adding-required-reason-api-entries-to-your-privacy-manifest
 - Declaring manually managed bundle localizations:
   https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundlelocalizations
+
+## Third-party notices and descriptive product references
+
+- GCC Runtime Library Exception 3.1:
+  https://www.gnu.org/licenses/gcc-exception-3.1.html
+- GCC upstream GPLv3 and runtime exception documents:
+  https://github.com/gcc-mirror/gcc/blob/master/COPYING3
+  https://github.com/gcc-mirror/gcc/blob/master/COPYING.RUNTIME
+- EU trademark regulation Article 14, referential identification:
+  https://eur-lex.europa.eu/eli/reg/2017/1001/oj/eng
+- CJEU C-406/10, functionality compared to protected expression:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62010CJ0406
 
 ## Localization
 
@@ -209,8 +225,6 @@ and does not distribute that binary.
   https://developer.apple.com/documentation/foundation/filehandle/availabledata
 - POSIX pipe reads, short reads, and interrupted reads:
   https://pubs.opengroup.org/onlinepubs/9799919799/functions/read.html
-- Developer ID, Hardened Runtime, timestamps, and notarization:
-  https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution
 - Manual approval for an app from an unknown developer:
   https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac
 - macOS ZIP metadata and extraction options:

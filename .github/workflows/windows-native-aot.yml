@@ -98,6 +98,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'One-file package build failed' }
           & $onefile --self-test
           if ($LASTEXITCODE -ne 0) { throw 'One-file native self-extraction/startup failed' }
+          # Start-Process can append whitespace to the WinMain command-line tail.
+          # Exercise the real Windows argv parser through this separate launch path.
+          $launched = Start-Process -FilePath $onefile -ArgumentList '--self-test' -PassThru
+          if (-not $launched.WaitForExit(30000)) {
+            Stop-Process -Id $launched.Id -Force -ErrorAction SilentlyContinue
+            throw 'One-file self-test launched through Start-Process timed out'
+          }
+          if ($launched.ExitCode -ne 0) { throw 'Start-Process one-file self-test failed' }
           $utmOnefile = Join-Path $temp 'MinionRush-UTM-OneFile-CI.exe'
           python tools/build_windows_onefile.py --launcher $launcher --kit $utmKit --output $utmOnefile --allow-test-profile
           if ($LASTEXITCODE -ne 0) { throw 'UTM one-file package build failed' }

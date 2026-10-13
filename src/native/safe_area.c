@@ -352,7 +352,7 @@ static unsigned update_registered_objects(mr_cpu *cpu, float bottom_inset) {
 }
 
 static int is_2d_visual(mr_cpu *cpu, uint32_t object) {
-    static const uint32_t VTABLES[] = {
+    const uint32_t VTABLES[] = {
         MR_GAME_INTERFACE_DEVICE_ANIM_VTABLE + 8u,
         MR_GAME_INTERFACE_SCROLL_BAR_VTABLE + 8u,
         MR_GAME_INTERFACE_GRID_VTABLE + 8u,

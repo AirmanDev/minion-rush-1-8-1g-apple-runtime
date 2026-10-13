@@ -14,6 +14,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 from common import ROOT, content_files, load_json_object, public_source_names
+from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, TOOLCHAIN_NOTICES, verify_notice
 
 IGNORED_ROOTS = frozenset({
     "assets", "build", "logs", ".firecrawl", ".git", "__MACOSX", "__pycache__",
@@ -229,8 +230,25 @@ def check_python_syntax(tree: dict[str, str]) -> None:
                 raise SystemExit(f"invalid Python source: {relative}: {exc}") from exc
 
 
+RUNTIME_LICENSE = "third_party_licenses/mingw-w64-runtime-COPYING.txt"
+RUNTIME_LICENSE_SHA256 = "1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f"
+
+
 def check_text_style(tree: dict[str, str]) -> None:
-    found = sorted(relative for relative, source in tree.items() if not source.isascii())
+    # Retain the exact upstream license, including its copyright signs.
+    # All project-authored text must remain ASCII.
+    license_text = tree.get(RUNTIME_LICENSE)
+    if (license_text is None or hashlib.sha256(license_text.encode("utf-8")).hexdigest()
+            != RUNTIME_LICENSE_SHA256):
+        raise SystemExit("MinGW-w64 runtime license does not match the upstream notice")
+    for name, digest in COMMON_NOTICES.items():
+        verify_notice(ROOT / "third_party_licenses" / name, digest)
+    for name, digest in MAC_ONLY_NOTICES.items():
+        verify_notice(ROOT / "third_party_licenses/mac_python" / name, digest)
+    for name, digest in TOOLCHAIN_NOTICES.items():
+        verify_notice(ROOT / "third_party_licenses" / name, digest)
+    found = sorted(relative for relative, source in tree.items()
+                   if relative != RUNTIME_LICENSE and not source.isascii())
     if found:
         raise SystemExit("non-ASCII text in maintained source: " + ", ".join(found))
 

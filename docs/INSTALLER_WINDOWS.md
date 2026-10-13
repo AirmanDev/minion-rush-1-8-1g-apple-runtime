@@ -1,15 +1,19 @@
 # Windows IPA installation with Sideloadly
 
+The desktop tool is "Unofficial IPA Builder", an independent utility
+compatible with Minion Rush 1.8.1g. It is not endorsed by Gameloft.
+
 Two separate IPA preparation paths are supported in the source tree:
 
 - **Mac (maintained):** The portable SwiftUI Builder creates an unsigned
   IPA without Xcode, and optionally signs/installs via Xcode and the owner's
   Apple signing account. See [INSTALLER.md](INSTALLER.md).
-- **Windows (private portable Builder):** A portable builder takes
+- **Windows (portable Builder 1.2.3 candidate):** A portable builder takes
   the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
   blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
-  packages the original assets. The privately built EXE can include the optional Hungarian catalog; the
-  original app icon comes from the user's ZIP. No Mac is needed for this build.
+  packages the original assets. The EXE does not include the private
+  Hungarian game-text catalog or precomputed block tables. Its template is
+  game-independent; the original app icon comes from the user's ZIP. No Mac is needed for this build.
   See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
   IPA** and does not install or sign itself.
 
@@ -23,9 +27,11 @@ it. The new IPA is assembled in a private folder on the same volume and
 replaces the old file only after successful verification. Build failures do
 not destroy the previous IPA.
 
-The bundled Magyar option is a solid-green selection square, enabled by default
-when its private catalog is present. Uncheck it to exclude Hungarian resources from
-that IPA; the original game's languages are always included. There is no
+The Magyar game-language option is enabled by the bundled target-only
+Hungarian pack. It is compiled locally into a separate language table
+using the user's original ZIP. The
+Builder's English / Magyar interface switch is available independently.
+The original game's languages are always included. There is no
 separate language-file picker. The game lists only installed language packs
 on its initial and Settings language pages, and no XLIFF needs to be copied
 to the iPhone. Use English / Magyar in the Builder header to change the
@@ -56,15 +62,15 @@ the success dialog is displayed.
 
 The preferred Windows user-facing package is now a single portable EXE.
 It unpacks a verified temporary copy of the runtime (the embedded Python,
-native converter, unsigned iOS template and the privately provided language
-catalog) on launch, then runs the existing native Builder GUI. Closing the
+native converter and unsigned iOS template) on launch, then runs the existing
+native Builder GUI. Closing the
 GUI removes its extracted runtime. This is a portable, self-contained
 launcher, not an installer and not a single standalone Windows process.
 Windows 11's built-in tar.exe is used locally. The 1.8.1g original game ZIP
-must still be supplied by the user. A private hu.xlf included by the
-developer appears as a checked language option and becomes compiled iOS
-language data only when that option is selected;
-the iPhone app does not need any external .xlf.
+must still be supplied by the user. The standard 1.2.3 release candidate
+contains no private hu.xlf. A separately authorized, privately built kit can
+include a game-language catalog, but that kit is not a public download.
+The iPhone app does not need any external .xlf.
 
 Two Windows build profiles are maintained. The standard release candidate
 does not include UTM/SPICE test transport, while the separately compiled
@@ -86,10 +92,26 @@ not make unsupported versions compatible.
 
 A private IPA contains the original game engine and assets. Never upload a
 completed IPA to a public GitHub release, issue, or public sharing service.
-A distributable Windows template and source-derived metadata require a legal
+The generic v3 template avoids bundling game-derived address metadata.
+An end-to-end review of the distributor's rights and the generated IPA requires a legal
 review before publication. The private Mac Builder also creates unsigned IPAs without Xcode, using
 SwiftUI. Public GitHub Releases distribute the separate asset-free Mac
 installer for the Xcode-based signing and installation path.
+
+## Portable Builder download and integrity
+
+The 1.2.3 portable EXE is not yet a published Release. After distribution
+rights are cleared and GitHub Releases publishes the candidate, download
+MinionRush-Builder-Windows-x64.exe and SHA256SUMS.txt from the same release.
+In PowerShell run:
+
+    (Get-FileHash -LiteralPath 'MinionRush-Builder-Windows-x64.exe' -Algorithm SHA256).Hash
+
+Compare that hexadecimal value with the matching line in SHA256SUMS.txt.
+The EXE is unsigned and may trigger an unknown-publisher or SmartScreen
+warning. Approve that individual file only if its origin and checksum are
+trusted. Do not disable Windows Defender or override a malware warning.
+Keep the original game archive private.
 
 ## Set up Windows
 

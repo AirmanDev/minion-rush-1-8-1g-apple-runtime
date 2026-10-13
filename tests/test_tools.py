@@ -57,6 +57,20 @@ class CommonTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         public_source_names(root)
 
+    def test_desktop_builder_uses_ad_hoc_signing_only(self) -> None:
+        script = TOOLS / "build_installer.sh"
+        source = script.read_text(encoding="utf-8")
+        self.assertIn('codesign --force --sign - --options runtime "$app"', source)
+        self.assertIn('codesign --verify --strict "$app"', source)
+        self.assertNotIn('--timestamp', source)
+        self.assertNotIn('Developer ID Application:', source)
+        result = subprocess.run(
+            ["/bin/bash", str(script), "--identity", "unused"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("Usage: ./tools/build_installer.sh", result.stderr)
+
     def test_ios_build_rejects_custom_output_without_deleting_it(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary) / "output"

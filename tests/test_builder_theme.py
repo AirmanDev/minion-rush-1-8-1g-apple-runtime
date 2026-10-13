@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import plistlib
 import sys
 import unittest
 from pathlib import Path
@@ -20,6 +21,19 @@ class BuilderThemeTests(unittest.TestCase):
         for path, expected in files.items():
             with self.subTest(path=path):
                 self.assertEqual(path.read_text(encoding="ascii"), expected)
+
+    def test_portable_builder_title_describes_independent_tool(self):
+        config = json.loads((ROOT / "config/installer_ui.json").read_text())
+        info = plistlib.loads((ROOT / "installer/Info.plist").read_bytes())
+        windows = (ROOT / "src/windows/ipa_builder.c").read_text()
+        mac = (ROOT / "installer/InstallerApp.swift").read_text()
+        self.assertEqual(config["title"], "Unofficial IPA Builder")
+        self.assertEqual(info["CFBundleDisplayName"], config["title"])
+        self.assertIn('Window("Unofficial IPA Builder"', mac)
+        self.assertIn('MR_BUILDER_TITLE L"Unofficial IPA Builder"', windows)
+        self.assertIn("Minion Rush 1.8.1g", config["labels"]["headerSubtitle"])
+        self.assertIn("For Minion Rush 1.8.1g", windows)
+        self.assertEqual(windows.count('{L"For Minion Rush 1.8.1g. Use your own original ZIP."'), 1)
 
     def test_tokens_cover_all_native_mac_colors(self):
         theme = json.loads((ROOT / "config/builder_theme.json").read_text())

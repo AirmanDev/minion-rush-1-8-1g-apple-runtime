@@ -316,7 +316,7 @@ const mr_guest_gameplay_stat *mr_guest_gameplay_get_stats(void) {
 }
 
 static int gameplay_slot(uint32_t pc) {
-    static const uint32_t PC[MR_GUEST_GAMEPLAY_SLOTS] = {
+    const uint32_t PC[MR_GUEST_GAMEPLAY_SLOTS] = {
         MR_GAME_GP_CART, MR_GAME_GP_FLUFFY,       MR_GAME_GP_MOON,    MR_GAME_GP_ROCKET,
         MR_GAME_GP_BOSS, MR_GAME_GP_LARGE_MINION, MR_GAME_GP_POWERUP, MR_GAME_GP_BONUS,
     };

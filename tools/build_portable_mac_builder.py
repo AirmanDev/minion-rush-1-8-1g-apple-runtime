@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an ad-hoc signed private Mac Builder with offline native IPA support."""
+"""Build an ad hoc signed portable Mac Builder with offline native IPA support."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from prepare_native_aot import compile_host_compiler
 sys.dont_write_bytecode = True
 
 
-def build_private_app(source: Path, template: Path, catalog: Path,
+def build_portable_app(source: Path, template: Path, catalog: Path | None,
                       output: Path, python_archive: Path) -> None:
     if source.is_symlink() or not source.is_dir() or source.suffix != ".app":
         raise ValueError("Mac installer source must be an existing .app")
@@ -26,23 +26,25 @@ def build_private_app(source: Path, template: Path, catalog: Path,
         raise ValueError("the unsigned template is missing")
     if not python_archive.is_file() or python_archive.is_symlink():
         raise ValueError("verified standalone Python archive is required")
-    if not catalog.is_file() or catalog.is_symlink() or catalog.name != "hu.xlf":
-        raise ValueError("private Hungarian hu.xlf is missing")
+    if catalog is not None and (not catalog.is_file() or catalog.is_symlink()
+                                or catalog.name != "hu.xlf"):
+        raise ValueError("private Hungarian hu.xlf is invalid")
     if output.exists() or output.is_symlink() or output.suffix != ".app":
-        raise ValueError("private output must be a new .app")
+        raise ValueError("portable output must be a new .app")
     if output.parent.is_symlink() or not output.parent.is_dir():
-        raise ValueError("private output parent is invalid")
+        raise ValueError("portable output parent is invalid")
     try:
         shutil.copytree(source, output, symlinks=False)
         kit = output / "Contents/Resources/NativeKit"
         kit.mkdir(mode=0o700)
         shutil.copy2(template, kit / "template.zip")
-        shutil.copy2(catalog, kit / "hu.xlf")
+        if catalog is not None:
+            shutil.copy2(catalog, kit / "hu.xlf")
         compile_host_compiler(kit / "a64-compiler")
         config = {
-            "version": 1,
+            "version": 2,
             "template_sha256": file_sha256(kit / "template.zip"),
-            "hungarian_sha256": file_sha256(kit / "hu.xlf"),
+            "hungarian_sha256": file_sha256(kit / "hu.xlf") if catalog is not None else None,
             "compiler_sha256": file_sha256(kit / "a64-compiler"),
         }
         (kit / "manifest.json").write_text(
@@ -64,7 +66,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", type=Path, required=True)
     parser.add_argument("--template", type=Path, required=True)
-    parser.add_argument("--hungarian-xlf", type=Path, required=True)
+    parser.add_argument("--hungarian-xlf", type=Path,
+                        help="optional private language file; omit for public candidates")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--python-runtime-archive", type=Path,
                         default=Path(__file__).resolve().parents[1] /
@@ -72,12 +75,12 @@ def main() -> int:
                         help="checksum-pinned offline macOS aarch64 standalone Python archive")
     args = parser.parse_args()
     try:
-        build_private_app(args.app, args.template, args.hungarian_xlf, args.output,
+        build_portable_app(args.app, args.template, args.hungarian_xlf, args.output,
                           args.python_runtime_archive)
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
-        print("Mac private Builder packaging failed:", exc, file=sys.stderr)
+        print("Mac portable Builder packaging failed:", exc, file=sys.stderr)
         return 1
-    print("Private Mac Builder:", args.output)
+    print("Portable Mac Builder:", args.output)
     print("It requires a legally obtained original ZIP to generate an IPA.")
     return 0
 

@@ -293,7 +293,8 @@ def main() -> int:
     native.add_argument("--archive", type=Path, required=True)
     native.add_argument("--destination", type=Path, required=True)
     native.add_argument("--native-kit", type=Path, required=True)
-    native.add_argument("--no-hungarian", action="store_true")
+    native.add_argument("--no-additional-languages", "--no-hungarian",
+                        dest="no_hungarian", action="store_true")
     native.add_argument("--overwrite", action="store_true")
     for command in ("install", "export"):
         installer = commands.add_parser(command)

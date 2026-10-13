@@ -24,8 +24,12 @@ The system has four layers:
    and CRC values, JSON files, SQLite database, and offline-event evidence.
 4. `a64-compiler` loads the ELF engine and emits static ARM64 code, block maps,
    and game-symbol bindings.
-5. `game_code.S` embeds the generated code in the Mach-O `__MRCODE` segment.
-6. The platform build links the portable runtime with one Apple platform layer.
+5. For normal local Xcode builds, `game_code.S` embeds the generated
+   code in the Mach-O `__MRCODE` segment.
+6. For portable Builders, the generic iOS template reserves the code slot
+   without game inputs; `native_ipa.py` patches native code and a validated
+   v3 address profile from the owner's source before signing.
+7. The platform build links the portable runtime with one Apple platform layer.
 
 `tools/project_common.sh` owns the shared build source list.
 `config/source_manifest.txt` lists maintained public text files. macOS and iOS
@@ -48,7 +52,7 @@ version so two releases in one family cannot overwrite each other's artifacts.
 
 The Windows Win32 GUI and the macOS SwiftUI Builder are separate native
 presentations of the same user workflow: original ZIP, unsigned IPA
-destination, optional built-in Hungarian text, progress, and diagnostics.
+destination, progress, and diagnostics; the UI supports English and Hungarian.
 Both use `prepare_native_aot.py` and `native_ipa.py` for translation and
 archive assembly, and `native_ipa_output.py` for destination validation,
 temporary construction, and atomic final replacement. The Mac path is
@@ -62,15 +66,43 @@ The checked-in files are verified before either native build, and CI
 rejects any drift. Platform layout and event handling remain native.
 Both executables share the project icon from `prepare_installer_icon.swift`.
 
+The Windows launcher and native GUI share `builder_args.h`, which parses
+the Windows command line with `CommandLineToArgvW` rather than comparing
+raw `wWinMain` text: Windows may append whitespace to that text, even
+when `--self-test` is the only argument.
+
 The Windows portable release is a self-extracting EXE with an embedded
-Python runtime, translator, unsigned template and optional private catalog.
+Python runtime, translator and generic unsigned template, without game-derived data.
 The separately compiled UTM test build retains SPICE/WebDAV handling; the
 release build has none. The private Mac .app similarly embeds a pinned
-arm64 Python runtime, native translator, unsigned template and catalog;
+arm64 Python runtime, native translator and generic unsigned template;
 its bundle is ad-hoc signed. Neither includes the original game ZIP or
 signing credentials. The optional Mac Xcode signing/device installation
 path remains separate from unsigned IPA creation. Neither private
 artifact is cleared for public redistribution.
+
+## Generic portable IPA profile
+
+The 1.2.1 portable Builder compiles the iOS host runtime once, without
+the original game ZIP. Its fixed-size executable `__MRCODE/__text` slot is
+zeroed (192 MiB). The iOS runtime contains no game-specific block table,
+engine address constants, or original machine instructions.
+
+The desktop AOT translator compiles the user-supplied engine to native
+ARM64 blocks. `tools/native_profile.py` serializes the generated block
+addresses, engine-binding table, and offline-hook addresses into a compact
+v3 `game-profile.bin`. Its canonical limits live in
+`config/native_profile.json`, and the public binding ABI is declared in
+`src/native/game_symbols.def`. The Mac and Windows Builders use the same
+`tools/native_ipa.py` assembly logic; older template manifest versions
+are intentionally rejected.
+
+The unsigned IPA contains code, profile, and assets generated from the user's
+ZIP. On iOS, `src/native/game_profile.c` validates the binary profile and
+loads the addresses before gameplay starts. The runtime dispatches already
+compiled native ARM64 blocks, without JIT or guest-instruction translation.
+The original title's texts and artwork are absent from the distributed
+portable Builder; user-generated IPAs contain original game data.
 
 ## Module ownership
 
@@ -95,6 +127,7 @@ signing and installation. See `docs/NATIVE_WINDOWS.md` and
 |---|---|
 | `a64_compiler.c` | Static A32 and Thumb block translation |
 | `a64_runtime.c` | Generated-block dispatch |
+| `game_profile.c` | Validation and loading of the per-user v3 block/engine address profile |
 | `elf_loader.c` | ELF loading, symbols, and relocation |
 | `guest_runtime.c` | Guest clock and engine-specific runtime corrections |
 | `guest_threads.c` | Cooperative guest pthread scheduler |
