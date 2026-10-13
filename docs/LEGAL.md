@@ -38,7 +38,7 @@ ZIP. It uses the bundled Python interpreter and host AOT compiler to
 generate all ARM64 machine code, engine binding values and block-map offsets
 only on the user's computer, then assembles a local unsigned IPA. The generic
 template is compiled without game-derived addresses, game assets, the original
-game code or a private XLIFF source catalog. The public candidate includes
+game code or a private XLIFF source catalog. The distributed Builder includes
 a target-only Hungarian language pack without the original English source
 strings. That pack is compiled solely with the user's local original ZIP;
 its distribution is a separate translation-rights question. No source APK,
@@ -173,7 +173,7 @@ A specific inventory and validation gate is described in
 
 The project-specific rights and license-release checklist is maintained in
 [THIRD_PARTY_AND_RELEASE_GATE.md](THIRD_PARTY_AND_RELEASE_GATE.md).
-The candidate includes CPython, project and upstream MinGW-w64 runtime
+The Builder includes, project and upstream MinGW-w64 runtime
 licensing notices on Mac/Windows;
 review of remaining bundled third-party dependencies and toolchain notices remains open.
 The European Court of Justice's judgment C-406/10 distinguishes program
@@ -186,24 +186,31 @@ channel, yet remains subject to applicable intellectual-property and
 contractual rules. A successful user's private iPhone gameplay test does
 not prove redistribution rights.
 
-## Release decision
+## Public distribution decision
 
-The already-published 1.1.0 RC1 is a distinct, Xcode-based Mac-only
-installer. The portable Builder candidate supplies portable native IPA creation
-on both Mac and Windows using a generic runtime template without
-precomputed game-derived bindings or a bundled private XLIFF.
+The project's sole public download is **Unofficial IPA Builder v1.2.8**
+for Mac ARM64 and Windows x64, together with its checksum file.
+The source-only Xcode importer is not distributed as an additional Release
+asset. The Mac app is ad hoc signed and the Windows executable is unsigned.
+Neither application includes the original game or a completed game IPA.
 
-Removing those bundled materials materially reduces direct redistribution
-risks, but does not determine whether every private ARM32-to-ARM64 game
-translation, generated IPA, reverse engineering act or historical
-contract is permitted. A case-specific legal review is still necessary
-before publicly representing full distribution clearance.
+The publisher has chosen to distribute only the independent local Builder,
+subject to the limitations documented here. This decision is not a legal
+opinion or blanket approval from the game rightsholders. The game-specific
+identifiers retained for interoperability and the included target-only
+Hungarian translations may still involve rights separate from the project's
+own software.
 
-Windows GUI E2E testing and local package checksum validation are complete
-for the 1.2.3 candidate. Public release still requires completing the
-third-party notice and distribution-rights assessment, inspecting exposed
-engine symbols, and additional device regressions (including iPad, save
-continuity, accessibility and failure handling).
+The privately supplied original archive is processed on the user's machine.
+Signing with Xcode or another tool does not transfer copyright permissions
+or guarantee legality of a generated game adaptation. Users remain
+responsible for lawful acquisition and any applicable local transformation,
+distribution and contractual restrictions.
 
-Do not publish original game ZIPs, generated user IPAs, saved games,
-private XLIFF catalogs, or account credentials.
+The owner's physical iPhone tests confirmed successful installation,
+gameplay, audio and save continuity. These technical results do not
+establish redistribution rights or device compatibility in every
+environment.
+
+Never publish original game ZIPs, generated user IPAs, save files,
+private editable XLIFF catalogs, certificates or account credentials.
