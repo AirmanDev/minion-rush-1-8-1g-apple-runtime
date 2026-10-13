@@ -25,6 +25,10 @@ and does not distribute that binary.
 
 ## iOS and iPadOS
 
+- Apple's recommendations for loading screens and indeterminate indicators:
+  https://developer.apple.com/design/human-interface-guidelines/loading
+  https://developer.apple.com/design/human-interface-guidelines/progress-indicators
+
 - Configuring an app icon using an asset catalog:
   https://developer.apple.com/documentation/xcode/configuring-your-app-icon
 - App icon layout and appearance specifications:

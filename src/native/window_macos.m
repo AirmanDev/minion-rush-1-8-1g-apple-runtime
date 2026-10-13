@@ -335,6 +335,10 @@ void mr_win_enable_input(void) {
     INPUT_ENABLED = 1;
 }
 
+void mr_win_loading_stage(unsigned stage) {
+    (void)stage; // macOS continues to use the regular native game window.
+}
+
 #define KEYBOARD_TILT_ACCELERATION 5.0f
 #define GRAVITY_ACCELERATION 9.80665f
 

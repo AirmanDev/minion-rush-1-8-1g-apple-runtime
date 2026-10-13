@@ -39,7 +39,9 @@ def synthetic_windows(path: Path, names: list[str]) -> None:
     with zipfile.ZipFile(packed, "w", zipfile.ZIP_DEFLATED) as archive:
         for name in names:
             archive.writestr(name, generic_template() if name.endswith(
-                "MinionRush-native-template-unsigned.zip") else b"synthetic non-game data")
+                "MinionRush-native-template-unsigned.zip") else
+                (b"synthetic Python license" * 80 if name.endswith("/python/LICENSE.txt")
+                 else b"synthetic non-game data"))
     payload = packed.getvalue()
     launcher = b"MZ" + b"\0" * 62
     path.write_bytes(launcher + payload + FOOTER.pack(
@@ -51,6 +53,8 @@ def synthetic_windows(path: Path, names: list[str]) -> None:
 NAMES = [
     "MinionRush-Portable-Windows/MinionRush-native-template-unsigned.zip",
     "MinionRush-Portable-Windows/python/python314.zip",
+    "MinionRush-Portable-Windows/python/LICENSE.txt",
+    "MinionRush-Portable-Windows/runtime/LICENSE",
 ]
 
 
@@ -91,6 +95,14 @@ class PortableBuilderPackagingTests(unittest.TestCase):
             dest.writestr("Template/MinionRush.app/MinionRush", missing_loader)
         with self.assertRaisesRegex(ValueError, "profile"):
             verify_generic_template(stream.getvalue())
+
+    def test_rejects_missing_python_and_project_licenses(self):
+        for removed in ("/python/LICENSE.txt", "/runtime/LICENSE"):
+            with self.subTest(removed=removed), tempfile.TemporaryDirectory() as folder:
+                exe = Path(folder) / "Builder.exe"
+                synthetic_windows(exe, [item for item in NAMES if not item.endswith(removed)])
+                with self.assertRaisesRegex(ValueError, "license"):
+                    verify_windows(exe)
 
     def test_rejects_modified_embedded_kit(self):
         with tempfile.TemporaryDirectory() as location:

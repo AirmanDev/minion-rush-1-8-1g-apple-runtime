@@ -87,7 +87,7 @@ python3 tools/build_windows_kit.py \
 python3 tools/build_windows_onefile.py \
   --launcher "$PWD/build/windows/MinionRush Portable.exe" \
   --kit "$PWD/build/ios-generic/windows-kit-1.2" \
-  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.1.exe"
+  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.2.exe"
 ```
 
 Outputs are created only in new, nonexistent paths. The normal release
@@ -123,7 +123,7 @@ passes an independent full ZIP integrity and profile parse check.
 The 1.2.1 hotfix corrects the missing iOS startup profile loader in the
 Xcode-built runtime; the exact 1.2.1 Windows EXE passed the embedded
 portable self-test on the Windows 11 UTM guest, but a separate full
-Windows GUI compile using 1.2.1 has not yet been claimed as completed.
+Windows GUI building and an end-to-end compile using 1.2.2 have since passed.
 The packaged Mac 1.2.1 Builder did complete the end-to-end AOT IPA build;
 iOS 18.6 and 27.0 Simulators rendered the game with the fixed runtime.
 
@@ -137,8 +137,15 @@ The shared IPA writer uses ZIP deflate level 3 to balance the large native
 payload size with short host-side assembly time. On the test source, the
 Windows IPA shrank from 447,936,121 to 367,832,694 bytes after this change.
 
-A signed physical iOS gameplay, audio, safe-area and save-state regression
-is still outstanding. Earlier Windows 11 ARM/Sideloadly iPhone results
+The owner confirmed 1.2.1 game display/running on their physical
+iPhone after building and signing the IPA on Windows. The 1.2.2 Windows
+Builder was then tested again on the UTM Windows 11 ARM guest: exact
+portable EXE self-test passed, and its normal Win32 GUI generated a
+367,839,044-byte native unsigned IPA through Create IPA using the
+owner's local source ZIP. Independent Windows ZipArchive and v3 profile
+header checks passed (1,369 entries; 109 bindings; 942,744 AOT blocks;
+164,353,244 bytes of ARM64 code). The new loading overlay needs an
+additional physical-device test, including audio and save continuity. Earlier Windows 11 ARM/Sideloadly iPhone results
 belong to the historical 1.1.0 build and do not establish 1.2.1 device
 compatibility.
 

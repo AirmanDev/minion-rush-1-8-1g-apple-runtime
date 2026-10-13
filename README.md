@@ -30,7 +30,7 @@ release 1.8.1g. See `docs/LEGAL.md`.
   SDK, developer tools and local Python interpreter.
 
 The currently published [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
-contain the older 1.1.0 Mac-only Xcode importer. The corrected 1.2.1 portable
+contain the older 1.1.0 Mac-only Xcode importer. The corrected 1.2.2 portable
 Mac/Windows candidate is being validated and is not a published Release.
 Its generic unsigned iOS template is compiled without the original game,
 precomputed game address tables, game assets, or the private Hungarian XLIFF.
@@ -39,7 +39,15 @@ before assembling the unsigned IPA. This reduces risks associated with
 distributing game-derived data but does not grant rights to a game's port.
 See [release scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
 
-The 1.2.1 candidate fixes a critical 1.2.0 startup bug: Xcode previously
+The owner's earlier 1.2.1 Windows-built IPA was installed and displayed
+working game graphics on a physical iPhone. The newly added 1.2.2 loading
+UI has only been exercised in an iOS Simulator so far.
+
+The 1.2.2 candidate also adds an iOS launch overlay, reporting real
+runtime milestones until the first actual drawn frame; it does not invent
+percentage completion. An engine error shows an explicit failure message.
+
+The 1.2.1 base fixes a critical 1.2.0 startup bug: Xcode previously
 compiled the iOS application delegate without `MR_RUNTIME_PROFILE`, so it
 skipped loading the generated address profile and showed a black screen.
 The corrected iOS and iOS Simulator builds load the profile at startup.
@@ -102,12 +110,12 @@ the native ARM64 code, block map, engine bindings, and game assets locally.
 The phone reads a validated address profile and executes the already compiled
 ARM64 blocks; it never translates or JIT-compiles original instructions.
 
-**Mac portable candidate (1.2.1):** self-contained, ad hoc signed arm64
+**Mac portable candidate (1.2.2):** self-contained, ad hoc signed arm64
 `.app` with SwiftUI, pinned Python, host AOT compiler and unsigned generic
 iOS template. No Xcode is required to make an unsigned IPA. The optional
 Xcode signing/install route is separate. See [Mac Builder](docs/INSTALLER.md).
 
-**Windows portable candidate (1.2.1):** self-contained Windows x64 `.exe`
+**Windows portable candidate (1.2.2):** self-contained Windows x64 `.exe`
 with native Win32 UI, embedded Python, host AOT compiler and the same
 unsigned generic iOS template. Windows 11 ARM uses x64 emulation. Sign the
 result with a separately installed signing tool. See
@@ -133,7 +141,10 @@ portable EXE. The IPA contents and compression have been inspected on
 both platforms. This establishes desktop packaging correctness, not
 signed on-device gameplay compatibility.
 
-The 1.2.1 binaries must not be described as legally cleared or fully
+The remaining rights and license-review blockers are inventoried in
+[third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
+
+The 1.2.2 binaries must not be described as legally cleared or fully
 device-tested until the outstanding rights and physical-device checks
 described in [release scope](docs/RELEASE_SCOPE.md) are complete.
 

@@ -29,7 +29,7 @@ the corresponding protected content.
 
 ## Portable generic Windows build
 
-The 1.2.0 native Win32 GUI imports a user's separately obtained original
+The portable native Win32 GUI imports a user's separately obtained original
 ZIP. It uses the bundled Python interpreter and host AOT compiler to
 generate all ARM64 machine code, engine binding values and block-map offsets
 only on the user's computer, then assembles a local unsigned IPA. The generic
@@ -67,10 +67,15 @@ decompilation only where indispensable to obtain information necessary
 to make an independently created program interoperate with others.
 The conditions include lawful access, unavailable interoperability
 information, limits to necessary program portions and restrictions
-on later use or communication of the information.
+on later use or communication of the information. The CJEU in Top System
+(C-13/20) also acknowledged narrowly necessary decompilation for error
+repair by a lawful acquirer, but did not authorize distribution of a
+translated copy of the whole application to third parties.
 
-Hungary's Copyright Act, Act LXXVI of 1999, sections 59 and 60,
-implements specific software exceptions and constraints. In particular,
+Hungary's Copyright Act, Act LXXVI of 1999, section 58(2) expressly
+includes software rewriting from one programming language into another
+among the acts governed by the adaptation provisions. Sections 59 and 60
+implement specific software exceptions and constraints. In particular,
 section 60 does not permit using interoperability information for an
 unrelated purpose or for making a substantially similar program.
 
@@ -87,11 +92,12 @@ exception alone resolves this particular project.
 
 Primary sources:
 - https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0024
-- https://njt.jog.gov.hu/jogszabaly/1999-76-00-00
+- https://njt.hu/jogszabaly/1999-76-00-00.42
+- https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62020CJ0013
 
 ## Portable generic Mac Builder
 
-The macOS 1.2.0 portable Builder uses the same asset-free, address-free
+The macOS portable Builder uses the same asset-free, address-free
 iOS v3 template and host AOT assembly as Windows. The pinned arm64
 CPython 3.14.8 runtime, C compiler, SwiftUI application and iOS SDK-built
 generic template ship locally. The original game ZIP and the private
@@ -104,10 +110,26 @@ signed; this is not notarization.
 A specific inventory and validation gate is described in
 [RELEASE_SCOPE.md](RELEASE_SCOPE.md).
 
+## Reviewed rights sources and packaging evidence
+
+The project-specific rights and license-release checklist is maintained in
+[THIRD_PARTY_AND_RELEASE_GATE.md](THIRD_PARTY_AND_RELEASE_GATE.md).
+The candidate includes CPython and project license texts on Mac/Windows;
+final third-party license and MinGW-w64 notices review remains open.
+The European Court of Justice's judgment C-406/10 distinguishes program
+functionality and data formats from protectable source/object-code
+expression, but does not make all game-derived interfaces automatically
+free to use. Apple's App Review Guideline 5.2 demands third-party rights
+for a third-party game submitted through that channel. A standalone
+Builder distributed from GitHub is a different product and distribution
+channel, yet remains subject to applicable intellectual-property and
+contractual rules. A successful user's private iPhone gameplay test does
+not prove redistribution rights.
+
 ## Release decision
 
 The already-published 1.1.0 RC1 is a distinct, Xcode-based Mac-only
-installer. The 1.2.0 candidate supplies portable native IPA creation
+installer. The portable Builder candidate supplies portable native IPA creation
 on both Mac and Windows using a generic runtime template without
 precomputed game-derived bindings or a bundled private XLIFF.
 

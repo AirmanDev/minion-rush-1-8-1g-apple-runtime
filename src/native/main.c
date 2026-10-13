@@ -832,7 +832,10 @@ static int run_frames(uint32_t env, int frames, int windowed, uint32_t render_w,
 
         if (!first_draw && mr_gl_get_stats()->draw) {
             first_draw = 1;
-            if (windowed) mr_win_enable_input();
+            if (windowed) {
+                mr_win_enable_input();
+                mr_win_loading_stage(4u);
+            }
             printf("  *** first frame: %u draw calls on frame %d ***\n", mr_gl_get_stats()->draw,
                    f + 1);
         }
@@ -1035,6 +1038,7 @@ int mr_engine_main(int argc, char **argv) {
     const char *data_root = argc > 2 ? argv[2] : ".";
     int frames = parse_nonnegative_int(argc > 3 ? argv[3] : NULL, 0, "frame count");
     if (frames < 0) return 2;
+    mr_win_loading_stage(1u);
     mr_set_data_root(data_root);
     const char *data_base = getenv("MR_DATA_BASE");
     if (data_base) mr_set_data_base(data_base);
@@ -1109,6 +1113,7 @@ int mr_engine_main(int argc, char **argv) {
         goto cleanup;
     }
     gl_ready = 1;
+    mr_win_loading_stage(2u);
 
     if (mr_elf_resolve_imports(&IMG, resolve_game_import, NULL) != 0) {
         fprintf(stderr, "ERROR: engine imports cannot be resolved\n");
@@ -1151,6 +1156,7 @@ int mr_engine_main(int argc, char **argv) {
         goto cleanup;
     }
     offline_ready = 1;
+    mr_win_loading_stage(3u);
 
     printf("engine: %.1f MB | ELF imports: %d (%d shim, %d data, %d stubs) | GPU: %s",
            (double)IMG.image_span / (1024 * 1024), IMPORT_COUNT, SHIM_COUNT, DATA_IMPORT_COUNT,

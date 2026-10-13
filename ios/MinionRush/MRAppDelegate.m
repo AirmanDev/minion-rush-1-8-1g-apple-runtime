@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 
 #include "engine.h"
+#include "platform_window.h"
 #ifdef MR_RUNTIME_PROFILE
 #include "game_profile.h"
 #endif
@@ -123,7 +124,10 @@ static void *engine_thread(void *unused) {
     dispatch_async(dispatch_get_main_queue(), ^{
       UIApplication.sharedApplication.idleTimerDisabled = NO;
     });
-    if (result != 0) fprintf(stderr, "ERROR: engine stopped (%d)\n", result);
+    if (result != 0) {
+        mr_win_loading_stage(5u);
+        fprintf(stderr, "ERROR: engine stopped (%d)\n", result);
+    }
     return NULL;
 }
 

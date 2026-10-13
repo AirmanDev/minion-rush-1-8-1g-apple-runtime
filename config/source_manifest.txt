@@ -30,6 +30,7 @@ docs/LOCALIZATION.md
 docs/NATIVE_WINDOWS.md
 docs/RELEASE_SCOPE.md
 docs/TECHNICAL_SOURCES.md
+docs/THIRD_PARTY_AND_RELEASE_GATE.md
 installer/BackendProcess.swift
 installer/BuilderPalette.swift
 installer/Info.plist
@@ -124,6 +125,7 @@ tests/test_package_portable_builders.py
 tests/test_tools.py
 tests/test_windows_icon.py
 tests/test_windows_native.py
+third_party_licenses/mingw-w64-COPYING.txt
 tools/asset_contract.py
 tools/build_builder_palette.py
 tools/build_generic_bindings.py

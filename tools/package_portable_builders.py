@@ -72,6 +72,11 @@ def verify_windows(executable: Path) -> None:
         names = set(kit.namelist())
         if any(name.endswith(".xlf") for name in names):
             raise ValueError("public Windows package must not contain private language text")
+        license_files = [name for name in names if name.endswith("/python/LICENSE.txt")]
+        if len(license_files) != 1 or len(kit.read(license_files[0])) < 1000:
+            raise ValueError("Windows portable Python license is missing")
+        if not any(name.endswith("/runtime/LICENSE") for name in names):
+            raise ValueError("Windows project license is missing")
         templates = [name for name in names
                      if name.endswith("/MinionRush-native-template-unsigned.zip")]
         if len(templates) != 1:
@@ -91,6 +96,11 @@ def verify_mac(app: Path, version: str) -> None:
     verify_generic_template((resources / "NativeKit/template.zip").read_bytes())
     if not (resources / "PythonRuntime/bin/python3.14").is_file():
         raise ValueError("Mac Builder has no embedded Python")
+    python_license = resources / "PythonRuntime/lib/python3.14/LICENSE.txt"
+    if not python_license.is_file() or python_license.stat().st_size < 1000:
+        raise ValueError("Mac portable Python license is missing")
+    if not (resources / "Runtime/LICENSE").is_file():
+        raise ValueError("Mac project license is missing")
     info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
     if info.get("CFBundleShortVersionString") != version:
         raise ValueError("Mac Builder version does not match release")

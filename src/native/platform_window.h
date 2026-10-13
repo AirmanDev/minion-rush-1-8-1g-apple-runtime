@@ -109,6 +109,9 @@ typedef struct {
 int mr_win_next_touch(mr_touch *out);
 
 void mr_win_enable_input(void);
+// Real host/engine milestones, not estimated completion percentages.
+// 1: source, 2: graphics, 3: engine, 4: first drawn frame, 5: error.
+void mr_win_loading_stage(unsigned stage);
 
 unsigned mr_win_dropped_touches(void);
 typedef struct {
