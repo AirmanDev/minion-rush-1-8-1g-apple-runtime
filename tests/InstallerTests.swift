@@ -43,6 +43,28 @@ struct InstallerTests {
       print(json.dumps({'protocol':1,'type':'result','assets':{'files':1,'bytes':4}}),flush=True)
       """
     try response.write(to: backend, atomically: true, encoding: .utf8)
+    let privateRoot = temporary.appendingPathComponent("private")
+    let privateResources = privateRoot.appendingPathComponent("Contents/Resources")
+    let privateSource = privateResources.appendingPathComponent("Runtime")
+    let kit = privateResources.appendingPathComponent("NativeKit")
+    let runtimeBinary = privateResources.appendingPathComponent("PythonRuntime/bin/python3.14")
+    try FileManager.default.createDirectory(at: privateSource, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: kit, withIntermediateDirectories: true)
+    try Data().write(to: kit.appendingPathComponent("manifest.json"))
+    do {
+      _ = try BackendProcess.pythonExecutable(source: privateSource)
+      throw NSError(domain: "InstallerTests", code: 77)
+    } catch CocoaError.executableNotLoadable {
+      // A private Builder must not silently fall back to a host interpreter.
+    }
+    try FileManager.default.createDirectory(
+      at: runtimeBinary.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("#!/bin/sh\nexit 0\n".utf8).write(to: runtimeBinary)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o755], ofItemAtPath: runtimeBinary.path)
+    let selectedPython = try BackendProcess.pythonExecutable(source: privateSource)
+    try require(selectedPython == runtimeBinary,
+                "Private Builder must use its own bundled Python")
     let recorder = EventRecorder()
     let runner = BackendProcess()
     let status = try runner.run(

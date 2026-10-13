@@ -96,8 +96,9 @@ with a separate sideloading tool before installation.
 
 The Windows kit includes an asset-free iOS template, the native GUI,
 a verified ARM64 AOT compiler and an isolated Python runtime. End users
-do not need Xcode, a Mac or an installed Python environment. The Mac
-installer and iOS builds remain fully maintained and unchanged.
+do not need Xcode, a Mac or an installed Python environment. The Mac Builder also produces unsigned IPA files from the original ZIP.
+Its private .app bundles a relocation-safe Python runtime and needs no
+additional installation for IPA creation. Xcode signing remains optional.
 
 The Mac native build, Mac installer, iOS device build, and IPA export remain
 fully maintained and have **not** been replaced. The Windows-generated IPA

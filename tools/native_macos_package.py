@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -13,11 +12,7 @@ from pathlib import Path
 from native_ipa import assemble_unsigned_ipa
 from native_ipa_output import assemble_output
 from prepare_native_aot import prepare
-
-
-def _sha(path: Path) -> str:
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+from native_macho import file_sha256
 
 
 def validate_native_kit(directory: Path) -> dict:
@@ -46,7 +41,7 @@ def validate_native_kit(directory: Path) -> dict:
                 any(char not in "0123456789abcdef" for char in digest)):
             raise ValueError("invalid private kit checksum")
         path = directory / name
-        if not path.is_file() or path.is_symlink() or _sha(path) != digest:
+        if not path.is_file() or path.is_symlink() or file_sha256(path) != digest:
             raise ValueError("private Mac kit file checksum mismatch: " + name)
     compiler = directory / "a64-compiler"
     if not os.access(compiler, os.X_OK):

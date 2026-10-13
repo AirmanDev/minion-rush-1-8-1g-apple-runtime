@@ -15,14 +15,15 @@ an asset downloader, or a signing service.
 - A legally obtained, unmodified 1.8.1g release ZIP containing its APK and data
 - Space for extraction, validated assets, compiled code, and Xcode build products
 
-The Python backend currently uses an installed macOS Python 3 interpreter
-(from the selected Xcode toolchain or /usr/bin/python3). The private app
-bundles its own ARM translator, template and optional Hungarian catalog, but
-not a complete Python distribution. Therefore the .app can be moved between
-compatible Macs, but a working Python 3 is still a prerequisite. The
-unsigned build needs no Apple signing credentials. Only signed export and
-on-device installation need the full Xcode toolchain. Xcode 27
-requires macOS 26.6, so the installer does not advertise macOS 14 compatibility.
+The private Mac .app includes its own arm64 CPython 3.14 runtime, the native
+AOT translator, the unsigned iOS template and the Hungarian catalog. The user
+does not need to install Python, Homebrew, Xcode or anything else to build an
+unsigned IPA; the only user-supplied input is the original 1.8.1g ZIP. Apple
+signing credentials, Xcode and device pairing remain required only for the
+optional signed IPA export or direct iPhone installation. The private app is
+ad-hoc signed, not notarized or App Store distributed. macOS Gatekeeper may
+request explicit approval if the app carries download quarantine.
+macOS 26.6 or later is required.
 This does not change the game executable's macOS 14 deployment minimum.
 
 ## Build and use
@@ -33,9 +34,20 @@ This does not change the game executable's macOS 14 deployment minimum.
 python3 tools/build_private_mac_builder.py --app "build/installer/Minion Rush Installer.app" \
   --template "build/native-template/MinionRush-native-template-language-toggle.zip" \
   --hungarian-xlf "localizations/hu.xlf" \
+  --python-runtime-archive "build/private-runtime-cache/cpython-3.14.8-aarch64-macos.tar.gz" \
   --output "build/private/Minion Rush Installer.app"
 open "build/private/Minion Rush Installer.app"
 ```
+
+The packaged Python runtime is a developer-side build input, never an
+end-user dependency. Use the upstream [20261003 python-build-standalone
+release](https://github.com/astral-sh/python-build-standalone/releases/tag/20261003)
+and the macOS Apple Silicon CPython 3.14.8 install_only_stripped archive.
+The packager checks its SHA-256 against
+`ed14e9042f36c0aa18383f5d9729bcbf17847e842666a793b5a5a5d8505c0ca1`
+before embedding the runtime. CPython and dependency licenses are retained
+in the embedded library. The private .app uses the embedded Python directly
+and refuses to run without it, rather than silently using the user's Python.
 
 The public app is built without private assets; the private package adds the
 prepared unsigned template and locally supplied language data. It does not
@@ -177,6 +189,8 @@ The project-owned executable contains no original game data before a user
 supplies the game ZIP. The unsigned native IPA is assembled using the same
 prepare_native_aot.py and native_ipa.py modules as the Windows builder.
 The private bundle validates its compiler, template and catalog hashes.
+Its embedded Python runtime is version- and checksum-pinned, independently
+ad-hoc signed and relocatable inside the signed .app.
 The previous IPA is protected: a candidate is completed and verified in an
 isolated destination-side directory before atomic replacement.
 The original ZIP must always be supplied by the user.

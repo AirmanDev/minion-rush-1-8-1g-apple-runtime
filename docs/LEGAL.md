@@ -103,6 +103,12 @@ Although it does not embed the original game APK, the template contains
 engine-derived metadata. The translated XLIFF can also contain protected
 game text. Neither should be treated as freely redistributable.
 
+The private Mac .app includes arm64 CPython 3.14.8 from
+python-build-standalone. Retain its CPython license, bundled dependency
+licenses and upstream provenance. The pinned archive SHA-256 is verified before
+packaging; the embedded Mach-O libraries and outer .app are ad-hoc signed.
+This is not notarization or an App Store distribution.
+
 The private .app is ad-hoc signed and is not Apple-notarized. It must not
 be placed in a public download or a GitHub release without independent
 rights clearance, binary license review and applicable macOS signing and

@@ -47,6 +47,26 @@ final class BackendProcess: @unchecked Sendable {
     if let running, running.isRunning { running.terminate() }
   }
 
+  static func pythonExecutable(source: URL) throws -> URL {
+    let resources = source.deletingLastPathComponent()
+    let kit = resources.appendingPathComponent("NativeKit/manifest.json")
+    if FileManager.default.fileExists(atPath: kit.path) {
+      let bundled = resources.appendingPathComponent("PythonRuntime/bin/python3.14")
+      guard FileManager.default.isExecutableFile(atPath: bundled.path) else {
+        throw CocoaError(.executableNotLoadable)
+      }
+      return bundled
+    }
+    // The public developer installer retains its existing Xcode/system
+    // interpreter. The private portable Builder never falls back to it.
+    let developer =
+      ProcessInfo.processInfo.environment["DEVELOPER_DIR"]
+      ?? "/Applications/Xcode.app/Contents/Developer"
+    let xcodePython = URL(fileURLWithPath: developer).appendingPathComponent("usr/bin/python3")
+    return FileManager.default.isExecutableFile(atPath: xcodePython.path)
+      ? xcodePython : URL(fileURLWithPath: "/usr/bin/python3")
+  }
+
   func run(
     source: URL, workspace: URL, arguments: [String],
     event: @escaping @Sendable (BackendEvent) -> Void
@@ -56,10 +76,7 @@ final class BackendProcess: @unchecked Sendable {
     let developer =
       ProcessInfo.processInfo.environment["DEVELOPER_DIR"]
       ?? "/Applications/Xcode.app/Contents/Developer"
-    let python = URL(fileURLWithPath: developer).appendingPathComponent("usr/bin/python3")
-    task.executableURL =
-      FileManager.default.isExecutableFile(atPath: python.path)
-      ? python : URL(fileURLWithPath: "/usr/bin/python3")
+    task.executableURL = try Self.pythonExecutable(source: source)
     // Isolated Python needs an explicit public tools path for local imports.
     task.arguments =
       [
@@ -70,6 +87,7 @@ final class BackendProcess: @unchecked Sendable {
         "--source", source.path, "--workspace", workspace.path,
       ] + arguments
     var environment = ProcessInfo.processInfo.environment
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
     if FileManager.default.fileExists(atPath: developer + "/Platforms/iPhoneOS.platform") {
       environment["DEVELOPER_DIR"] = developer
     }
