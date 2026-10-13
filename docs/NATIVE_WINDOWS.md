@@ -53,6 +53,14 @@ assets, generated ARM64 data and the AOT manifest.
    the complete folder. Do not run the EXE inside a ZIP preview.
 2. Open MinionRush-Portable-Windows/MinionRush Builder.exe.
 3. Drop one original 1.8.1g ZIP onto the window or select Browse ZIP.
+   When the portable kit is in a Windows UTM shared folder with a single
+   matching original ZIP next to it, the GUI fills its path automatically.
+   This avoids the Windows WebDAV file dialog's 50 MB download limit.
+   If detection is unavailable, paste a full absolute ZIP path in the source
+   field (Windows Explorer: Shift + right-click, Copy as path). The field
+   accepts the enclosing double quotes from Copy as path. The actual large
+   ZIP transfer is handled by the local UTM loopback HTTP transport during
+   Create IPA, not by the Windows file dialog.
 4. Select Save As and choose a writable folder and a new filename ending
    in .ipa. Existing IPA files are never overwritten.
 5. Optionally select a private Hungarian hu.xlf catalog. This translation is

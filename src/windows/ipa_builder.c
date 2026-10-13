@@ -65,6 +65,7 @@ typedef struct { int label, hint, field, pick; } Row;
 #define LABEL_STYLE (WS_CHILD | WS_VISIBLE | SS_NOPREFIX | SS_ENDELLIPSIS)
 #define BUTTON_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW)
 #define FIELD_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL | ES_READONLY)
+#define SOURCE_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL)
 
 /* Creation order is also the z-order and keyboard order. Each field is
    preceded by its label so assistive technology can name it. */
@@ -73,9 +74,9 @@ static const Spec specs[] = {
     {ID_SUBTITLE, L"STATIC",
      L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
      LABEL_STYLE, ROLE_SUBTITLE},
-    {ID_SOURCE_HINT, L"STATIC", L"Drop a ZIP onto this window", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
+    {ID_SOURCE_HINT, L"STATIC", L"Drop or paste a ZIP path", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
     {ID_SOURCE_LABEL, L"STATIC", L"Original game ZIP", LABEL_STYLE, ROLE_LABEL},
-    {ID_SOURCE, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
+    {ID_SOURCE, L"EDIT", L"", SOURCE_STYLE, ROLE_FIELD},
     {ID_PICK_SOURCE, L"BUTTON", L"Browse ZIP...", BUTTON_STYLE, ROLE_BROWSE},
     {ID_DESTINATION_LABEL, L"STATIC", L"Save unsigned IPA to", LABEL_STYLE, ROLE_LABEL},
     {ID_DESTINATION, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
@@ -184,9 +185,55 @@ static BOOL is_zip(LPCWSTR filename) {
     return n >= 4 && _wcsicmp(filename + n - 4, L".zip") == 0;
 }
 
+/* Query directory metadata only. Windows WebDAV rejects opening large ZIPs,
+   but FindFirstFileW can retrieve their names without downloading them. */
 static BOOL regular_file(LPCWSTR file) {
     DWORD attrs = GetFileAttributesW(file);
-    return attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY) == 0;
+    if (attrs != INVALID_FILE_ATTRIBUTES)
+        return (attrs & FILE_ATTRIBUTE_DIRECTORY) == 0;
+    WIN32_FIND_DATAW entry;
+    HANDLE found = FindFirstFileW(file, &entry);
+    if (found == INVALID_HANDLE_VALUE) return FALSE;
+    FindClose(found);
+    const WCHAR *slash = wcsrchr(file, L'\\');
+    const WCHAR *name = slash ? slash + 1 : file;
+    return _wcsicmp(name, entry.cFileName) == 0 &&
+           (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+/* The private original ZIP is normally next to the extracted GUI directory
+   in UTM's shared folder. Look it up by version, without opening the ZIP via
+   the WebDAV-backed shell file picker. Only prefill when unambiguous. */
+static BOOL nearby_original_zip(WCHAR *path, size_t capacity) {
+    WCHAR pattern[32768];
+    const WCHAR *end = wcsrchr(kit_path, L'\\');
+    if (!end) return FALSE;
+    size_t prefix = (size_t)(end - kit_path);
+    if (FAILED(StringCchPrintfW(pattern, 32768, L"%.*s\\*1.8.1g*.zip",
+                                (int)prefix, kit_path)))
+        return FALSE;
+    WIN32_FIND_DATAW entry;
+    HANDLE search = FindFirstFileW(pattern, &entry);
+    if (search == INVALID_HANDLE_VALUE) return FALSE;
+    BOOL found_one = FALSE, ambiguous = FALSE;
+    do {
+        if ((entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
+            !is_zip(entry.cFileName))
+            continue;
+        if (found_one) { ambiguous = TRUE; break; }
+        found_one = SUCCEEDED(StringCchPrintfW(
+            path, capacity, L"%.*s\\%s", (int)prefix, kit_path, entry.cFileName));
+    } while (FindNextFileW(search, &entry));
+    FindClose(search);
+    return found_one && !ambiguous;
+}
+
+static void unquote_path(WCHAR *path) {
+    size_t length = wcslen(path);
+    if (length >= 2 && path[0] == L'"' && path[length - 1] == L'"') {
+        memmove(path, path + 1, (length - 1) * sizeof(WCHAR));
+        path[length - 2] = 0;
+    }
 }
 
 static int text_width(Role role, LPCWSTR text) {
@@ -946,8 +993,13 @@ static void start_build(void) {
     StringCchPrintfW(job->python, 32768, L"%s\\python\\python.exe", kit_path);
     StringCchPrintfW(job->tool, 32768,
                      L"%s\\runtime\\tools\\windows_native_package.py", kit_path);
-    if (!get_text(ctl[ID_SOURCE], job->source, 32768) || !is_zip(job->source) ||
-            !regular_file(job->source)) {
+    if (!get_text(ctl[ID_SOURCE], job->source, 32768)) {
+        MessageBoxW(main_window, L"Select an existing original .zip file.",
+                    L"Source ZIP required", MB_OK | MB_ICONWARNING);
+        goto failure;
+    }
+    unquote_path(job->source);
+    if (!is_zip(job->source) || !regular_file(job->source)) {
         MessageBoxW(main_window, L"Select an existing original .zip file.",
                     L"Source ZIP required", MB_OK | MB_ICONWARNING);
         goto failure;
@@ -1088,6 +1140,11 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         ui_dpi = query_dpi(window);
         create_controls(window);
         rebuild_fonts();
+        /* UTM's Windows WebDAV picker cannot open a 433 MB ZIP. The file is
+           already shared next to the kit, so supply its path directly. */
+        WCHAR nearby[32768] = {0};
+        if (nearby_original_zip(nearby, 32768))
+            set_path(ctl[ID_SOURCE], nearby);
         tint_title_bar(window);
         DragAcceptFiles(window, TRUE);
         return 0;
@@ -1155,7 +1212,14 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
             if (HIWORD(wparam) == EN_SETFOCUS || HIWORD(wparam) == EN_KILLFOCUS)
                 InvalidateRect(window, NULL, FALSE);
             return 0;
-        case ID_PICK_SOURCE: pick_into(ID_SOURCE, FALSE, FALSE); return 0;
+        case ID_PICK_SOURCE: {
+            WCHAR nearby[32768] = {0};
+            if (nearby_original_zip(nearby, 32768))
+                set_path(ctl[ID_SOURCE], nearby);
+            else
+                pick_into(ID_SOURCE, FALSE, FALSE);
+            return 0;
+        }
         case ID_PICK_DESTINATION: pick_into(ID_DESTINATION, TRUE, FALSE); return 0;
         case ID_PICK_CATALOG: pick_into(ID_CATALOG, FALSE, TRUE); return 0;
         case ID_BUILD: start_build(); return 0;
