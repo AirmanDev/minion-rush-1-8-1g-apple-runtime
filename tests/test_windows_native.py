@@ -386,6 +386,117 @@ class WindowsKitTests(unittest.TestCase):
                                         include_hungarian=False)
             self.assertEqual(output.read_bytes(), b"unsigned synthetic IPA")
 
+    def test_existing_ipa_requires_explicit_overwrite_and_replaces_atomically(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic archive")
+            kit = root / "kit"
+            kit.mkdir()
+            target = root / "existing.ipa"
+            target.write_bytes(b"previous signed or unsigned IPA")
+            calls = []
+
+            def assemble(template, folder, destination):
+                self.assertTrue(target.is_file())
+                self.assertEqual(target.read_bytes(), b"previous signed or unsigned IPA")
+                self.assertNotEqual(destination, target)
+                self.assertEqual(destination.parent.parent, root)
+                calls.append(destination)
+                destination.write_bytes(b"new unsigned IPA")
+
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package.prepare"),
+                  mock.patch("windows_native_package.assemble_unsigned_ipa", assemble)):
+                with self.assertRaisesRegex(ValueError, "without approval"):
+                    create_unsigned_ipa(source, kit, target)
+                self.assertEqual(target.read_bytes(), b"previous signed or unsigned IPA")
+                self.assertEqual(calls, [])
+                create_unsigned_ipa(source, kit, target, overwrite=True)
+
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(target.read_bytes(), b"new unsigned IPA")
+            self.assertFalse(calls[0].exists())
+            self.assertFalse(any(p.name.startswith(".mr-replace-") for p in root.iterdir()))
+
+    def test_failed_overwrite_preserves_original_and_cleans_staged_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic archive")
+            kit = root / "kit"
+            kit.mkdir()
+            target = root / "existing.ipa"
+            original = b"working old IPA"
+            target.write_bytes(original)
+
+            def fail_after_write(template, folder, destination):
+                destination.write_bytes(b"partial new IPA")
+                raise RuntimeError("synthetic assembly failure")
+
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package.prepare"),
+                  mock.patch("windows_native_package.assemble_unsigned_ipa",
+                             fail_after_write)):
+                with self.assertRaisesRegex(RuntimeError, "synthetic assembly failure"):
+                    create_unsigned_ipa(source, kit, target, overwrite=True)
+
+            self.assertEqual(target.read_bytes(), original)
+            self.assertFalse(any(p.name.startswith(".mr-replace-") for p in root.iterdir()))
+
+    def test_overwrite_rejects_changed_or_disappearing_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic archive")
+            kit = root / "kit"
+            kit.mkdir()
+            target = root / "existing.ipa"
+            original = b"working old IPA"
+            target.write_bytes(original)
+
+            def modified_externally(template, folder, destination):
+                destination.write_bytes(b"new unsigned IPA")
+                target.write_bytes(b"different outside edit")
+
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"compiler_sha256": "0" * 64}),
+                  mock.patch("windows_native_package.prepare"),
+                  mock.patch("windows_native_package.assemble_unsigned_ipa",
+                             modified_externally)):
+                with self.assertRaisesRegex(ValueError, "changed during build"):
+                    create_unsigned_ipa(source, kit, target, overwrite=True)
+            self.assertEqual(target.read_bytes(), b"different outside edit")
+            self.assertFalse(any(p.name.startswith(".mr-replace-") for p in root.iterdir()))
+            target.unlink()
+            with self.assertRaisesRegex(ValueError, "has disappeared"):
+                create_unsigned_ipa(source, kit, target, overwrite=True)
+
+    def test_overwrite_rejects_linked_or_directory_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic archive")
+            kit = root / "kit"
+            kit.mkdir()
+            directory_target = root / "folder.ipa"
+            directory_target.mkdir()
+            with self.assertRaisesRegex(ValueError, "without approval"):
+                create_unsigned_ipa(source, kit, directory_target, overwrite=True)
+            target = root / "real.ipa"
+            target.write_bytes(b"original")
+            link = root / "linked.ipa"
+            try:
+                link.symlink_to(target)
+            except OSError:
+                pass
+            else:
+                with self.assertRaisesRegex(ValueError, "linked output"):
+                    create_unsigned_ipa(source, kit, link, overwrite=True)
+                self.assertEqual(target.read_bytes(), b"original")
+
     def test_builder_allows_original_zip_without_optional_language(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

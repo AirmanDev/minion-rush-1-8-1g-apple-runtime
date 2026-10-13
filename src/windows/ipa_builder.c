@@ -124,7 +124,7 @@ typedef struct { HDC dc, target; HBITMAP bitmap, previous; RECT area; } Canvas;
 typedef struct {
     WCHAR python[32768], tool[32768], kit[32768];
     WCHAR source[32768], output[32768], scratch[32768];
-    BOOL include_hungarian;
+    BOOL include_hungarian, overwrite_output;
     HWND window;
     HANDLE job; /* owned and closed by the UI thread */
 } Build;
@@ -137,6 +137,7 @@ static Geometry geo;
 static UINT ui_dpi = 96;
 static int body_height;
 static WCHAR kit_path[MAX_PATH * 4], last_output[32768], last_scratch[32768];
+static WCHAR approved_overwrite[32768];
 static WCHAR last_error[4096], phase_text[192], transport_text[192], pending_detail[512];
 static DWORD last_exit_code;
 static BOOL diagnostics_dirty, log_truncated;
@@ -199,7 +200,9 @@ static const UiText ui_texts[] = {
     {L"Output required", L"Ment\u00e9si hely sz\u00fcks\u00e9ges"},
     {L"The output filename must end in .ipa.", L"A kimeneti f\u00e1jl nev\u00e9nek .ipa v\u00e9gz\u0151d\u00e9s\u0171nek kell lennie."},
     {L"Invalid filename", L"\u00c9rv\u00e9nytelen f\u00e1jln\u00e9v"},
-    {L"This output already exists. Choose a different filename.", L"Ez a f\u00e1jl m\u00e1r l\u00e9tezik. V\u00e1lassz m\u00e1sik f\u00e1jlnevet."},
+    {L"This file already exists. Replace it with the newly built IPA?",
+     L"Ez a f\u00e1jl m\u00e1r l\u00e9tezik. Fel\u00fcl\u00edrod az \u00faj IPA-val?"},
+    {L"The selected output is not a regular file.", L"A c\u00e9l nem hagyom\u00e1nyos f\u00e1jl."},
     {L"Existing output", L"L\u00e9tez\u0151 kimeneti f\u00e1jl"},
     {L"The bundled Hungarian language file is missing.", L"Hi\u00e1nyzik a be\u00e9p\u00edtett magyar nyelvi f\u00e1jl."},
     {L"Missing translation", L"Hi\u00e1nyz\u00f3 ford\u00edt\u00e1s"},
@@ -973,7 +976,8 @@ static BOOL choose_file(BOOL is_save, WCHAR *path, size_t capacity) {
     DWORD options = 0;
     IFileDialog_GetOptions(dialog, &options);
     options |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
-    if (!is_save) options |= FOS_FILEMUSTEXIST;
+    if (is_save) options |= FOS_OVERWRITEPROMPT;
+    else options |= FOS_FILEMUSTEXIST;
     IFileDialog_SetOptions(dialog, options);
     IFileDialog_SetTitle(dialog, tr(is_save ? L"Save unsigned IPA" :
                                     L"Choose original Minion Rush 1.8.1g ZIP"));
@@ -1282,6 +1286,8 @@ static DWORD WINAPI run_build(LPVOID opaque) {
     );
     if (SUCCEEDED(hr) && !job->include_hungarian)
         hr = StringCchCatW(command, cap, L" --no-hungarian");
+    if (SUCCEEDED(hr) && job->overwrite_output)
+        hr = StringCchCatW(command, cap, L" --overwrite");
     if (SUCCEEDED(hr)) {
         hr = StringCchCatW(command, cap, L" --scratch-root \"");
         if (SUCCEEDED(hr)) hr = StringCchCatW(command, cap, job->scratch);
@@ -1393,11 +1399,22 @@ static void start_build(void) {
                     tr(L"Invalid filename"), MB_OK | MB_ICONWARNING);
         goto failure;
     }
-    if (GetFileAttributesW(job->output) != INVALID_FILE_ATTRIBUTES) {
-        MessageBoxW(main_window, tr(L"This output already exists. Choose a different filename."),
-                    tr(L"Existing output"), MB_OK | MB_ICONWARNING);
-        goto failure;
+    DWORD attrs = GetFileAttributesW(job->output);
+    if (attrs != INVALID_FILE_ATTRIBUTES) {
+        if (attrs & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) {
+            MessageBoxW(main_window, tr(L"The selected output is not a regular file."),
+                        tr(L"Invalid filename"), MB_OK | MB_ICONWARNING);
+            goto failure;
+        }
+        if (_wcsicmp(approved_overwrite, job->output) != 0 &&
+                MessageBoxW(main_window,
+                            tr(L"This file already exists. Replace it with the newly built IPA?"),
+                            tr(L"Existing output"),
+                            MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2) != IDYES)
+            goto failure;
+        job->overwrite_output = TRUE;
     }
+    approved_overwrite[0] = 0;  /* Consent is for one build only. */
     job->include_hungarian = hu_selected && hu_available;
     if (!regular_file(job->python) || !regular_file(job->tool)) {
         MessageBoxW(main_window, tr(L"The portable runtime is incomplete. Extract the full release ZIP."),
@@ -1493,7 +1510,18 @@ static void finish_build(DWORD exit_code) {
 
 static void pick_into(int target, BOOL is_save) {
     WCHAR selection[32768];
-    if (choose_file(is_save, selection, 32768)) set_path(ctl[target], selection);
+    if (!choose_file(is_save, selection, 32768)) return;
+    set_path(ctl[target], selection);
+    if (is_save) {
+        /* FOS_OVERWRITEPROMPT has already obtained consent when the chosen
+           path exists. Never reuse that consent for another destination. */
+        DWORD attrs = GetFileAttributesW(selection);
+        if (attrs != INVALID_FILE_ATTRIBUTES &&
+                !(attrs & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))
+            StringCchCopyW(approved_overwrite, 32768, selection);
+        else
+            approved_overwrite[0] = 0;
+    }
 }
 
 static void accept_drop(HDROP drop) {

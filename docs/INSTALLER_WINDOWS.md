@@ -13,9 +13,15 @@ Two separate IPA preparation paths are supported in the source tree:
   IPA** and does not install or sign itself.
 
 To use the Mac path, export the IPA locally and transfer it privately.
-The Windows portable kit contains MinionRush Builder.exe. Extract all files,
-launch the GUI, drag an original ZIP onto the window or use Browse, select
-Save As to choose a new output IPA path, and select Create IPA. A private
+The portable Windows executable opens the native Builder. Drag an original
+ZIP onto the window or use Browse, choose an output IPA path with Save As,
+and select Create IPA. When an IPA already exists, the Windows Save dialog
+asks whether to replace it. Accepting this authorizes that file for one
+build only; if a path was selected earlier, the Builder asks before replacing
+it. The new IPA is assembled in a private folder on the same volume and
+replaces the old file only after successful verification. Build failures do
+not destroy the previous IPA.
+
 The bundled Magyar option is a checkbox, enabled by default when its
 private catalog is present. Uncheck it to exclude Hungarian resources from
 that IPA; the original game's languages are always included. There is no
@@ -28,8 +34,8 @@ including paths, phase, transfer method and detailed error; it opens
 automatically on failure. Copy error, Copy full log and Save log provide
 local reporting. On failure the private workspace is retained, can be opened
 through Open temp folder and must be deleted manually afterwards. Do not
-share logs or temporary game files publicly. The GUI never overwrites an
-existing IPA and never signs automatically. Tab and Shift+Tab move between
+share logs or temporary game files publicly. The GUI does not overwrite
+without confirmation and never signs automatically. Tab and Shift+Tab move between
 fields and buttons, Enter presses the focused button, and the window scales
 with the display's DPI setting.
 

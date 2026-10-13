@@ -176,11 +176,20 @@ def _stage_source_archive(source: Path, temporary: Path, *, mode: str = "release
 def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
                         hungarian_xlf: Path | None = None,
                         scratch_root: Path | None = None,
-                        include_hungarian: bool = True) -> None:
-    if output.exists() or output.is_symlink():
-        raise ValueError("refusing to overwrite an existing unsigned IPA")
-    if not output.is_absolute() or not output.parent.is_dir():
-        raise ValueError("output must be in an existing absolute directory")
+                        include_hungarian: bool = True,
+                        overwrite: bool = False) -> None:
+    if not output.is_absolute() or not output.parent.is_dir() or output.parent.is_symlink():
+        raise ValueError("output must be in an existing regular absolute directory")
+    if output.suffix.lower() != ".ipa":
+        raise ValueError("output filename must end in .ipa")
+    if output.is_symlink():
+        raise ValueError("cannot overwrite a linked output")
+    existing = output.exists()
+    if existing and (not overwrite or not output.is_file()):
+        raise ValueError("refusing to overwrite an existing unsigned IPA without approval")
+    if overwrite and not existing:
+        raise ValueError("approved output has disappeared; choose the destination again")
+    original_stat = output.stat() if existing else None
     kit = kit.resolve(strict=True)
     config = validate_kit(kit)
     translations_root = None
@@ -220,9 +229,20 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
             enable_localizations=include_hungarian,
         )
         print("2/3: Assemble the unsigned IPA and embed original game data.", flush=True)
-        assemble_unsigned_ipa(
-            kit / "MinionRush-native-template-unsigned.zip", private, output
-        )
+        template = kit / "MinionRush-native-template-unsigned.zip"
+        if overwrite:
+            # Assemble beside the destination, on the same volume. Preserve the
+            # existing IPA until the new archive has passed all build checks.
+            with tempfile.TemporaryDirectory(prefix=".mr-replace-", dir=output.parent) as folder:
+                replacement = Path(folder) / output.name
+                assemble_unsigned_ipa(template, private, replacement)
+                if (output.is_symlink() or not output.is_file() or
+                        (output.stat().st_size, output.stat().st_mtime_ns) !=
+                        (original_stat.st_size, original_stat.st_mtime_ns)):
+                    raise ValueError("destination changed during build; original IPA was preserved")
+                os.replace(replacement, output)
+        else:
+            assemble_unsigned_ipa(template, private, output)
         completed = True
     finally:
         if completed or scratch_root is None:
@@ -244,6 +264,8 @@ def main() -> int:
                         help="optional private hu.xlf translation catalog")
     parser.add_argument("--no-hungarian", action="store_true",
                         help="exclude the bundled Hungarian language from this IPA")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="replace a confirmed existing IPA after successful assembly")
     parser.add_argument("--scratch-root", type=Path,
                         help="private per-job directory managed by the graphical launcher")
     args = parser.parse_args()
@@ -251,7 +273,8 @@ def main() -> int:
         create_unsigned_ipa(args.source_zip, args.kit, args.output,
                             hungarian_xlf=args.hungarian_xlf,
                             scratch_root=args.scratch_root,
-                            include_hungarian=not args.no_hungarian)
+                            include_hungarian=not args.no_hungarian,
+                            overwrite=args.overwrite)
     except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as exc:
         print("Windows native IPA build failed:", exc, file=sys.stderr)
         return 1

@@ -60,8 +60,13 @@ assets, generated ARM64 data and the AOT manifest.
    size limit. If necessary, paste a full absolute ZIP path in the source
    field (Windows Explorer: Shift + right-click, Copy as path); enclosing
    quotes are accepted. This test-only behavior is not in the release EXE.
-4. Select Save As and choose a writable folder and a new filename ending
-   in .ipa. Existing IPA files are never overwritten.
+4. Select Save As and choose a writable folder and filename ending in .ipa.
+   If the file already exists, the Windows Save dialog asks for confirmation
+   before authorizing replacement. An existing IPA selected previously is
+   confirmed again at build start. The new IPA is built separately on the
+   destination volume, then replaces the old one only after successful
+   assembly and verification. Cancelled or failed builds preserve the
+   existing IPA. Confirmation is valid for one build only.
 5. Under Additional languages in IPA, check Magyar to include the bundled
    private Hungarian translation, or uncheck it to create an IPA containing
    only the original game languages. The checked option defaults to on when
