@@ -31,6 +31,18 @@ COMPILER_SOURCES = ("src/native/a64_compiler.c", "src/native/elf_loader.c",
                     "src/native/elf_loader.h", "src/native/host_pages.h")
 
 
+
+def run_logged_process(command: list[str], *, timeout: int) -> None:
+    """Forward child diagnostics through the parent logger, never directly to its pipe."""
+    result = subprocess.run(
+        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, errors="replace", check=False, timeout=timeout,
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n", flush=True)
+    result.check_returncode()
+
+
 def compile_host_compiler(destination: Path, cc: str = "clang") -> None:
     """Produce a host-native AOT translator; does not use any game inputs."""
     if destination.exists() or destination.is_symlink():
@@ -52,7 +64,7 @@ def compile_host_compiler(destination: Path, cc: str = "clang") -> None:
         cmd += ["-D_DARWIN_C_SOURCE"]
     elif sys.platform.startswith("linux"):
         cmd += ["-D_DEFAULT_SOURCE"]
-    subprocess.run(cmd, check=True, timeout=120)
+    run_logged_process(cmd, timeout=120)
 
 
 def check_destination(destination: Path) -> Path:
@@ -140,7 +152,7 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
             str(compiler), str(assets / "lib/libdespicablemefree.so"),
             *(str(compiled / name) for name in AOT_PRODUCTS),
         ]
-        subprocess.run(cmd, check=True, timeout=600)
+        run_logged_process(cmd, timeout=600)
         for name in AOT_PRODUCTS:
             if not (compiled / name).is_file() or not (compiled / name).stat().st_size:
                 raise ValueError(f"AOT translator failed to create: {name}")

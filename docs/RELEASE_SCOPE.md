@@ -1,5 +1,24 @@
 # Portable Builder release scope
 
+## Builder 1.2.6 (native translator diagnostic channel)
+
+The native ARM32-to-ARM64 compiler is a child process of the desktop Python
+backend. Its stdout and stderr must not enter the Mac UI's JSON Lines protocol
+pipe directly. Unstructured compiler messages, including the normal
+`discovery` statistics, previously caused the Swift JSON decoder to report
+a false error and abort the build.
+
+Host compiler and translator processes now capture their combined diagnostics
+and forward the result through the existing structured log emitter. The
+process return code is checked independently; a failing translator still
+fails the build and its diagnostics remain visible in the activity log.
+The same capture function is used for Mac and Windows native AOT preparation.
+
+Regression tests verify successful diagnostics arrive only as typed log
+events and nonzero exits retain their status. The user-supplied original
+archive, generic iOS template, optional language packs, ARM64 output format,
+and device installation workflow are unchanged.
+
 ## Builder 1.2.5 (macOS appearance compatibility)
 
 The native macOS popup menus for selecting a device and Apple signing team

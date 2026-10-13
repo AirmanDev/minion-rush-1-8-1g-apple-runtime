@@ -31,6 +31,14 @@ request explicit approval if the app carries download quarantine.
 macOS 26.6 or later is required.
 This does not change the game executable's macOS 14 deployment minimum.
 
+### Compiler logs and application status
+
+Native AOT compiler diagnostics are logged through the same typed JSON
+protocol as other Builder log lines. The normal block-discovery figures
+are informational. They must not change the status indicator to an error
+or stop the build. A genuine nonzero translator exit is still an error.
+The complete session log is available from the Builder's detail controls.
+
 ## Portable Mac download and integrity
 
 Download MinionRush-Builder-macOS-arm64.zip and SHA256SUMS.txt
