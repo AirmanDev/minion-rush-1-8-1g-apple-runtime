@@ -17,6 +17,13 @@ class WindowsIconTests(unittest.TestCase):
         self.assertIn('101 ICON "src/windows/builder.ico"',
                       (ROOT / "src/windows/builder.rc").read_text())
 
+    def test_windows_icon_uses_single_mac_artwork_generator(self):
+        builder = (ROOT / "tools/build_windows_icon.py").read_text()
+        self.assertIn("prepare_installer_icon.swift", builder)
+        self.assertIn("render_mac_iconset(working)", builder)
+        self.assertNotIn("def render_pixel(", builder)
+        self.assertNotIn("ARROW =", builder)
+
     def test_finished_diagnostics_update_before_success_message(self):
         source = (ROOT / "src/windows/ipa_builder.c").read_text()
         begin = source.index("static void finish_build(DWORD exit_code)")

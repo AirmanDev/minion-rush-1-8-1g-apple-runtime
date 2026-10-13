@@ -39,11 +39,15 @@ without confirmation and never signs automatically. Tab and Shift+Tab move betwe
 fields and buttons, Enter presses the focused button, and the window scales
 with the display's DPI setting.
 
-The Windows Builder GUI and portable EXE share the same original
-blue-and-gold icon at 16, 24, 32, 48, 64, 128 and 256 px. Both executables
-contain a Windows icon resource, so Explorer, the taskbar and the window
-title bar use the application icon without sidecar assets. The icon is
-generated from project-owned artwork, not original game images.
+The Windows Builder GUI and portable EXE use the **same artwork** as the
+macOS Minion Rush Installer: gold background, dark package and arrow. The
+single drawing source is `tools/prepare_installer_icon.swift`. On a Mac,
+`python3 tools/build_windows_icon.py` renders that source into the checked-in
+Windows `src/windows/builder.ico`, at 16, 24, 32, 48, 64, 128 and 256 px.
+Run `python3 tools/build_windows_icon.py --verify` on macOS after changing
+the icon source, to ensure the Windows icon is still identical to the Mac
+design. Both Windows executables have embedded icon resources, with no
+sidecar image file required at runtime.
 
 Completed-build diagnostics now refresh before the success dialog opens;
 the diagnostic status therefore shows Completed rather than Running while
