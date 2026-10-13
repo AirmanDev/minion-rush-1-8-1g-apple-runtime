@@ -35,6 +35,17 @@ class BuilderThemeTests(unittest.TestCase):
         self.assertIn("For Minion Rush 1.8.1g", windows)
         self.assertEqual(windows.count('{L"For Minion Rush 1.8.1g. Use your own original ZIP."'), 1)
 
+    def test_desktop_versions_have_one_source(self):
+        info = plistlib.loads((ROOT / "installer/Info.plist").read_bytes())
+        windows_build = (ROOT / "tools/build_windows_gui.sh").read_text()
+        windows_ui = (ROOT / "src/windows/ipa_builder.c").read_text()
+        mac_ui = (ROOT / "installer/InstallerView.swift").read_text()
+        self.assertRegex(info["CFBundleShortVersionString"], r"^\d+\.\d+\.\d+$")
+        self.assertIn("CFBundleShortVersionString", windows_build)
+        self.assertIn("MR_BUILDER_VERSION", windows_build)
+        self.assertIn('L"v" MR_BUILDER_VERSION', windows_ui)
+        self.assertIn('Text("v" + model.appVersion)', mac_ui)
+
     def test_tokens_cover_all_native_mac_colors(self):
         theme = json.loads((ROOT / "config/builder_theme.json").read_text())
         self.assertEqual(set(theme), {name for name, _ in NAMES})

@@ -262,6 +262,26 @@ class InstallerBackendTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Cached runtime"):
                     backend.prepare_runtime(TOOLS.parent, workspace)
 
+    def test_device_refresh_uses_xcode_without_importing_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = argparse.Namespace(command="devices", source=root, workspace=root)
+            with (mock.patch.object(backend, "prepare_runtime",
+                                    side_effect=AssertionError("unused snapshot")),
+                  mock.patch.object(backend, "toolchain", return_value={
+                      "developer": "/Applications/Xcode.app/Contents/Developer",
+                      "version": "Xcode 27",
+                  }),
+                  mock.patch.object(backend, "query_devices", return_value=[
+                      {"id": "phone", "udid": "a", "name": "iPhone", "os": "27.0"},
+                      {"id": "tablet", "udid": "b", "name": "iPad", "os": "27.0"},
+                  ])):
+                result = backend.execute(args)
+            self.assertEqual(result["toolchain"], "Xcode 27")
+            self.assertEqual([device["id"] for device in result["devices"]],
+                             ["phone", "tablet"])
+            self.assertFalse((root / "runtimes").exists())
+
     def test_unsigned_ipa_does_not_create_redundant_source_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

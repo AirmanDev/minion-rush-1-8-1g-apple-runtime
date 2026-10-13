@@ -1,5 +1,25 @@
 # Portable Builder release scope
 
+## Builder 1.2.4 (desktop interface and device refresh)
+
+The complete portable Mac and Windows Builders are available as separate
+downloads from GitHub Releases. This update keeps the native ARM64 engine,
+AOT compiler, source ZIP validation, independent optional-language catalog
+and IPA format unchanged.
+
+- The desktop version appears in the Mac header and Windows header. The Mac
+  bundle Info.plist is the single source for the generated Windows version.
+- The portable Mac app bundles its own NativeKit, Python runtime and
+  target-only Hungarian catalog; the source-only Xcode importer does not.
+- The Mac device Refresh action runs a direct Xcode devicectl query without
+  copying the original game or rebuilding the source runtime. The device
+  selector has a visible native border; refreshed device state does not
+  discard a previously generated IPA path.
+- Physical iPhone and iPad devices reported by Xcode may be selected for the
+  optional Xcode signing workflow. Creating an unsigned IPA remains independent
+  of Xcode, devices and Apple signing.
+- Compiler and language data remain identical to the 1.2.3 release.
+
 ## Candidate 1.2.3 (packaging and license attribution)
 
 The next portable Builder candidate supports the same local workflow on both

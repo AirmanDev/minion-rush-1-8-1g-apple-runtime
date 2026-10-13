@@ -100,9 +100,10 @@ installer for the Xcode-based signing and installation path.
 
 ## Portable Builder download and integrity
 
-The 1.2.3 portable EXE is not yet a published Release. After distribution
-rights are cleared and GitHub Releases publishes the candidate, download
-MinionRush-Builder-Windows-x64.exe and SHA256SUMS.txt from the same release.
+Download MinionRush-Builder-Windows-x64.exe and SHA256SUMS.txt from
+the same published GitHub Release. From version 1.2.4 onward, the GUI
+displays the app version. The Windows version string is derived from the
+Mac Info.plist at build time so both desktop editions agree.
 In PowerShell run:
 
     (Get-FileHash -LiteralPath 'MinionRush-Builder-Windows-x64.exe' -Algorithm SHA256).Hash

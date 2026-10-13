@@ -56,9 +56,17 @@ struct InstallerView: View {
   private var header: some View {
     HStack(alignment: .center, spacing: 20) {
       VStack(alignment: .leading, spacing: 7) {
-        Text(model.layout.title)
-          .font(.system(size: 30, weight: .semibold))
-          .foregroundStyle(.white)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+          Text(model.layout.title)
+            .font(.system(size: 30, weight: .semibold))
+            .foregroundStyle(.white)
+          if !model.appVersion.isEmpty {
+            Text("v" + model.appVersion)
+              .font(.system(size: 12, weight: .medium))
+              .foregroundStyle(Color.white.opacity(0.75))
+              .accessibilityIdentifier("installer.appVersion")
+          }
+        }
         Text(text("headerSubtitle"))
           .font(.system(size: 13))
           .foregroundStyle(Color.white.opacity(0.8))
@@ -336,9 +344,13 @@ struct InstallerView: View {
           selection: $model.selectedDevice, identifier: "installer.device"
         )
         .disabled(model.busy || model.devices.isEmpty)
-        Button(text("refresh")) { model.refresh() }
+        Button(text("refresh")) { model.refreshDevices() }
           .buttonStyle(BuilderButtonStyle(role: .secondary))
           .disabled(model.busy)
+      }
+      if !model.devices.isEmpty {
+        Text("\(model.devices.count) " + text("devicesFound"))
+          .font(.caption).foregroundStyle(BuilderPalette.muted)
       }
       helpText("deviceHelp")
     }

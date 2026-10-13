@@ -30,6 +30,9 @@ final class InstallerModel {
     case refresh, importArchive, install, exportIPA, buildNative
   }
   let layout: InstallerLayout
+  var appVersion: String {
+    Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+  }
   let workspace: URL
   private let source: URL
   private let defaults: UserDefaults
@@ -76,6 +79,12 @@ final class InstallerModel {
     return files?.contains(where: { $0.hasSuffix(".json") }) ?? false
   }
   var canBuildIPA: Bool { !busy && archiveURL != nil && nativeKitAvailable }
+  var deviceStatus: String {
+    if !toolchain.isEmpty && !devices.isEmpty && selectedDevice.isEmpty {
+      return text("selectDevice")
+    }
+    return text("deviceNeeded")
+  }
   var textLanguage: String { interfaceLanguage == "hu" ? "hu" : "en" }
   func text(_ key: String) -> String { layout.text(key, language: textLanguage) }
   var team: String {
@@ -144,12 +153,13 @@ final class InstallerModel {
     }
     if assets == nil { return text("importNeeded") }
     if toolchain.isEmpty { return text("toolchainNeeded") }
-    if devices.isEmpty || selectedDevice.isEmpty { return text("deviceNeeded") }
+    if devices.isEmpty || selectedDevice.isEmpty { return deviceStatus }
     if !validSigning { return text("signingNeeded") }
     return text("ready")
   }
 
   func refresh() { start(["status"], phase: text("checking"), operation: .refresh) }
+  func refreshDevices() { start(["devices"], phase: text("checking"), operation: .refresh) }
 
   func buildNative(overwrite: Bool) {
     guard canBuildIPA, let archive = archiveURL else { return }
@@ -275,9 +285,11 @@ final class InstallerModel {
     busy = true
     cancelling = false
     error = nil
-    installed = false
-    exportedIPA = nil
-    unsignedIPA = nil
+    if operation != .refresh {
+      installed = false
+      exportedIPA = nil
+      unsignedIPA = nil
+    }
     receivedResult = false
     self.phase = phase
     self.operation = operation

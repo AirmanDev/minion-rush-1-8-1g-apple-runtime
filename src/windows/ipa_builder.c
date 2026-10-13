@@ -17,7 +17,7 @@
 #endif
 
 enum {
-    ID_TITLE = 101, ID_SUBTITLE, ID_UI_EN, ID_UI_HU,
+    ID_TITLE = 101, ID_SUBTITLE, ID_VERSION, ID_UI_EN, ID_UI_HU,
     ID_SOURCE_HINT, ID_SOURCE_LABEL, ID_SOURCE, ID_PICK_SOURCE,
     ID_DESTINATION_LABEL, ID_DESTINATION, ID_PICK_DESTINATION,
     ID_PACK_HINT, ID_PACK_LABEL, ID_LANGUAGE_PACKS,
@@ -44,6 +44,9 @@ typedef enum { STATE_IDLE, STATE_BUSY, STATE_OK, STATE_FAILED, STATE_STOPPED } U
 typedef struct { int id; LPCWSTR kind; LPCWSTR text; DWORD style; Role role; } Spec;
 typedef struct { int label, hint, field, pick; } Row;
 
+#ifndef MR_BUILDER_VERSION
+#error MR_BUILDER_VERSION must come from the Mac bundle version
+#endif
 #define MR_BUILDER_TITLE L"Unofficial IPA Builder"
 #define LABEL_STYLE (WS_CHILD | WS_VISIBLE | SS_NOPREFIX | SS_ENDELLIPSIS)
 #define BUTTON_STYLE (WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW)
@@ -57,6 +60,8 @@ static const Spec specs[] = {
     {ID_SUBTITLE, L"STATIC",
      L"For Minion Rush 1.8.1g. Use your own original ZIP.",
      LABEL_STYLE, ROLE_SUBTITLE},
+    {ID_VERSION, L"STATIC", L"v" MR_BUILDER_VERSION,
+     LABEL_STYLE | SS_RIGHT, ROLE_SUBTITLE},
     {ID_UI_EN, L"BUTTON", L"English", BUTTON_STYLE, ROLE_LANG},
     {ID_UI_HU, L"BUTTON", L"Magyar", BUTTON_STYLE, ROLE_LANG},
     {ID_SOURCE_HINT, L"STATIC", L"Drop or paste a ZIP path", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
@@ -491,7 +496,8 @@ static int compute_geometry(Geometry *g, int width, int height) {
     int right = margin + inner;
     g->header = make_rect(0, 0, width, S(88));
     place_slot(g, ID_TITLE, margin, S(14), inner - S(160), S(38));
-    place_slot(g, ID_SUBTITLE, margin, S(54), inner, S(22));
+    place_slot(g, ID_SUBTITLE, margin, S(54), inner - S(100), S(22));
+    place_slot(g, ID_VERSION, right - S(100), S(54), S(100), S(22));
     place_slot(g, ID_UI_EN, right - S(158), S(16), S(74), S(30));
     place_slot(g, ID_UI_HU, right - S(78), S(16), S(74), S(30));
 

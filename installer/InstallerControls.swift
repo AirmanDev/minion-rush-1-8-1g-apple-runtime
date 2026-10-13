@@ -72,7 +72,7 @@ private struct InstallerPopUp: NSViewRepresentable {
     let button = NSPopUpButton(frame: .zero, pullsDown: false)
     button.controlSize = .large
     button.bezelStyle = .rounded
-    button.isBordered = false
+    button.isBordered = true
     button.target = context.coordinator
     button.action = #selector(Coordinator.select(_:))
     button.setAccessibilityLabel(title)

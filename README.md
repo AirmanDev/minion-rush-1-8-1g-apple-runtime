@@ -32,9 +32,11 @@ and does not authorize otherwise restricted copying or adaptation. See
 - Source development and native Apple signing still require the appropriate
   SDK, developer tools and local Python interpreter.
 
-The currently published [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
-contain the older 1.1.0 Mac-only Xcode importer. The 1.2.3 portable
-Mac/Windows candidate is being validated and is not a published Release.
+The [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
+include the standalone Mac and Windows Builders from v1.2.3 onward.
+Version 1.2.4 makes the shared app version visible in both desktop interfaces,
+improves paired-device selection and refresh on Mac, and preserves the
+optional Magyar pack. The 1.1.0 Xcode-only importer remains a separate release.
 Its generic unsigned iOS template is compiled without the original game,
 precomputed game address tables, game assets, or the private Hungarian XLIFF.
 A separate target-only Hungarian JSON pack is included, with no original
@@ -129,24 +131,24 @@ the native ARM64 code, block map, engine bindings, and game assets locally.
 The phone reads a validated address profile and executes the already compiled
 ARM64 blocks; it never translates or JIT-compiles original instructions.
 
-**Mac portable candidate (1.2.3):** self-contained, ad hoc signed arm64
+**Mac portable Builder (1.2.4):** self-contained, ad hoc signed arm64
 `.app` with SwiftUI, pinned Python, host AOT compiler and unsigned generic
 iOS template. No Xcode is required to make an unsigned IPA. The optional
 Xcode signing/install route is separate. See [Mac Builder](docs/INSTALLER.md).
 
-**Windows portable candidate (1.2.3):** self-contained Windows x64 `.exe`
+**Windows portable Builder (1.2.4):** self-contained Windows x64 `.exe`
 with native Win32 UI, embedded Python, host AOT compiler and the same
 unsigned generic iOS template. Windows 11 ARM uses x64 emulation. Sign the
 result with a separately installed signing tool. See
 [Windows Builder](docs/NATIVE_WINDOWS.md) and
 [signing guide](docs/INSTALLER_WINDOWS.md).
 
-The public portable candidates intentionally have no original game,
-precomputed code/map/binding profile, or translated game text. The
-Builder UI itself supports English and Hungarian. The original game's
-languages come from the user-supplied ZIP. Optional third-party language
-catalogs must be provided separately with appropriate rights; they are not
-distributed with these candidates.
+The portable releases contain no original game, precomputed executable
+profile, or original English game text. Both Builders include a target-only
+Hungarian translation pack, which is compiled locally into a separate game
+language table using the user's own source ZIP. Additional community packs
+use the same framework. The rights to redistribute third-party translations
+must be considered separately from the original game binaries.
 
 The previously published 1.1.0 Xcode-only Mac application remains a separate
 download. Build the asset-free Mac installer with `./tools/package_installer.sh`;
