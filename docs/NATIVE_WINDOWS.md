@@ -68,10 +68,13 @@ assets, generated ARM64 data and the AOT manifest.
    MinionRush-Private-Languages/hu.xlf next to the portable kit. Without a
    catalog, original language data is imported without the extra translation.
 6. Select Create IPA. Progress and the latest step appear in the
-   window without freezing the user interface; Show details opens the full
-   compiler output, which is also shown automatically after a failure.
-   Cancel terminates the child build process group; its private scratch
-   directory is cleaned afterwards.
+   window without freezing the user interface. Show details expands the
+   diagnostics with the build phase, source, output, translation, transfer
+   method, workspace path, exit status, error and the available raw output.
+   Copy error copies the diagnostic summary, Copy full log includes the raw
+   output, and Save log writes a local UTF-8 text report. Error details
+   expand automatically on failure. Cancel terminates the child process
+   group and cleans its private scratch files.
 7. Open the chosen output folder. The IPA is unsigned, contains copyrighted
    game assets from your own ZIP, and is for private use only.
 8. Sign and install it with a trusted external tool such as Sideloadly.
@@ -90,8 +93,14 @@ translation and IPA assembly implementation.
 
 Windows UTM shared ZIPs are read using the VM's loopback-only SPICE WebDAV
 endpoint at 127.0.0.1:9843 to avoid Windows WebClient large-file limits.
-Local archives use normal file I/O. GUI builds use private per-job Windows
-temporary folders, cleaned after success, failure, or cancellation.
+Local archives use normal file I/O. The GUI uses short per-job Windows
+temporary paths to avoid classic 260-character filesystem-path failures.
+Successful and cancelled builds clean their private workspace. Failed
+builds retain the workspace for investigation, accessible through Open temp
+folder. This workspace can contain original copyrighted game files, so
+never share it or a diagnostic log publicly and remove it manually after
+troubleshooting. The Windows GUI's displayed log is capped at 4 MiB; it
+explicitly reports when later output is omitted.
 
 An x64 Win32 GUI can run on x64 Windows and on Windows 11 ARM through
 Windows x64 compatibility. No administrator privileges are required.
