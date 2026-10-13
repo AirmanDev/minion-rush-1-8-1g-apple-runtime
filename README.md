@@ -34,6 +34,10 @@ and does not authorize otherwise restricted copying or adaptation. See
 
 The [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
 include the standalone Mac and Windows Builders from v1.2.3 onward.
+Version 1.2.8 corrects the Mac activity-log header so the title and
+Follow output switch stay readable while the log action buttons share a
+separate two-column toolbar. The game compiler and device installation
+logic are unchanged.
 Version 1.2.7 makes the Mac workflow device-first: choose an original
 ZIP and a paired iPhone or iPad, then use Install Game to assemble the native
 IPA locally, sign it using an already configured compatible provisioning
@@ -143,12 +147,12 @@ the native ARM64 code, block map, engine bindings, and game assets locally.
 The phone reads a validated address profile and executes the already compiled
 ARM64 blocks; it never translates or JIT-compiles original instructions.
 
-**Mac portable Builder (1.2.7):** self-contained, ad hoc signed arm64
+**Mac portable Builder (1.2.8):** self-contained, ad hoc signed arm64
 `.app` with SwiftUI, pinned Python, host AOT compiler and unsigned generic
 iOS template. No Xcode is required to save an unsigned IPA. Install Game uses
 Xcode's paired device list and a compatible local signing profile. See [Mac Builder](docs/INSTALLER.md).
 
-**Windows portable Builder (1.2.7):** self-contained Windows x64 `.exe`
+**Windows portable Builder (1.2.8):** self-contained Windows x64 `.exe`
 with native Win32 UI, embedded Python, host AOT compiler and the same
 unsigned generic iOS template. Windows 11 ARM uses x64 emulation. Sign the
 result with a separately installed signing tool. See

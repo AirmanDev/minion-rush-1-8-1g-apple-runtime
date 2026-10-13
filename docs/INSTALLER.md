@@ -49,7 +49,10 @@ Save IPA to create an unsigned file for later private signing elsewhere.
 An IPA built for someone else will require their own appropriate signature
 before installation.
 
-The log area wraps long compiler lines and automatically follows vertical
+The activity-log title and Follow output control occupy their own
+header row. Copy error, Copy full log, Save log and Open full log use two
+consistent-width columns below the header, including at the minimum window
+width. The log area wraps long compiler lines and automatically follows vertical
 progress only. Any unsuccessful signing or installation is reported as a
 failure; the temporary source and signing material are cleared afterward.
 Windows remains a Create IPA-only application because it does not have

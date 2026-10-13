@@ -147,6 +147,7 @@ struct BuilderButtonStyle: ButtonStyle {
     case language(Bool)
   }
   let role: Role
+  var fillsWidth = false
   @Environment(\.isEnabled) private var enabled
 
   func makeBody(configuration: Configuration) -> some View {
@@ -166,7 +167,7 @@ struct BuilderButtonStyle: ButtonStyle {
     return configuration.label
       .font(.system(size: 14, weight: .semibold))
       .foregroundStyle(primary ? BuilderPalette.navy : BuilderPalette.text)
-      .frame(minWidth: 128, minHeight: 42)
+      .frame(minWidth: 128, maxWidth: fillsWidth ? .infinity : nil, minHeight: 42)
       .padding(.horizontal, 12)
       .background(
         enabled

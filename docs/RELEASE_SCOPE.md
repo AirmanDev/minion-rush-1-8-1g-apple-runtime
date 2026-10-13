@@ -1,5 +1,18 @@
 # Portable Builder release scope
 
+## Builder 1.2.8 (Mac build log toolbar layout)
+
+The native Mac activity panel separates the Build details title and Follow
+output control from the action buttons. Four log actions now occupy two
+equal-width columns in two rows, preventing the heading from being compressed
+into individual vertical letters while building or installing. Buttons use the
+existing shared Builder style with a width-fill option scoped to these actions.
+
+The log body remains vertically scrolling with wrapped long lines. No
+backend, game translation, signing or on-device installation logic changes.
+Native UI tests include the in-progress state and real-world long diagnostic
+lines. Both desktop release version strings stay synchronized.
+
 ## Builder 1.2.7 (one-step Mac installation)
 
 The Mac Builder accepts a single original game ZIP and a selected Xcode
