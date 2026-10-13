@@ -74,8 +74,9 @@ enum InstallerViewTests {
           "The full selector rectangle must receive clicks")
       }
     }
-    let team = try control("installer.savedTeam")
-    try InstallerTests.require(team.bounds.width > 600, "Team selector must span its row")
+    try InstallerTests.require(
+      popUps(in: host).count == 1,
+      "Only the device selector should appear until signing settings are expanded")
     try InstallerTests.require(
       device.itemTitles.contains("Test iPhone - 27.0"), "Device selection labels")
     device.selectItem(at: 0)

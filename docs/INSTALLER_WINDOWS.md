@@ -6,9 +6,9 @@ compatible with Minion Rush 1.8.1g. It is not endorsed by Gameloft.
 Two separate IPA preparation paths are supported in the source tree:
 
 - **Mac (maintained):** The portable SwiftUI Builder creates an unsigned
-  IPA without Xcode, and optionally signs/installs via Xcode and the owner's
-  Apple signing account. See [INSTALLER.md](INSTALLER.md).
-- **Windows (portable Builder 1.2.3 candidate):** A portable builder takes
+  IPA without Xcode, and offers direct installation using a
+  compatible profile from the owner's local Xcode signing account. See [INSTALLER.md](INSTALLER.md).
+- **Windows (portable Builder):** A portable builder takes
   the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
   blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
   packages the original assets. The EXE does not include the private
@@ -17,7 +17,8 @@ Two separate IPA preparation paths are supported in the source tree:
   See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
   IPA** and does not install or sign itself.
 
-To use the Mac path, export the IPA locally and transfer it privately.
+To install directly from Mac, choose a device and select Install Game.
+For a private transfer, choose Save IPA instead.
 The portable Windows executable opens the native Builder. Drag an original
 ZIP onto the window or use Browse, choose an output IPA path with Save As,
 and select Create IPA. When an IPA already exists, the Windows Save dialog

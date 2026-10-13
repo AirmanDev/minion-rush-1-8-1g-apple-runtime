@@ -262,6 +262,81 @@ class InstallerBackendTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Cached runtime"):
                     backend.prepare_runtime(TOOLS.parent, workspace)
 
+    def test_build_install_uses_native_output_only_once(self) -> None:
+        from native_macos_package import build_unsigned
+        from native_device_install import sign_and_install
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "original.zip"
+            archive.write_bytes(b"private synthetic ZIP")
+            kit = root / "NativeKit"
+            kit.mkdir()
+            selected = {"id": "phone", "udid": "test-udid",
+                        "name": "iPhone", "os": "27.0"}
+            args = argparse.Namespace(
+                command="build-install", source=root, workspace=root,
+                archive=archive, native_kit=kit, device="phone",
+                team="ABCDEFGHIJ", bundle="org.example.test",
+                no_hungarian=False)
+            built = []
+            signed = []
+
+            def fake_build(original, ipa, nativekit, *, hungarian):
+                self.assertEqual(original, archive)
+                self.assertEqual(nativekit, kit)
+                self.assertTrue(hungarian)
+                built.append(ipa)
+                ipa.write_bytes(b"synthetic unsigned IPA")
+
+            def fake_sign(ipa, device, team, bundle, env, run, emitter, material):
+                self.assertTrue(ipa.is_file())
+                self.assertEqual(device, selected)
+                self.assertEqual(team, "ABCDEFGHIJ")
+                self.assertEqual(bundle, "org.example.test")
+                self.assertEqual(material, ("profile", {}, "identity"))
+                signed.append(ipa)
+
+            with (mock.patch("installer_backend.toolchain", return_value={
+                      "developer": "/Applications/Xcode.app/Contents/Developer",
+                      "version": "Xcode 27"}),
+                  mock.patch("installer_backend.query_devices",
+                             return_value=[selected]),
+                  mock.patch("native_macos_package.build_unsigned",
+                             side_effect=fake_build),
+                  mock.patch("native_device_install.signing_material",
+                             return_value=("profile", {}, "identity")),
+                  mock.patch("native_device_install.sign_and_install",
+                             side_effect=fake_sign)):
+                result = backend.execute(args)
+            self.assertTrue(result["installed"])
+            self.assertEqual(len(built), 1)
+            self.assertEqual(built, signed)
+            self.assertFalse(built[0].exists())
+
+    def test_missing_signing_profile_stops_before_native_compilation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "game.zip"
+            original.write_bytes(b"synthetic")
+            args = argparse.Namespace(
+                command="build-install", source=root, workspace=root,
+                archive=original, native_kit=root / "NativeKit",
+                device="phone", team="ABCDEFGHIJ", bundle="org.example.game",
+                no_hungarian=False)
+            with (mock.patch("installer_backend.toolchain", return_value={
+                      "developer": "/Applications/Xcode.app/Contents/Developer",
+                      "version": "Xcode 27"}),
+                  mock.patch("installer_backend.query_devices", return_value=[{
+                      "id": "phone", "udid": "test", "name": "iPhone", "os": "27"
+                  }]),
+                  mock.patch("native_device_install.signing_material",
+                             side_effect=ValueError("No valid signing profile")),
+                  mock.patch("native_macos_package.build_unsigned",
+                             side_effect=AssertionError("AOT must not run"))):
+                with self.assertRaisesRegex(ValueError, "signing profile"):
+                    backend.execute(args)
+            self.assertFalse(list(root.glob("*.ipa")))
+
     def test_device_refresh_uses_xcode_without_importing_assets(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

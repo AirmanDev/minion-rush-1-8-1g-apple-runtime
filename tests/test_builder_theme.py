@@ -46,6 +46,14 @@ class BuilderThemeTests(unittest.TestCase):
         self.assertIn('L"v" MR_BUILDER_VERSION', windows_ui)
         self.assertIn('Text("v" + model.appVersion)', mac_ui)
 
+    def test_mac_activity_log_only_scrolls_vertically(self):
+        view = (ROOT / "installer/InstallerView.swift").read_text()
+        self.assertIn("ScrollView(.vertical)", view)
+        self.assertNotIn("ScrollView([.horizontal, .vertical])", view)
+        self.assertIn(".fixedSize(horizontal: false, vertical: true)", view)
+        self.assertIn('Button(text("installGame"))', view)
+        self.assertNotIn("signedSection", view)
+
     def test_tokens_cover_all_native_mac_colors(self):
         theme = json.loads((ROOT / "config/builder_theme.json").read_text())
         self.assertEqual(set(theme), {name for name, _ in NAMES})

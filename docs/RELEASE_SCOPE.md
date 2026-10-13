@@ -1,5 +1,33 @@
 # Portable Builder release scope
 
+## Builder 1.2.7 (one-step Mac installation)
+
+The Mac Builder accepts a single original game ZIP and a selected Xcode
+paired device. Install Game builds an unsigned native IPA in a private
+temporary directory, signs the generated application using a matching
+on-machine iOS provisioning profile and developer certificate, then installs
+that application through Xcode's devicectl. This is the same native IPA
+compiler used by Save IPA; it does not separately import the ZIP and does
+not rebuild a second Xcode game project. Temporary generated IPA and signed
+app data are removed after the operation, including failure.
+
+The signing profile must cover the team, bundle identifier, current device
+UDID and available local signing identity. A missing compatible profile
+produces an actionable error directing the user to Xcode's automatic signing
+setup. The Builder does not install to a device until Install Game is pressed.
+No uninstall is performed. Keeping the persisted bundle identifier preserves
+the app's data container on normal updates.
+
+The secondary Save IPA action exports the unsigned package to a user-selected
+location without signing or installing. The native Mac interface keeps only
+the one device selector, a collapsible signing-settings section and one
+primary installation button. The old duplicate ZIP import and separate
+installation bar are removed from the GUI. The log wraps long lines and
+follows the bottom without changing its horizontal origin. Buttons share
+common heights and minimum widths. Windows retains its separate local IPA
+creation UI, with the same version source, language packs and native
+translation pipeline.
+
 ## Builder 1.2.6 (native translator diagnostic channel)
 
 The native ARM32-to-ARM64 compiler is a child process of the desktop Python

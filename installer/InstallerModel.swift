@@ -27,7 +27,7 @@ struct InstallerLayout: Decodable {
 @MainActor @Observable
 final class InstallerModel {
   enum Operation {
-    case refresh, importArchive, install, exportIPA, buildNative
+    case refresh, importArchive, install, exportIPA, buildNative, installGame
   }
   let layout: InstallerLayout
   var appVersion: String {
@@ -79,6 +79,10 @@ final class InstallerModel {
     return files?.contains(where: { $0.hasSuffix(".json") }) ?? false
   }
   var canBuildIPA: Bool { !busy && archiveURL != nil && nativeKitAvailable }
+  var canInstallGame: Bool {
+    canBuildIPA && !toolchain.isEmpty && validSigning
+      && devices.contains { $0.id == selectedDevice }
+  }
   var deviceStatus: String {
     if !toolchain.isEmpty && !devices.isEmpty && selectedDevice.isEmpty {
       return text("selectDevice")
@@ -145,11 +149,15 @@ final class InstallerModel {
       return textLanguage == "hu" ? text("working") : phase
     }
     if let error { return error }
-    if unsignedIPA != nil { return text("unsignedCreated") }
     if installed { return text("installed") }
+    if unsignedIPA != nil { return text("unsignedCreated") }
     if exportedIPA != nil { return text("ipaExported") }
     if nativeKitAvailable {
-      return archiveURL == nil ? text("importNeeded") : text("readyUnsigned")
+      if archiveURL == nil { return text("importNeeded") }
+      if toolchain.isEmpty { return text("toolchainNeeded") }
+      if devices.isEmpty || selectedDevice.isEmpty { return deviceStatus }
+      if !validSigning { return text("signingNeeded") }
+      return text("ready")
     }
     if assets == nil { return text("importNeeded") }
     if toolchain.isEmpty { return text("toolchainNeeded") }
@@ -160,6 +168,20 @@ final class InstallerModel {
 
   func refresh() { start(["status"], phase: text("checking"), operation: .refresh) }
   func refreshDevices() { start(["devices"], phase: text("checking"), operation: .refresh) }
+
+  func installGame() {
+    guard canInstallGame, let archive = archiveURL else { return }
+    start(
+      [
+        "build-install", "--archive", archive.path,
+        "--native-kit", nativeKit.path, "--device", selectedDevice,
+        "--team", team, "--bundle", bundleID,
+      ]
+        + (includeAdditionalLanguages && hasAdditionalLanguages
+          ? [] : ["--no-additional-languages"]),
+      phase: text("working"), operation: .installGame
+    )
+  }
 
   func buildNative(overwrite: Bool) {
     guard canBuildIPA, let archive = archiveURL else { return }
@@ -271,7 +293,7 @@ final class InstallerModel {
         if !nativeKitAvailable { error = problem }
         appendLog(problem)
       }
-      installed = item.installed == true
+      if item.installed == true { installed = true }
       if let path = item.ipaPath {
         let value = URL(fileURLWithPath: path)
         if operation == .buildNative { unsignedIPA = value } else { exportedIPA = value }
@@ -287,8 +309,7 @@ final class InstallerModel {
     error = nil
     if operation != .refresh {
       installed = false
-      exportedIPA = nil
-      unsignedIPA = nil
+      if operation == .buildNative || operation == .installGame { unsignedIPA = nil }
     }
     receivedResult = false
     self.phase = phase
