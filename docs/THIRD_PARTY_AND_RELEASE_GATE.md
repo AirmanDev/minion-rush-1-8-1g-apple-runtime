@@ -1,7 +1,7 @@
-# Third-party inventory and distribution decision gate
+# Third-party inventory and distribution record
 
 Review date: 2026-10-13. Scope: the locally generated **generic** Mac and
-Windows portable Builder candidate, not a finished game IPA or the
+Windows portable Builder release, not a finished game IPA or the
 owner-supplied original archive.
 
 ## What is included, and what it permits
@@ -53,7 +53,7 @@ present and prevent game/translation artifacts from entering generic bundles.
 These checks are **technical**, not a substitute for a complete component
 license audit or actual redistribution rights.
 
-## Release gate: evidence still required
+## Distribution checks and remaining limitations
 
 - [x] Generic portable bundles contain no original game assets, finished IPA, prebuilt translated machine code or editable private XLIFF. The Hungarian target-only pack is bundled separately and may require translation rights.
 - [x] Both Builders generate user-specific native ARM64 code locally, no on-device JIT.
@@ -69,9 +69,9 @@ license audit or actual redistribution rights.
 - [x] Publisher chose an ad hoc-signed Mac Builder and unsigned Windows EXE, without Developer ID, notarization or Authenticode. No further desktop signing work is planned. The iOS IPA still needs signing for installation.
 - [x] Verified delivery limitations: macOS Gatekeeper rejected the ad hoc-signed Builder until the user makes an explicit trust decision; Windows Get-AuthenticodeSignature reported NotSigned for the 1.2.3 EXE.
 - [x] Document checksum validation, unaffiliated product branding, and normal first-launch approval. Game-specific symbols are retained as necessary lookup keys; legal use depends on context.
-- [x] Owner reported successful physical iPhone gameplay and loading overlay from the 1.2.2 Windows-built IPA.
-- [ ] Additional device/OS and edge-case tests: accessibility, unusual failure handling and clean-machine install. The owner already verified game launch, audio and save retention on an iPhone 17 Pro; do not reset those saves.
-- [ ] Before publishing, make a documented release decision for the actual tool-only distribution, acknowledging unresolved historical user-copy and transformation rights. No blanket legal clearance or Gameloft approval is asserted.
+- [x] Owner confirmed physical iPhone installation, gameplay, audio and preservation of saves through the Mac Builder's direct-install workflow.
+- [ ] Wider device/OS, accessibility, unusual failure handling and clean-machine trust-prompt checks are desirable. A physical iPhone install, launch, audio and save continuity have been verified; do not reset those saves.
+- [x] The publisher selected a tool-only GitHub distribution at version 1.2.8, while documenting unresolved game-copy, adaptation and translation rights. No blanket legal clearance, historical acquisition-contract verification or rightsholder approval is asserted.
 
 ## Sources reviewed
 
