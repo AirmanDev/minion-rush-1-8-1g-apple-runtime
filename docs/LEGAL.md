@@ -95,6 +95,21 @@ Primary sources:
 - https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0024
 - https://njt.jog.gov.hu/jogszabaly/1999-76-00-00
 
+## Private Mac Builder
+
+The private macOS Builder adds a prebuilt asset-free iOS template and the
+locally supplied Hungarian XLIFF file to the public macOS application.
+Although it does not embed the original game APK, the template contains
+engine-derived metadata. The translated XLIFF can also contain protected
+game text. Neither should be treated as freely redistributable.
+
+The private .app is ad-hoc signed and is not Apple-notarized. It must not
+be placed in a public download or a GitHub release without independent
+rights clearance, binary license review and applicable macOS signing and
+notarization work. The original ZIP remains separately supplied by the
+user. A successful on-device or private build test does not authorize
+public distribution.
+
 ## Windows binary licensing and distribution
 
 The kit bundles an official Python embeddable runtime. Retain its

@@ -77,10 +77,12 @@ For a native macOS interface, build and open the installer:
 open "build/installer/Minion Rush Installer.app"
 ```
 
-It accepts the original release ZIP, validates and arranges its private assets,
-and installs on one selected, paired iPhone or iPad. The installer requires
-Apple Silicon, macOS 26.6+, Xcode 27, and the user's Apple signing account.
-It includes no game assets. See [installer setup and distribution](docs/INSTALLER.md)
+The native Mac UI now shares the Windows Builder's ZIP-to-unsigned-IPA
+workflow, language options, icon and controls. The prepared private version
+includes the unsigned iOS template, native translator and Hungarian catalog,
+without including the original game ZIP. Xcode 27 and an Apple Account are
+still required for the optional signed install/export pathway. See
+[installer setup and distribution](docs/INSTALLER.md)
 for signing, free-account limits, test coverage, and the shared UI contract.
 ### Additional Windows support (experimental)
 

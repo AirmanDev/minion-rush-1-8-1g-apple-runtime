@@ -139,6 +139,16 @@ struct InstallerTests {
     defer { defaults.removePersistentDomain(forName: suite) }
     let model = try InstallerModel(resources: resources, workspace: temporary, defaults: defaults)
     try require(!model.canInstall, "Initial Install must be disabled")
+    model.interfaceLanguage = "hu"
+    try require(model.text("buildIPA") == "IPA k\u{00e9}sz\u{00ed}t\u{00e9}se", "Hungarian builder localization")
+    model.interfaceLanguage = "en"
+    try require(model.text("buildIPA") == "Create IPA", "English builder localization")
+    let selectedArchive = temporary.appendingPathComponent("original.zip")
+    try Data("synthetic".utf8).write(to: selectedArchive)
+    model.selectArchive(selectedArchive)
+    try require(model.archiveURL == selectedArchive, "ZIP selection remains local")
+    try require(model.archiveName == "original.zip", "ZIP selection updates display")
+    try require(!model.canBuildIPA, "Public app has no embedded private IPA template")
     model.assets = AssetSummary(files: 1, bytes: 4)
     model.devices = [Device(id: "selected", udid: "sample", name: "Test iPhone", os: "27.0")]
     model.selectedDevice = "selected"

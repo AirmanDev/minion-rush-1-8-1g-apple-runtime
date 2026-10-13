@@ -1,27 +1,39 @@
 import AppKit
 import SwiftUI
 
+struct BuilderPanel<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .padding(20)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(BuilderPalette.card, in: RoundedRectangle(cornerRadius: 16))
+      .overlay {
+        RoundedRectangle(cornerRadius: 16).strokeBorder(BuilderPalette.border)
+      }
+  }
+}
+
 struct InstallerCard<Content: View>: View {
   let title: String
   var complete = false
   @ViewBuilder let content: Content
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Text(title).font(.headline)
-        Spacer()
-        if complete {
-          Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-            .accessibilityLabel("Complete")
+    BuilderPanel {
+      VStack(alignment: .leading, spacing: 14) {
+        HStack {
+          Text(title).font(.headline).foregroundStyle(BuilderPalette.text)
+          Spacer()
+          if complete {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+              .accessibilityLabel("Complete")
+          }
         }
+        content
       }
-      content
     }
-    .padding(20)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(.background, in: RoundedRectangle(cornerRadius: 16))
-    .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(.primary.opacity(0.08)) }
   }
 }
 
@@ -120,6 +132,102 @@ struct InstallerField: View {
       if let problem {
         Label(problem, systemImage: "exclamationmark.circle")
           .font(.caption).foregroundStyle(.red)
+      }
+    }
+  }
+}
+
+enum BuilderPalette {
+  static let navy = Color(red: 15 / 255, green: 27 / 255, blue: 45 / 255)
+  static let background = Color(red: 243 / 255, green: 246 / 255, blue: 250 / 255)
+  static let card = Color.white
+  static let border = Color(red: 221 / 255, green: 227 / 255, blue: 236 / 255)
+  static let field = Color(red: 247 / 255, green: 249 / 255, blue: 252 / 255)
+  static let text = Color(red: 26 / 255, green: 37 / 255, blue: 56 / 255)
+  static let muted = Color(red: 92 / 255, green: 104 / 255, blue: 124 / 255)
+  static let gold = Color(red: 245 / 255, green: 184 / 255, blue: 28 / 255)
+  static let success = Color(red: 28 / 255, green: 148 / 255, blue: 92 / 255)
+  static let failure = Color(red: 205 / 255, green: 62 / 255, blue: 58 / 255)
+}
+
+struct BuilderButtonStyle: ButtonStyle {
+  enum Role {
+    case primary
+    case secondary
+    case language(Bool)
+  }
+  let role: Role
+  @Environment(\.isEnabled) private var enabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    let selected: Bool
+    let primary: Bool
+    switch role {
+    case .primary:
+      selected = true
+      primary = true
+    case .secondary:
+      selected = false
+      primary = false
+    case .language(let active):
+      selected = active
+      primary = active
+    }
+    return configuration.label
+      .font(.system(size: 14, weight: .semibold))
+      .foregroundStyle(primary ? BuilderPalette.navy : BuilderPalette.text)
+      .frame(minHeight: 40)
+      .padding(.horizontal, 15)
+      .background(
+        enabled
+          ? (primary ? BuilderPalette.gold.opacity(configuration.isPressed ? 0.83 : 1)
+                     : BuilderPalette.card)
+          : BuilderPalette.field,
+        in: RoundedRectangle(cornerRadius: 9)
+      )
+      .overlay {
+        RoundedRectangle(cornerRadius: 9)
+          .strokeBorder(selected ? Color.clear : BuilderPalette.border, lineWidth: 1)
+      }
+      .opacity(enabled ? 1 : 0.62)
+      .contentShape(RoundedRectangle(cornerRadius: 9))
+  }
+}
+
+struct BuilderInputRow: View {
+  let title: String
+  var hint: String?
+  let value: String
+  let button: String
+  var identifier: String
+  let choose: () -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Text(title).font(.system(size: 15, weight: .semibold))
+        Spacer()
+        if let hint {
+          Text(hint).font(.caption).foregroundStyle(BuilderPalette.muted)
+        }
+      }.foregroundStyle(BuilderPalette.text)
+      HStack(spacing: 12) {
+        Text(value)
+          .foregroundStyle(BuilderPalette.muted)
+          .font(.system(size: 13))
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+          .padding(.horizontal, 12)
+          .background(BuilderPalette.field, in: RoundedRectangle(cornerRadius: 9))
+          .overlay {
+            RoundedRectangle(cornerRadius: 9)
+              .strokeBorder(BuilderPalette.border, lineWidth: 1)
+          }
+        Button(button, action: choose)
+          .buttonStyle(BuilderButtonStyle(role: .secondary))
+          .frame(minWidth: 156)
+          .accessibilityIdentifier(identifier)
       }
     }
   }

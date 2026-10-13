@@ -230,6 +230,13 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             with contextlib.redirect_stdout(LogStream()):
                 report = install_release(args.archive, runtime, assets)
             return {"assets": asdict(report)}
+        if args.command == "build-native":
+            from native_macos_package import build_unsigned
+            emit("progress", message="Building native unsigned IPA")
+            with contextlib.redirect_stdout(LogStream()):
+                build_unsigned(args.archive, args.destination, args.native_kit,
+                               hungarian=not args.no_hungarian, overwrite=args.overwrite)
+            return {"ipa_path": str(args.destination)}
         if args.command == "status":
             result: dict[str, object] = {}
             try:
@@ -279,6 +286,12 @@ def main() -> int:
     commands.add_parser("devices")
     importer = commands.add_parser("import")
     importer.add_argument("archive", type=Path)
+    native = commands.add_parser("build-native")
+    native.add_argument("--archive", type=Path, required=True)
+    native.add_argument("--destination", type=Path, required=True)
+    native.add_argument("--native-kit", type=Path, required=True)
+    native.add_argument("--no-hungarian", action="store_true")
+    native.add_argument("--overwrite", action="store_true")
     for command in ("install", "export"):
         installer = commands.add_parser(command)
         installer.add_argument("--device", required=True)

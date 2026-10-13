@@ -107,6 +107,7 @@ tests/test_ipa_archive.py
 tests/test_localization_optional.py
 tests/test_native_aot.py
 tests/test_native_ipa.py
+tests/test_native_macos_package.py
 tests/test_tools.py
 tests/test_windows_icon.py
 tests/test_windows_native.py
@@ -114,6 +115,7 @@ tools/asset_contract.py
 tools/build_installer.sh
 tools/build_ios.sh
 tools/build_ios_template.sh
+tools/build_private_mac_builder.py
 tools/build_windows_gui.sh
 tools/build_windows_icon.py
 tools/build_windows_kit.py
@@ -130,7 +132,9 @@ tools/ipa_archive.py
 tools/list_ios_devices.py
 tools/localize.py
 tools/native_ipa.py
+tools/native_ipa_output.py
 tools/native_macho.py
+tools/native_macos_package.py
 tools/package_installer.sh
 tools/package_ios.sh
 tools/package_windows_release.py

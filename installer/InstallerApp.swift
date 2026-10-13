@@ -25,7 +25,7 @@ struct InstallerApp: App {
   @State private var startupError: String?
 
   var body: some Scene {
-    Window("Minion Rush Installer", id: "installer") {
+    Window("Minion Rush IPA Builder", id: "installer") {
       Group {
         if let model {
           InstallerView(model: model)
@@ -36,7 +36,7 @@ struct InstallerApp: App {
           )
         }
       }
-      .frame(minWidth: 640, minHeight: 660)
+      .frame(minWidth: 700, minHeight: 650)
       .task {
         guard model == nil, startupError == nil else { return }
         do {
@@ -52,7 +52,7 @@ struct InstallerApp: App {
         }
       }
     }
-    .defaultSize(width: 740, height: 880)
+    .defaultSize(width: 980, height: 900)
     .commands { CommandGroup(replacing: .newItem) {} }
   }
 }

@@ -5,119 +5,305 @@ import UniformTypeIdentifiers
 struct InstallerView: View {
   @Bindable var model: InstallerModel
   @State private var choosingArchive = false
-  @State private var dropTarget = false
   @State private var showLog = false
   @State private var followLog = true
+  @State private var showSigned = true
+  @State private var confirmReplace = false
+  @State private var dropTarget = false
 
-  private func text(_ key: String) -> String { model.layout.text(key) }
+  private func text(_ key: String) -> String { model.text(key) }
 
   var body: some View {
     VStack(spacing: 0) {
+      header
+      Rectangle().fill(BuilderPalette.gold).frame(height: 4)
       ScrollViewReader { reader in
         ScrollView {
           VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-              Text(model.layout.title).font(.largeTitle.weight(.semibold))
-              Text(model.layout.subtitle).foregroundStyle(.secondary)
-            }.padding(.vertical, 4)
-            ForEach(model.layout.sections) { section in
-              switch section.id {
-              case "release":
-                InstallerCard(title: section.title, complete: model.assets != nil) {
-                  releaseSection
-                }
-              case "device":
-                InstallerCard(title: section.title, complete: model.selectedDeviceInfo != nil) {
-                  deviceSection
-                }
-              case "signing":
-                InstallerCard(title: section.title, complete: model.validSigning) { signingSection }
-              default: EmptyView()
-              }
-            }
+            buildCard
+            actionRow
+            statusCard
             activityLog.id("activityLog")
-          }.padding(24)
+            signedSection
+          }
+          .padding(28)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(BuilderPalette.background)
         .onChange(of: showLog) {
           if showLog { reader.scrollTo("activityLog", anchor: .bottom) }
         }
       }
-      Divider()
-      footer
     }
-    .frame(minWidth: model.layout.minimumWidth)
+    .frame(minWidth: model.layout.minimumWidth, minHeight: 650)
     .onChange(of: model.operation) {
       if let operation = model.operation, operation != .refresh { showLog = true }
     }
     .onChange(of: model.error) { if model.error != nil { showLog = true } }
-    .toolbar {
-      ToolbarItem {
-        Button(text("workspace"), systemImage: "folder") {
-          NSWorkspace.shared.open(model.workspace)
-        }.help(text("workspace"))
-      }
-    }
     .fileImporter(isPresented: $choosingArchive, allowedContentTypes: [.zip]) { result in
       switch result {
-      case .success(let url): model.importArchive(url)
+      case .success(let url): model.selectArchive(url)
       case .failure(let error): model.error = error.localizedDescription
+      }
+    }
+    .alert(text("replaceTitle"), isPresented: $confirmReplace) {
+      Button(text("keepFile"), role: .cancel) {}
+      Button(text("replace"), role: .destructive) { model.buildNative(overwrite: true) }
+    } message: {
+      Text(text("replaceHelp"))
+    }
+  }
+
+  private var header: some View {
+    HStack(alignment: .center, spacing: 20) {
+      VStack(alignment: .leading, spacing: 7) {
+        Text(model.layout.title)
+          .font(.system(size: 30, weight: .semibold))
+          .foregroundStyle(.white)
+        Text(text("headerSubtitle"))
+          .font(.system(size: 13))
+          .foregroundStyle(Color.white.opacity(0.8))
+      }
+      Spacer(minLength: 16)
+      HStack(spacing: 8) {
+        Button(text("languageEnglish")) { model.interfaceLanguage = "en" }
+          .buttonStyle(BuilderButtonStyle(role: .language(model.interfaceLanguage == "en")))
+        Button(text("languageHungarian")) { model.interfaceLanguage = "hu" }
+          .buttonStyle(BuilderButtonStyle(role: .language(model.interfaceLanguage == "hu")))
+      }
+    }
+    .padding(.horizontal, 28)
+    .padding(.vertical, 20)
+    .background(BuilderPalette.navy)
+  }
+
+  private var buildCard: some View {
+    BuilderPanel {
+      VStack(alignment: .leading, spacing: 18) {
+        BuilderInputRow(
+          title: text("sourceLabel"),
+          hint: text("sourceHint"),
+          value: model.archiveURL?.path ?? text("noSource"),
+          button: text("choose"),
+          identifier: "installer.chooseArchive"
+        ) {
+          choosingArchive = true
+        }
+        .disabled(model.busy)
+        .dropDestination(for: URL.self) { urls, _ in
+          guard !model.busy, urls.count == 1,
+                let file = urls.first, file.isFileURL,
+                file.pathExtension.lowercased() == "zip"
+          else {
+            model.error = text("invalidDrop")
+            return false
+          }
+          model.selectArchive(file)
+          return true
+        } isTargeted: { dropTarget = $0 }
+        .background(dropTarget ? BuilderPalette.gold.opacity(0.15) : Color.clear)
+        if let summary = model.assets {
+          Text("\(text("assetsReady")) - "
+               + ByteCountFormatter.string(fromByteCount: summary.bytes, countStyle: .file))
+            .font(.caption).foregroundStyle(BuilderPalette.success)
+        }
+
+        BuilderInputRow(
+          title: text("outputLabel"),
+          value: model.outputURL.path,
+          button: text("saveAs"),
+          identifier: "installer.saveAs"
+        ) {
+          chooseOutput()
+        }.disabled(model.busy)
+
+        VStack(alignment: .leading, spacing: 9) {
+          HStack {
+            Text(text("languageTitle")).font(.system(size: 15, weight: .semibold))
+            Spacer()
+            Text(text("languageHint")).font(.caption).foregroundStyle(BuilderPalette.muted)
+          }.foregroundStyle(BuilderPalette.text)
+          Button {
+            model.includeHungarian.toggle()
+          } label: {
+            HStack(spacing: 12) {
+              RoundedRectangle(cornerRadius: 5)
+                .fill(model.includeHungarian && model.bundledHungarian
+                      ? BuilderPalette.success : BuilderPalette.card)
+                .frame(width: 23, height: 23)
+                .overlay {
+                  RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(model.includeHungarian && model.bundledHungarian
+                                  ? BuilderPalette.success : BuilderPalette.border)
+                }
+              Text(text("hungarian"))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(BuilderPalette.text)
+              Spacer()
+            }
+            .frame(minHeight: 34)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .disabled(model.busy || !model.bundledHungarian)
+          .opacity(model.bundledHungarian ? 1 : 0.5)
+          .accessibilityIdentifier("installer.hungarian")
+          .accessibilityValue(model.includeHungarian && model.bundledHungarian ? "On" : "Off")
+          if !model.nativeKitAvailable {
+            Text(text("privateKitNeeded"))
+              .font(.caption).foregroundStyle(BuilderPalette.muted)
+          }
+        }
       }
     }
   }
 
-  private var releaseSection: some View {
+  private var actionRow: some View {
+    HStack(spacing: 12) {
+      Button(text("buildIPA")) {
+        if FileManager.default.fileExists(atPath: model.outputURL.path) {
+          confirmReplace = true
+        } else {
+          model.buildNative(overwrite: false)
+        }
+      }
+      .buttonStyle(BuilderButtonStyle(role: .primary))
+      .disabled(!model.canBuildIPA)
+      .accessibilityIdentifier("installer.buildIPA")
+      Button(text("cancel")) { model.cancel() }
+        .buttonStyle(BuilderButtonStyle(role: .secondary))
+        .disabled(!model.busy || model.cancelling)
+        .accessibilityIdentifier("installer.cancel")
+      Spacer(minLength: 0)
+      Button(text("openOutput")) {
+        NSWorkspace.shared.open(model.outputURL.deletingLastPathComponent())
+      }
+      .buttonStyle(BuilderButtonStyle(role: .secondary))
+      .disabled(model.unsignedIPA == nil)
+    }
+  }
+
+  private var statusCard: some View {
+    BuilderPanel {
+      VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 12) {
+        Circle()
+          .fill(model.error != nil ? BuilderPalette.failure
+                : model.unsignedIPA != nil || model.installed || model.exportedIPA != nil
+                ? BuilderPalette.success
+                : model.busy ? BuilderPalette.gold : BuilderPalette.muted)
+          .frame(width: 13, height: 13)
+        Text(model.status)
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundStyle(BuilderPalette.text)
+          .accessibilityIdentifier("installer.status")
+          .textSelection(.enabled)
+        Spacer(minLength: 8)
+        Button(text(showLog ? "hideDetails" : "showDetails")) { showLog.toggle() }
+          .buttonStyle(.plain)
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(BuilderPalette.navy)
+          .accessibilityIdentifier("installer.logDisclosure")
+      }
+      ProgressView(value: model.busy ? nil : 1)
+        .tint(model.error != nil ? BuilderPalette.failure
+              : model.busy ? BuilderPalette.gold : BuilderPalette.success)
+        .frame(height: 7)
+      if let path = model.unsignedIPA ?? model.exportedIPA {
+        Text(path.path).font(.system(size: 12)).foregroundStyle(BuilderPalette.muted)
+          .textSelection(.enabled).lineLimit(2).truncationMode(.middle)
+      }
+      }
+    }
+  }
+
+  private var activityLog: some View {
+    Group {
+      if showLog {
+        BuilderPanel {
+          VStack(alignment: .leading, spacing: 14) {
+          HStack {
+            Text(text("diagnostics")).font(.headline).foregroundStyle(BuilderPalette.text)
+            Spacer()
+            Button(text("copyError")) {
+              NSPasteboard.general.clearContents()
+              NSPasteboard.general.setString(model.error ?? model.status, forType: .string)
+            }
+            .buttonStyle(BuilderButtonStyle(role: .secondary))
+            .disabled(model.error == nil)
+            Button(text("copyLog")) { copyLog() }
+              .buttonStyle(BuilderButtonStyle(role: .secondary))
+            Button(text("saveLog")) { saveLog() }
+              .buttonStyle(BuilderButtonStyle(role: .secondary))
+            Button(text("openLog")) {
+              if let file = model.logFile { NSWorkspace.shared.open(file) }
+            }
+            .buttonStyle(BuilderButtonStyle(role: .secondary))
+            .disabled(model.logFile == nil)
+            Toggle(text("followLog"), isOn: $followLog).toggleStyle(.checkbox)
+              .foregroundStyle(BuilderPalette.text)
+          }
+          ScrollViewReader { reader in
+            ScrollView([.horizontal, .vertical]) {
+              VStack(alignment: .leading, spacing: 0) {
+                Text(model.log.isEmpty ? text("emptyLog") : model.log)
+                  .font(.system(size: 12, design: .monospaced))
+                  .foregroundStyle(BuilderPalette.text)
+                  .textSelection(.enabled)
+                Color.clear.frame(height: 1).id("logEnd")
+              }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 195)
+            .padding(12)
+            .background(BuilderPalette.field, in: RoundedRectangle(cornerRadius: 9))
+            .onAppear { if followLog { reader.scrollTo("logEnd", anchor: .bottom) } }
+            .onChange(of: model.log) {
+              if followLog { reader.scrollTo("logEnd", anchor: .bottom) }
+            }
+          }
+          }
+        }
+      }
+    }
+  }
+
+  private var signedSection: some View {
     VStack(alignment: .leading, spacing: 12) {
       Button {
-        choosingArchive = true
+        showSigned.toggle()
       } label: {
-        HStack(spacing: 16) {
-          Image(systemName: "archivebox").font(.system(size: 28)).foregroundStyle(.secondary)
-          VStack(alignment: .leading, spacing: 5) {
-            Text(text("drop")).font(.headline)
-            Text(model.archiveName ?? text("choose")).foregroundStyle(.secondary)
-              .lineLimit(1).truncationMode(.middle)
-          }
-          Spacer(minLength: 0)
-          Image(systemName: "plus.circle").font(.title2).foregroundStyle(.secondary)
+        HStack {
+          Text(text("signedSection")).font(.headline)
+          Spacer()
+          Image(systemName: showSigned ? "chevron.up" : "chevron.down")
         }
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-        .padding(16)
-        .background(dropTarget ? Color.accentColor.opacity(0.1) : Color.clear)
-        .overlay {
-          RoundedRectangle(cornerRadius: 10)
-            .strokeBorder(.secondary, style: StrokeStyle(lineWidth: 1, dash: [6]))
-        }
+        .foregroundStyle(BuilderPalette.text)
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
-      .keyboardShortcut("o", modifiers: .command)
-      .disabled(model.busy)
-      .accessibilityIdentifier("installer.chooseArchive")
-      .accessibilityLabel(text("choose"))
-      .dropDestination(for: URL.self) { urls, _ in
-        guard !model.busy else { return false }
-        guard urls.count == 1, let url = urls.first,
-          url.isFileURL, url.pathExtension.lowercased() == "zip"
-        else {
-          model.error = text("invalidDrop")
-          return false
+      Text(text("signedHelp")).font(.caption).foregroundStyle(BuilderPalette.muted)
+      if showSigned {
+        if model.assets == nil {
+          Button(text("importForSigning")) { model.importArchiveForSigning() }
+            .buttonStyle(BuilderButtonStyle(role: .secondary))
+            .disabled(model.busy || model.archiveURL == nil)
+            .accessibilityIdentifier("installer.importForSigning")
         }
-        model.importArchive(url)
-        return true
-      } isTargeted: {
-        dropTarget = $0
+        InstallerCard(title: text("device")) { deviceSection }
+        InstallerCard(title: text("signedSection")) { signingSection }
+        HStack(spacing: 12) {
+          Button(text("exportIPA")) { chooseSignedExport() }
+            .buttonStyle(BuilderButtonStyle(role: .secondary))
+            .disabled(!model.canInstall)
+            .accessibilityIdentifier("installer.exportIPA")
+          Button(text("install")) { model.install() }
+            .buttonStyle(BuilderButtonStyle(role: .primary))
+            .disabled(!model.canInstall)
+            .accessibilityIdentifier("installer.install")
+          Spacer()
+          Button(text("workspace")) { NSWorkspace.shared.open(model.workspace) }
+            .buttonStyle(BuilderButtonStyle(role: .secondary))
+        }
       }
-      if let summary = model.assets {
-        Label(
-          text("assetsReady") + " - "
-            + ByteCountFormatter.string(fromByteCount: summary.bytes, countStyle: .file),
-          systemImage: "checkmark.circle.fill"
-        ).font(.callout).foregroundStyle(.green)
-      } else {
-        Text(text("noAssets")).font(.callout).foregroundStyle(.secondary)
-      }
-      helpText("releaseHelp")
     }
   }
 
@@ -126,16 +312,15 @@ struct InstallerView: View {
       HStack(alignment: .bottom, spacing: 12) {
         InstallerSelection(
           title: text("device"),
-          options: [
-            InstallerOption(
-              id: "", label: text(model.devices.isEmpty ? "noDevices" : "selectDevice"))
-          ]
+          options: [InstallerOption(id: "",
+                     label: text(model.devices.isEmpty ? "noDevices" : "selectDevice"))]
             + model.devices.map { InstallerOption(id: $0.id, label: $0.name + " - " + $0.os) },
           selection: $model.selectedDevice, identifier: "installer.device"
-        ).disabled(model.busy || model.devices.isEmpty)
-        Button(text("refresh"), systemImage: "arrow.clockwise") { model.refresh() }
-          .controlSize(.large).frame(minHeight: 44).disabled(model.busy)
-          .accessibilityIdentifier("installer.refresh")
+        )
+        .disabled(model.busy || model.devices.isEmpty)
+        Button(text("refresh")) { model.refresh() }
+          .buttonStyle(BuilderButtonStyle(role: .secondary))
+          .disabled(model.busy)
       }
       helpText("deviceHelp")
     }
@@ -146,139 +331,90 @@ struct InstallerView: View {
       if !model.teams.isEmpty {
         InstallerSelection(
           title: text("savedTeam"),
-          options: [
-            InstallerOption(
-              id: model.teams.contains(where: { $0.id == model.team }) ? "" : model.team,
-              label: text("manualTeam")
-            )
-          ] + model.teams.map { InstallerOption(id: $0.id, label: $0.name + " - " + $0.id) },
+          options: [InstallerOption(
+            id: model.teams.contains(where: { $0.id == model.team }) ? "" : model.team,
+            label: text("manualTeam")
+          )] + model.teams.map { InstallerOption(id: $0.id, label: $0.name + " - " + $0.id) },
           selection: $model.team, identifier: "installer.savedTeam"
         )
       }
-      HStack(alignment: .top, spacing: 14) {
-        InstallerField(
-          title: text("team"), value: $model.team, prompt: text("teamPlaceholder"),
-          problem: model.team.isEmpty || model.validTeam ? nil : text("invalidTeam")
-        ).frame(width: 180).accessibilityIdentifier("installer.team")
-        InstallerField(
-          title: text("bundle"), value: $model.bundleID,
-          problem: model.bundleID.isEmpty || model.validBundle ? nil : text("invalidBundle")
-        ).accessibilityIdentifier("installer.bundle")
+      HStack(spacing: 14) {
+        InstallerField(title: text("team"), value: $model.team,
+                       prompt: text("teamPlaceholder"),
+                       problem: model.team.isEmpty || model.validTeam ? nil : text("invalidTeam"))
+          .frame(width: 180)
+        InstallerField(title: text("bundle"), value: $model.bundleID,
+                       problem: model.bundleID.isEmpty || model.validBundle
+                                ? nil : text("invalidBundle"))
       }
       helpText("signingHelp")
       helpText("personalTeam")
-      HStack(spacing: 16) {
+      HStack(spacing: 12) {
         Button(text("openXcode")) {
           if let url = NSWorkspace.shared.urlForApplication(
-            withBundleIdentifier: "com.apple.dt.Xcode")
-          {
+            withBundleIdentifier: "com.apple.dt.Xcode") {
             NSWorkspace.shared.openApplication(
               at: url, configuration: NSWorkspace.OpenConfiguration())
           }
-        }.controlSize(.large)
-        Link(
-          text("accountHelp"),
-          destination: URL(
-            string: "https://developer.apple.com/help/account/basics/about-your-developer-account"
-          )!)
+        }.buttonStyle(BuilderButtonStyle(role: .secondary))
+        Link(text("accountHelp"),
+             destination: URL(string:
+               "https://developer.apple.com/help/account/basics/about-your-developer-account")!)
       }
     }.disabled(model.busy)
   }
 
-  private var activityLog: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Button {
-        showLog.toggle()
-      } label: {
-        HStack {
-          Label(text("logs"), systemImage: "text.alignleft")
-          Spacer()
-          Image(systemName: showLog ? "chevron.up" : "chevron.down")
-        }
-        .font(.subheadline.weight(.medium)).padding(.horizontal, 16)
-        .frame(maxWidth: .infinity, minHeight: 48).contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityIdentifier("installer.logDisclosure")
-      .accessibilityValue(text(showLog ? "expanded" : "collapsed"))
-      if showLog {
-        Divider()
-        VStack(alignment: .leading, spacing: 12) {
-          HStack {
-            Button(text("openLog")) {
-              if let file = model.logFile { NSWorkspace.shared.open(file) }
-            }.disabled(model.logFile == nil).accessibilityIdentifier("installer.openLog")
-            Spacer()
-            Toggle(text("followLog"), isOn: $followLog).toggleStyle(.checkbox)
-          }
-          ScrollViewReader { reader in
-            ScrollView([.horizontal, .vertical]) {
-              VStack(alignment: .leading, spacing: 0) {
-                Text(model.log.isEmpty ? text("emptyLog") : model.log)
-                  .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                Color.clear.frame(height: 1).id("logEnd")
-              }.frame(maxWidth: .infinity, alignment: .leading)
-            }.frame(height: 180)
-              .onAppear { if followLog { reader.scrollTo("logEnd", anchor: .bottom) } }
-              .onChange(of: model.log) {
-                if followLog { reader.scrollTo("logEnd", anchor: .bottom) }
-              }
-              .onChange(of: followLog) {
-                if followLog { reader.scrollTo("logEnd", anchor: .bottom) }
-              }
-          }
-        }.padding(16)
-      }
-    }
-    .background(.background, in: RoundedRectangle(cornerRadius: 12))
-    .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.08)) }
-  }
-
-  private var footer: some View {
-    HStack(spacing: 16) {
-      if model.busy {
-        ProgressView().controlSize(.small)
-      } else if model.error != nil {
-        Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
-      } else if model.canInstall || model.installed {
-        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-      }
-      Text(model.status).font(.callout)
-        .foregroundStyle(model.error == nil ? Color.primary : Color.red)
-        .textSelection(.enabled).accessibilityIdentifier("installer.status")
-        .fixedSize(horizontal: false, vertical: true)
-      Spacer(minLength: 8)
-      if model.busy {
-        Button(text("cancel")) { model.cancel() }
-          .controlSize(.large).disabled(model.cancelling)
-          .accessibilityIdentifier("installer.cancel")
-      } else {
-        Button(text("exportIPA")) { chooseExportDestination() }
-          .controlSize(.large).disabled(!model.canInstall)
-          .help(text("exportHelp"))
-          .accessibilityIdentifier("installer.exportIPA")
-      }
-      Button(text("install")) { model.install() }
-        .buttonStyle(.glassProminent).controlSize(.large)
-        .keyboardShortcut(.defaultAction).disabled(!model.canInstall)
-        .accessibilityIdentifier("installer.install")
-    }.padding(20).frame(minHeight: 76)
-  }
-
   private func helpText(_ key: String) -> some View {
-    Text(text(key)).font(.caption).foregroundStyle(.secondary)
+    Text(text(key)).font(.caption).foregroundStyle(BuilderPalette.muted)
       .fixedSize(horizontal: false, vertical: true)
   }
 
-  private func chooseExportDestination() {
+  private func chooseOutput() {
+    let panel = NSSavePanel()
+    panel.title = text("saveAs")
+    panel.nameFieldStringValue = model.outputURL.lastPathComponent
+    panel.directoryURL = model.outputURL.deletingLastPathComponent()
+    panel.allowedContentTypes = [UTType(filenameExtension: "ipa") ?? .zip]
+    panel.canCreateDirectories = true
+    panel.begin { response in
+      if response == .OK, let url = panel.url { model.outputURL = url }
+    }
+  }
+
+  private func chooseSignedExport() {
     let panel = NSSavePanel()
     panel.title = text("exportIPA")
     panel.message = text("exportHelp")
-    panel.nameFieldStringValue = "MinionRush.ipa"
+    panel.nameFieldStringValue = "MinionRush-signed.ipa"
     panel.allowedContentTypes = [UTType(filenameExtension: "ipa") ?? .zip]
     panel.canCreateDirectories = true
     panel.begin { response in
       if response == .OK, let url = panel.url { model.exportIPA(to: url) }
+    }
+  }
+
+  private func fullLog() -> String {
+    model.logFile.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? model.log
+  }
+
+  private func copyLog() {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(fullLog(), forType: .string)
+  }
+
+  private func saveLog() {
+    let panel = NSSavePanel()
+    panel.title = text("saveLog")
+    panel.nameFieldStringValue = "MinionRush-build-log.txt"
+    panel.allowedContentTypes = [.plainText]
+    panel.canCreateDirectories = true
+    panel.begin { result in
+      guard result == .OK, let url = panel.url else { return }
+      do {
+        try fullLog().write(to: url, atomically: true, encoding: .utf8)
+      } catch {
+        model.error = error.localizedDescription
+      }
     }
   }
 }

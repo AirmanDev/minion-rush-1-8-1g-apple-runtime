@@ -1,20 +1,27 @@
 # Native installer
 
-The installer is a SwiftUI macOS application for importing the original
-Minion Rush 1.8.1g release and installing this runtime on one selected iPhone
-or iPad. It is not the game, an asset downloader, or a signing service.
+The Mac installer is a native SwiftUI application for creating an unsigned
+IPA from the user-owned original 1.8.1g ZIP. Its optional Xcode workflow
+continues to sign and install on connected Apple devices. It is not the game,
+an asset downloader, or a signing service.
 
 ## Requirements
 
 - Apple Silicon, macOS 26.6 or later; macOS 27 is included in the target range
-- Xcode 27 or later, with iOS platform support and first-launch setup completed
-- An Apple Account signed in to Xcode
-- A paired iPhone or iPad running iOS/iPadOS 17 or later
+- For unsigned IPA creation, the private Mac Builder includes a verified AOT
+  translator and prebuilt unsigned iOS template; Xcode is not required at runtime.
+- For the optional signed export/install, Xcode 27, an Apple Account signed
+  into Xcode and a paired iPhone or iPad remain required.
 - A legally obtained, unmodified 1.8.1g release ZIP containing its APK and data
 - Space for extraction, validated assets, compiled code, and Xcode build products
 
-The installer uses Xcode's Python 3; Homebrew is not required. The complete
-installation workflow needs Xcode, not just Command Line Tools. Xcode 27
+The Python backend currently uses an installed macOS Python 3 interpreter
+(from the selected Xcode toolchain or /usr/bin/python3). The private app
+bundles its own ARM translator, template and optional Hungarian catalog, but
+not a complete Python distribution. Therefore the .app can be moved between
+compatible Macs, but a working Python 3 is still a prerequisite. The
+unsigned build needs no Apple signing credentials. Only signed export and
+on-device installation need the full Xcode toolchain. Xcode 27
 requires macOS 26.6, so the installer does not advertise macOS 14 compatibility.
 This does not change the game executable's macOS 14 deployment minimum.
 
@@ -23,11 +30,18 @@ This does not change the game executable's macOS 14 deployment minimum.
 ```bash
 ./tools/build_installer.sh
 ./tools/test_installer.sh
-open "build/installer/Minion Rush Installer.app"
+python3 tools/build_private_mac_builder.py --app "build/installer/Minion Rush Installer.app" \
+  --template "build/native-template/MinionRush-native-template-language-toggle.zip" \
+  --hungarian-xlf "localizations/hu.xlf" \
+  --output "build/private/Minion Rush Installer.app"
+open "build/private/Minion Rush Installer.app"
 ```
 
-The installer itself builds without private assets. Drop one release ZIP onto
-the archive area, or use **Choose ZIP**. Existing assets are replaced only after
+The public app is built without private assets; the private package adds the
+prepared unsigned template and locally supplied language data. It does not
+embed the original release ZIP. Select a game ZIP and Create IPA to use the
+new unsigned workflow. For the optional signed install workflow, choose
+**Import ZIP for signed installation**. Existing assets are replaced only after
 the entire candidate passes the shared engine, icon, game-data, and integrity
 checks. Rejected imports and cancellation before the commit leave the previous
 assets intact. Once committed, the new validated asset tree remains installed.
@@ -104,12 +118,13 @@ and are not uploaded; review them before sharing because Xcode/device output may
 contain user paths, signing-team metadata, and device identifiers. Log files use
 owner-only permissions and persist after the app closes.
 
-The app bundle contains only the maintained public source manifest, UI
-contract, native executable, and an original generic installer icon. It does
-not package the engine, translated engine blocks, game artwork, audio, release
-ZIP, private XLIFF files, provisioning profiles, or credentials. Optional
-community language packs therefore remain a separate local setup described in
-`LOCALIZATION.md`; importing a release enables its original languages.
+The public app includes the maintained public source, bilingual UI contract,
+native executable and generic project icon. The optional private Mac Builder
+additionally packages an unsigned iOS template, a host-native ARM compiler and
+the owner-provided Hungarian catalog. The private resources are SHA-256-verified.
+Neither version includes the original release ZIP, Apple credentials or
+provisioning profiles; public distribution of the private kit needs separate
+rights clearance.
 
 `InstallerModel` owns UI state; `InstallerView` arranges the workflow and
 `InstallerControls` supplies reusable cards, fields, and native full-width
@@ -133,31 +148,38 @@ the command-line workflow omits an explicit Team ID; the native installer
 requires one. The Swift UI also requires a complete regex match, so whitespace
 and trailing newlines cannot pass one layer and fail another.
 
-## UI contract
+## Native Mac and Windows consistency
 
-`config/installer_ui.json` is the shared source for English labels, section
-order, minimum width, and signing-input rules. The stable arrangement is:
+The private Mac Builder offers the same primary workflow as Windows: choose
+the original ZIP, select the IPA destination, toggle the included Hungarian
+language, create an unsigned IPA and inspect the detailed log. English and
+Magyar switch the builder interface separately from the IPA's languages.
+The primary action is gold; selected language indicators are solid green,
+with no tick. Both apps use the same icon source. Navy, card backgrounds,
+corner radii, margin rhythm and disabled states follow the same design.
 
-1. Header: title, then release/platform subtitle.
-2. Release: drop target and chooser, validation state, then ownership notice.
-3. Device: picker on the left, Refresh on the right, then connection guidance.
-4. Signing: detected team picker when available, Team ID, bundle identifier,
-   guidance, then Xcode/account-help actions.
-5. Collapsible activity log.
-6. Persistent footer: status on the left; Cancel and primary Install on the right.
-7. Window toolbar: Show local files.
+The Mac UI is still native SwiftUI; its common controls and theme are in
+installer/InstallerControls.swift. The existing signing/team/device options
+are retained behind an optional disclosure section. Signing still uses
+Xcode and Apple provisioning, not a Windows sideloading dependency.
+The macOS ZIP and save dialogs retain native focus, accessibility and
+overwrite-confirmation behavior. Logs can be copied, opened and exported.
 
-The full archive area and log header are buttons, not tiny nested click targets.
-Device/team selectors cover their full rows and retain native keyboard behavior.
-Cmd+O opens the archive chooser. Install remains the default
-action only when its prerequisites pass. Error state uses text as well as color.
-Scrollable content keeps the footer visible in small windows. A single device
-can be selected automatically; multiple devices require a deliberate selection.
+The private Mac .app is built after the public app:
+  python3 tools/build_private_mac_builder.py --app
+  "build/installer/Minion Rush Installer.app" --template
+  "build/native-template/MinionRush-native-template-language-toggle.zip"
+  --hungarian-xlf "localizations/hu.xlf" --output
+  "build/private/Minion Rush Installer.app"
 
-The Mac needs Xcode to build and sign. Windows users install the exported IPA
-with the external Sideloadly application and its Apple Account signing workflow.
-That application's UI, credentials, drivers, and refresh service are outside
-this project's installer. See [INSTALLER_WINDOWS.md](INSTALLER_WINDOWS.md).
+This is a private, ad-hoc signed artifact, not a notarized public release.
+The project-owned executable contains no original game data before a user
+supplies the game ZIP. The unsigned native IPA is assembled using the same
+prepare_native_aot.py and native_ipa.py modules as the Windows builder.
+The private bundle validates its compiler, template and catalog hashes.
+The previous IPA is protected: a candidate is completed and verified in an
+isolated destination-side directory before atomic replacement.
+The original ZIP must always be supplied by the user.
 
 ## Verification and distribution
 

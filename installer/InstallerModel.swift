@@ -16,14 +16,18 @@ struct InstallerLayout: Decodable {
   let signingRules: SigningRules
   let sections: [Section]
   let labels: [String: String]
+  let hungarianLabels: [String: String]
 
-  func text(_ key: String) -> String { labels[key] ?? key }
+  func text(_ key: String, language: String = "en") -> String {
+    if language == "hu", let translated = hungarianLabels[key] { return translated }
+    return labels[key] ?? key
+  }
 }
 
 @MainActor @Observable
 final class InstallerModel {
   enum Operation {
-    case refresh, importArchive, install, exportIPA
+    case refresh, importArchive, install, exportIPA, buildNative
   }
   let layout: InstallerLayout
   let workspace: URL
@@ -49,6 +53,26 @@ final class InstallerModel {
   var toolchain = ""
   var installed = false
   var exportedIPA: URL?
+  var unsignedIPA: URL?
+  var archiveURL: URL?
+  var outputURL: URL
+  var interfaceLanguage: String {
+    didSet { defaults.set(interfaceLanguage, forKey: "builderInterfaceLanguage") }
+  }
+  var includeHungarian: Bool {
+    didSet { defaults.set(includeHungarian, forKey: "builderIncludeHungarian") }
+  }
+  let nativeKit: URL
+  var nativeKitAvailable: Bool {
+    FileManager.default.fileExists(atPath: nativeKit.appendingPathComponent("manifest.json").path)
+  }
+  var bundledHungarian: Bool {
+    nativeKitAvailable && FileManager.default.fileExists(
+      atPath: nativeKit.appendingPathComponent("hu.xlf").path)
+  }
+  var canBuildIPA: Bool { !busy && archiveURL != nil && nativeKitAvailable }
+  var textLanguage: String { interfaceLanguage == "hu" ? "hu" : "en" }
+  func text(_ key: String) -> String { layout.text(key, language: textLanguage) }
   var team: String {
     didSet { defaults.set(team, forKey: "developmentTeam") }
   }
@@ -60,6 +84,12 @@ final class InstallerModel {
     self.defaults = defaults
     archiveName = defaults.string(forKey: "releaseArchiveName")
     source = resources.appendingPathComponent("Runtime")
+    nativeKit = resources.appendingPathComponent("NativeKit")
+    interfaceLanguage = defaults.string(forKey: "builderInterfaceLanguage")
+      ?? (Locale.current.language.languageCode?.identifier == "hu" ? "hu" : "en")
+    includeHungarian = defaults.object(forKey: "builderIncludeHungarian") as? Bool ?? true
+    outputURL = FileManager.default.homeDirectoryForCurrentUser
+      .appendingPathComponent("Downloads/MinionRush-unsigned.ipa")
     layout = try JSONDecoder().decode(
       InstallerLayout.self,
       from: Data(contentsOf: resources.appendingPathComponent("installer_ui.json"))
@@ -94,30 +124,62 @@ final class InstallerModel {
   }
 
   var status: String {
-    if busy { return phase }
+    if busy {
+      return textLanguage == "hu" ? text("working") : phase
+    }
     if let error { return error }
-    if installed { return layout.text("installed") }
-    if exportedIPA != nil { return layout.text("ipaExported") }
-    if assets == nil { return layout.text("importNeeded") }
-    if toolchain.isEmpty { return layout.text("toolchainNeeded") }
-    if devices.isEmpty || selectedDevice.isEmpty { return layout.text("deviceNeeded") }
-    if !validSigning { return layout.text("signingNeeded") }
-    return layout.text("ready")
+    if unsignedIPA != nil { return text("unsignedCreated") }
+    if installed { return text("installed") }
+    if exportedIPA != nil { return text("ipaExported") }
+    if nativeKitAvailable {
+      return archiveURL == nil ? text("importNeeded") : text("readyUnsigned")
+    }
+    if assets == nil { return text("importNeeded") }
+    if toolchain.isEmpty { return text("toolchainNeeded") }
+    if devices.isEmpty || selectedDevice.isEmpty { return text("deviceNeeded") }
+    if !validSigning { return text("signingNeeded") }
+    return text("ready")
   }
 
-  func refresh() { start(["status"], phase: layout.text("checking"), operation: .refresh) }
+  func refresh() { start(["status"], phase: text("checking"), operation: .refresh) }
+
+  func buildNative(overwrite: Bool) {
+    guard canBuildIPA, let archive = archiveURL else { return }
+    start(
+      ["build-native", "--archive", archive.path,
+       "--destination", outputURL.path, "--native-kit", nativeKit.path]
+       + (includeHungarian && bundledHungarian ? [] : ["--no-hungarian"])
+       + (overwrite ? ["--overwrite"] : []),
+      phase: text("working"), operation: .buildNative
+    )
+  }
+
+  func selectArchive(_ url: URL) {
+    guard !busy, url.isFileURL, url.pathExtension.lowercased() == "zip" else { return }
+    if archiveURL != url { assets = nil }
+    archiveURL = url
+    archiveName = url.lastPathComponent
+    defaults.set(archiveName, forKey: "releaseArchiveName")
+    error = nil
+  }
+
+  func importArchiveForSigning() {
+    guard let archive = archiveURL else { return }
+    importArchive(archive)
+  }
 
   func importArchive(_ url: URL) {
     guard !busy, url.isFileURL, url.pathExtension.lowercased() == "zip" else { return }
     pendingArchiveName = url.lastPathComponent
-    start(["import", url.path], phase: layout.text("working"), operation: .importArchive)
+    archiveURL = url
+    start(["import", url.path], phase: text("working"), operation: .importArchive)
   }
 
   func install() {
     guard canInstall else { return }
     start(
       ["install", "--device", selectedDevice, "--team", team, "--bundle", bundleID],
-      phase: layout.text("working"), operation: .install
+      phase: text("working"), operation: .install
     )
   }
 
@@ -128,7 +190,7 @@ final class InstallerModel {
         "export", "--device", selectedDevice, "--team", team, "--bundle", bundleID,
         "--destination", destination.path,
       ],
-      phase: layout.text("working"), operation: .exportIPA
+      phase: text("working"), operation: .exportIPA
     )
   }
 
@@ -137,7 +199,7 @@ final class InstallerModel {
     quitAfterCancellation = quitAfterCancellation || quit
     guard !cancelling else { return }
     cancelling = true
-    phase = layout.text("cancelling")
+    phase = text("cancelling")
     worker?.cancel()
   }
 
@@ -157,13 +219,13 @@ final class InstallerModel {
       if let path = item.logPath { logFile = URL(fileURLWithPath: path) }
     case "log": appendLog(item.message ?? "")
     case "progress":
-      if !cancelling { phase = item.message ?? layout.text("working") }
+      if !cancelling { phase = item.message ?? text("working") }
     case "error":
       let problem = item.message ?? "Backend operation failed."
       error = problem
       appendLog(problem)
     case "cancelled":
-      phase = layout.text("cancelled")
+      phase = text("cancelled")
       appendLog(item.message ?? phase)
     case "result":
       receivedResult = true
@@ -185,11 +247,15 @@ final class InstallerModel {
       if let chain = item.toolchain { toolchain = chain }
       if let problem = item.toolchainError {
         toolchain = ""
-        error = problem
+        if !nativeKitAvailable { error = problem }
         appendLog(problem)
       }
       installed = item.installed == true
-      if let path = item.ipaPath { exportedIPA = URL(fileURLWithPath: path) }
+      if let path = item.ipaPath {
+        let value = URL(fileURLWithPath: path)
+        if operation == .buildNative { unsignedIPA = value }
+        else { exportedIPA = value }
+      }
     default: error = "Unsupported installer response."
     }
   }
@@ -201,6 +267,7 @@ final class InstallerModel {
     error = nil
     installed = false
     exportedIPA = nil
+    unsignedIPA = nil
     receivedResult = false
     self.phase = phase
     self.operation = operation

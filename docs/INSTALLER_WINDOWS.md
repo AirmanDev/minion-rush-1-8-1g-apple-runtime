@@ -86,7 +86,8 @@ not make unsupported versions compatible.
 A private IPA contains the original game engine and assets. Never upload a
 completed IPA to a public GitHub release, issue, or public sharing service.
 A distributable Windows template and source-derived metadata require a legal
-review before publication. The current Mac installer remains unchanged.
+review before publication. The Mac Builder now uses the same ZIP-to-unsigned-IPA workflow natively via
+SwiftUI, retaining its optional Xcode signing and direct-install route.
 
 ## Set up Windows
 
