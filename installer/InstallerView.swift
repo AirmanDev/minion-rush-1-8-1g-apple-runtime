@@ -127,19 +127,19 @@ struct InstallerView: View {
             Text(text("languageHint")).font(.caption).foregroundStyle(BuilderPalette.muted)
           }.foregroundStyle(BuilderPalette.text)
           Button {
-            model.includeHungarian.toggle()
+            model.includeAdditionalLanguages.toggle()
           } label: {
             HStack(spacing: 12) {
               RoundedRectangle(cornerRadius: 5)
                 .fill(
-                  model.includeHungarian && model.bundledHungarian
+                  model.includeAdditionalLanguages && model.hasAdditionalLanguages
                     ? BuilderPalette.success : BuilderPalette.card
                 )
                 .frame(width: 23, height: 23)
                 .overlay {
                   RoundedRectangle(cornerRadius: 5)
                     .strokeBorder(
-                      model.includeHungarian && model.bundledHungarian
+                      model.includeAdditionalLanguages && model.hasAdditionalLanguages
                         ? BuilderPalette.success : BuilderPalette.border)
                 }
               Text(text("hungarian"))
@@ -151,10 +151,12 @@ struct InstallerView: View {
             .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
-          .disabled(model.busy || !model.bundledHungarian)
-          .opacity(model.bundledHungarian ? 1 : 0.5)
-          .accessibilityIdentifier("installer.hungarian")
-          .accessibilityValue(model.includeHungarian && model.bundledHungarian ? "On" : "Off")
+          .disabled(model.busy || !model.hasAdditionalLanguages)
+          .opacity(model.hasAdditionalLanguages ? 1 : 0.5)
+          .accessibilityIdentifier("installer.additionalLanguages")
+          .accessibilityValue(
+            model.includeAdditionalLanguages && model.hasAdditionalLanguages ? "On" : "Off"
+          )
           if !model.nativeKitAvailable {
             Text(text("privateKitNeeded"))
               .font(.caption).foregroundStyle(BuilderPalette.muted)

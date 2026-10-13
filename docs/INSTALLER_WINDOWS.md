@@ -27,8 +27,9 @@ it. The new IPA is assembled in a private folder on the same volume and
 replaces the old file only after successful verification. Build failures do
 not destroy the previous IPA.
 
-The Magyar game-language option is disabled unless an authorized, local
-catalog is supplied when building a non-public custom edition. The
+The Magyar game-language option is enabled by the bundled target-only
+Hungarian pack. It is compiled locally into a separate language table
+using the user's original ZIP. The
 Builder's English / Magyar interface switch is available independently.
 The original game's languages are always included. There is no
 separate language-file picker. The game lists only installed language packs

@@ -34,9 +34,11 @@ fallback to the game-derived v2 template.
 
 ### 1.2.3 release packaging changes
 
-This release candidate updates license attributions, desktop title and
-unaffiliated compatibility wording. It does not change the native engine,
-iOS loading overlay, ARM64 translation format or gameplay. The upstream MinGW-w64 runtime licensing text is bundled intact,
+This release candidate updates license attributions, desktop title,
+unaffiliated compatibility wording and an optional target-only Hungarian
+language pack. The original game's language tables remain intact, and the
+new table is generated when the user builds the IPA. The iOS engine,
+loading overlay and ARM64 translation format are unchanged. The upstream MinGW-w64 runtime licensing text is bundled intact,
 with its original copyright signs and a pinned SHA-256. Package validation
 rejects a missing or altered notice in both Mac and Windows bundles.
 The third-party Python dependency inventory now also carries pinned upstream
@@ -222,11 +224,12 @@ identifiers. Whether an interoperability or lawful-use exception applies
 depends on the actual acts and their necessity; local processing and owning a
 copy do not automatically establish permission.
 
-The private Hungarian XLIFF contains 2,483 original game text entries and
-translations; it must not enter public kit packages or downloads without an
-independently verified distribution basis. It remains an optional separately
-configured local source; the default candidate runs with the original
-languages from the user's ZIP.
+The private Hungarian XLIFF contains 2,483 source/target units and is not
+included in the public packages. The candidate includes a source-stripped,
+target-only Hungarian JSON pack. It is compiled locally against the user's
+original text table as an optional additional language. The translated text
+itself can still have derivative-work or other rights restrictions and is
+not represented as legally cleared by stripping the English source.
 
 The source code's Apache 2.0 license covers only contributions whose authors
 can license them. It does not license the game, its source assets, or the

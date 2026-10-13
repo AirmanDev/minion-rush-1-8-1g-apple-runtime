@@ -38,11 +38,17 @@ ZIP. It uses the bundled Python interpreter and host AOT compiler to
 generate all ARM64 machine code, engine binding values and block-map offsets
 only on the user's computer, then assembles a local unsigned IPA. The generic
 template is compiled without game-derived addresses, game assets, the original
-game code or an XLIFF translation. The public candidate contains no source
-APK or Apple Account credentials and does not upload user content.
+game code or a private XLIFF source catalog. The public candidate includes
+a target-only Hungarian language pack without the original English source
+strings. That pack is compiled solely with the user's local original ZIP;
+its distribution is a separate translation-rights question. No source APK,
+Apple Account credentials or user content are uploaded.
 
 The generated IPA still contains the user's game assets and translated
 machine code, and is a distinct legal issue from the Builder software.
+The public target-only Hungarian pack also raises an independent translation
+rights question. Excluding the original English text from the pack does not
+establish ownership of or authorization to distribute the translation.
 Signing it externally does not grant redistribution rights.
 
 ## Separation of the Builder from user-supplied game content
@@ -51,8 +57,10 @@ The published repository and generic Mac/Windows packages distribute the
 project's compatibility code, host tools, interpreter dependencies and a
 generic, game-data-free iOS template. They do not distribute the historical
 game archive, original executable or assets, game-derived ARM64 output,
-binding addresses, a completed IPA or private translation. The user supplies
-an independently obtained archive locally; compilation and IPA packaging run
+binding addresses, a completed IPA or editable private XLIFF. The included
+Hungarian target-only pack contains translated text that may itself be
+copyright-relevant. The user supplies an independently obtained archive
+locally; compilation and IPA packaging run
 on that user's computer without downloading the original game from this
 project. The resulting IPA is not part of any public release.
 

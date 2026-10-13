@@ -46,6 +46,8 @@ def synthetic_windows(path: Path, names: list[str]) -> None:
                  if name.endswith("/mingw-w64-runtime-COPYING.txt") else
                  (ROOT / "third_party_licenses" / name.rsplit("/", 1)[-1]).read_bytes()
                  if name.rsplit("/", 1)[-1] in (COMMON_NOTICES | TOOLCHAIN_NOTICES) else
+                 (ROOT / "language_packs/hu.json").read_bytes()
+                 if name.endswith("/language_packs/hu.json") else
                  b"synthetic non-game data"))
     payload = packed.getvalue()
     launcher = b"MZ" + b"\0" * 62
@@ -60,6 +62,7 @@ NAMES = [
     "MinionRush-Portable-Windows/python/python314.zip",
     "MinionRush-Portable-Windows/python/LICENSE.txt",
     "MinionRush-Portable-Windows/runtime/LICENSE",
+    "MinionRush-Portable-Windows/runtime/language_packs/hu.json",
     "MinionRush-Portable-Windows/runtime/third_party_licenses/mingw-w64-runtime-COPYING.txt",
 ] + ["MinionRush-Portable-Windows/runtime/third_party_licenses/" + name
      for name in (COMMON_NOTICES | TOOLCHAIN_NOTICES)]
@@ -71,6 +74,15 @@ class PortableBuilderPackagingTests(unittest.TestCase):
             executable = Path(location) / "Builder.exe"
             synthetic_windows(executable, NAMES)
             verify_windows(executable)
+
+    def test_rejects_missing_or_changed_hungarian_pack(self):
+        with tempfile.TemporaryDirectory() as location:
+            executable = Path(location) / "Builder.exe"
+            synthetic_windows(executable, [
+                name for name in NAMES if not name.endswith("/language_packs/hu.json")
+            ])
+            with self.assertRaisesRegex(ValueError, "public language pack"):
+                verify_windows(executable)
 
     def test_rejects_missing_python_component_notice(self):
         missing = next(iter(COMMON_NOTICES))

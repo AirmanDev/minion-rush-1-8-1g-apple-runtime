@@ -32,6 +32,17 @@ APP = "Minion Rush IPA Builder.app"
 WIN = "MinionRush-Builder-Windows-x64.exe"
 MAC = "MinionRush-Builder-macOS-arm64.zip"
 RELEASE_DIR = ROOT / "build/portable-releases"
+PUBLIC_PACK_DIR = ROOT / "language_packs"
+
+
+def public_language_packs() -> dict[str, str]:
+    from localize import load_catalogs
+    codes = {catalog.code for catalog in load_catalogs(ROOT)}
+    discovered = {path.stem: path for path in PUBLIC_PACK_DIR.glob("*.json")}
+    if not discovered or not set(discovered).issubset(codes):
+        raise ValueError("unknown or missing public language pack configuration")
+    return {path.name: file_sha256(path) for path in discovered.values()}
+
 RUNTIME_LICENSE_NAME = "third_party_licenses/mingw-w64-runtime-COPYING.txt"
 RUNTIME_LICENSE_SHA256 = "1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f"
 
@@ -92,6 +103,10 @@ def verify_windows(executable: Path) -> None:
             path = "MinionRush-Portable-Windows/runtime/third_party_licenses/" + notice
             if path not in names or hashlib.sha256(kit.read(path)).hexdigest() != digest:
                 raise ValueError("Windows third-party license notice missing or modified: " + notice)
+        for name, digest in public_language_packs().items():
+            packed = "MinionRush-Portable-Windows/runtime/language_packs/" + name
+            if packed not in names or hashlib.sha256(kit.read(packed)).hexdigest() != digest:
+                raise ValueError("public language pack missing or modified: " + name)
         verify_generic_template(kit.read(templates[0]))
         if any(name.lower().endswith((".ipa", ".apk", ".jpk")) for name in names):
             raise ValueError("original game content must not enter the Builder")
@@ -103,7 +118,11 @@ def verify_mac(app: Path, version: str) -> None:
     resources = app / "Contents/Resources"
     config = validate_native_kit(resources / "NativeKit")
     if config["hungarian_sha256"] is not None:
-        raise ValueError("public Mac package must not contain a private language catalog")
+        raise ValueError("public Mac package must not contain a private XLIFF catalog")
+    for name, digest in public_language_packs().items():
+        pack = resources / "Runtime/language_packs" / name
+        if not pack.is_file() or pack.is_symlink() or file_sha256(pack) != digest:
+            raise ValueError("Mac public language pack missing or modified: " + name)
     verify_generic_template((resources / "NativeKit/template.zip").read_bytes())
     if not (resources / "PythonRuntime/bin/python3.14").is_file():
         raise ValueError("Mac Builder has no embedded Python")

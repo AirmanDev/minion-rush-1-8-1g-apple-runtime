@@ -20,7 +20,7 @@ enum {
     ID_TITLE = 101, ID_SUBTITLE, ID_UI_EN, ID_UI_HU,
     ID_SOURCE_HINT, ID_SOURCE_LABEL, ID_SOURCE, ID_PICK_SOURCE,
     ID_DESTINATION_LABEL, ID_DESTINATION, ID_PICK_DESTINATION,
-    ID_PACK_HINT, ID_PACK_LABEL, ID_HU_PACK,
+    ID_PACK_HINT, ID_PACK_LABEL, ID_LANGUAGE_PACKS,
     ID_BUILD, ID_CANCEL, ID_OPEN_FOLDER,
     ID_STATE, ID_DETAIL, ID_DETAILS_TOGGLE,
     ID_DIAGNOSTICS, ID_COPY_ERROR, ID_COPY_LOG, ID_SAVE_LOG, ID_OPEN_TEMP,
@@ -66,9 +66,9 @@ static const Spec specs[] = {
     {ID_DESTINATION_LABEL, L"STATIC", L"Save unsigned IPA to", LABEL_STYLE, ROLE_LABEL},
     {ID_DESTINATION, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
     {ID_PICK_DESTINATION, L"BUTTON", L"Save As...", BUTTON_STYLE, ROLE_BROWSE},
-    {ID_PACK_HINT, L"STATIC", L"Original languages are always included", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
+    {ID_PACK_HINT, L"STATIC", L"Original languages stay available. Includes Magyar.", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
     {ID_PACK_LABEL, L"STATIC", L"Additional languages in IPA", LABEL_STYLE, ROLE_LABEL},
-    {ID_HU_PACK, L"BUTTON", L"Magyar (Hungarian)", BUTTON_STYLE, ROLE_CHECK},
+    {ID_LANGUAGE_PACKS, L"BUTTON", L"Include additional languages", BUTTON_STYLE, ROLE_CHECK},
     {ID_BUILD, L"BUTTON", L"Create IPA", BUTTON_STYLE, ROLE_PRIMARY},
     {ID_CANCEL, L"BUTTON", L"Cancel", BUTTON_STYLE, ROLE_SECONDARY},
     {ID_OPEN_FOLDER, L"BUTTON", L"Open output folder", BUTTON_STYLE, ROLE_SECONDARY},
@@ -89,12 +89,6 @@ static const Row rows[] = {
     {ID_DESTINATION_LABEL, 0, ID_DESTINATION, ID_PICK_DESTINATION}
 };
 
-/* Additional language packs use this one UI/packaging contract. */
-typedef struct { int control; const WCHAR *file; const WCHAR *code; } PackOption;
-static const PackOption pack_options[] = {
-    {ID_HU_PACK, L"private-localizations\\hu.xlf", L"hu"}
-};
-
 typedef struct {
     RECT slot[ID_LAST];
     RECT header, card, well[2], status_card, dot, track, details_card, log_well;
@@ -105,7 +99,7 @@ typedef struct { HDC dc, target; HBITMAP bitmap, previous; RECT area; } Canvas;
 typedef struct {
     WCHAR python[32768], tool[32768], kit[32768];
     WCHAR source[32768], output[32768], scratch[32768];
-    BOOL include_hungarian, overwrite_output;
+    BOOL include_extra_languages, overwrite_output;
     HWND window;
     HANDLE job; /* owned and closed by the UI thread */
 } Build;
@@ -125,7 +119,7 @@ static BOOL diagnostics_dirty, log_truncated;
 static HANDLE active_job;
 static volatile LONG cancel_requested;
 static BOOL running, aborted, log_open, detail_dirty;
-static BOOL hu_available, hu_selected = TRUE;
+static BOOL packs_available, packs_selected = TRUE;
 static int interface_language; /* 0 = English, 1 = Magyar */
 static LPCWSTR status_key = L"Ready. The output is unsigned and requires Sideloadly.";
 static UiState ui_state = STATE_IDLE;
@@ -149,9 +143,9 @@ static const UiText ui_texts[] = {
     {L"Browse ZIP...", L"ZIP kiv\u00e1laszt\u00e1sa..."},
     {L"Save unsigned IPA to", L"IPA ment\u00e9si helye"},
     {L"Save As...", L"Ment\u00e9s m\u00e1sk\u00e9nt..."},
-    {L"Original languages are always included", L"Az eredeti nyelvek mindig el\u00e9rhet\u0151k"},
+    {L"Original languages stay available. Includes Magyar.", L"Az eredeti nyelvek megmaradnak. Magyar is el\u00e9rhet\u0151."},
     {L"Additional languages in IPA", L"Tov\u00e1bbi nyelvek az IPA-ban"},
-    {L"Magyar (Hungarian)", L"Magyar"},
+    {L"Include additional languages", L"Tov\u00e1bbi nyelvek hozz\u00e1ad\u00e1sa"},
     {L"Create IPA", L"IPA k\u00e9sz\u00edt\u00e9se"},
     {L"Cancel", L"Megszak\u00edt\u00e1s"},
     {MR_BUILDER_TITLE, L"Nem hivatalos IPA-k\u00e9sz\u00edt\u0151"},
@@ -247,7 +241,7 @@ static void update_interface(void) {
     SetWindowTextW(ctl[ID_STATE], tr(status_key));
     InvalidateRect(ctl[ID_UI_EN], NULL, FALSE);
     InvalidateRect(ctl[ID_UI_HU], NULL, FALSE);
-    InvalidateRect(ctl[ID_HU_PACK], NULL, FALSE);
+    InvalidateRect(ctl[ID_LANGUAGE_PACKS], NULL, FALSE);
     relayout();
 }
 
@@ -313,6 +307,26 @@ static BOOL regular_file(LPCWSTR file) {
     const WCHAR *name = slash ? slash + 1 : file;
     return _wcsicmp(name, entry.cFileName) == 0 &&
            (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+/* The language compiler accepts any configured JSON pack, not just hu. */
+static BOOL bundled_languages_available(void) {
+    WCHAR pattern[32768];
+    if (FAILED(StringCchPrintfW(pattern, 32768,
+                                L"%s\\runtime\\language_packs\\*.json", kit_path)))
+        return FALSE;
+    WIN32_FIND_DATAW entry;
+    HANDLE found = FindFirstFileW(pattern, &entry);
+    if (found == INVALID_HANDLE_VALUE) return FALSE;
+    BOOL available = FALSE;
+    do {
+        if (!(entry.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) {
+            available = TRUE;
+            break;
+        }
+    } while (FindNextFileW(found, &entry));
+    FindClose(found);
+    return available;
 }
 
 #ifdef MR_UTM_TEST
@@ -508,7 +522,7 @@ static int compute_geometry(Geometry *g, int width, int height) {
     place_slot(g, ID_PACK_LABEL, margin + pad, option_top, label_width, label_height);
     place_slot(g, ID_PACK_HINT, margin + pad + label_width, option_top,
                card_inner - label_width, label_height);
-    place_slot(g, ID_HU_PACK, margin + pad, option_top + label_height + S(4),
+    place_slot(g, ID_LANGUAGE_PACKS, margin + pad, option_top + label_height + S(4),
                card_inner, field_height);
 
     int actions_top = g->card.bottom + S(16), actions_height = S(40);
@@ -704,7 +718,7 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
     BOOL pressed = (item->itemState & ODS_SELECTED) != 0;
     BOOL focused = (item->itemState & ODS_FOCUS) != 0;
     BOOL hot = hot_control == item->hwndItem && !disabled;
-    BOOL checked = role == ROLE_CHECK && hu_selected;
+    BOOL checked = role == ROLE_CHECK && packs_selected;
     BOOL chosen = role == ROLE_LANG &&
                   ((item->CtlID == ID_UI_HU) == (interface_language == 1));
     COLORREF backdrop = (role == ROLE_BROWSE || role == ROLE_LINK || role == ROLE_CHECK)
@@ -918,18 +932,9 @@ static void create_controls(HWND window) {
             SendMessageW(created, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
     }
     EnableWindow(ctl[ID_CANCEL], FALSE);
-    for (size_t index = 0; index < sizeof(pack_options) / sizeof(pack_options[0]); index++) {
-        const PackOption *option = &pack_options[index];
-        WCHAR bundled[32768] = {0};
-        BOOL available = SUCCEEDED(StringCchPrintfW(bundled, 32768,
-                                                  L"%s\\%s", kit_path, option->file)) &&
-                         regular_file(bundled);
-        EnableWindow(ctl[option->control], available);
-        if (wcscmp(option->code, L"hu") == 0) {
-            hu_available = available;
-            hu_selected = available;
-        }
-    }
+    packs_available = bundled_languages_available();
+    packs_selected = packs_available;
+    EnableWindow(ctl[ID_LANGUAGE_PACKS], packs_available);
     EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
     EnableWindow(ctl[ID_OPEN_TEMP], FALSE);
     EnableWindow(ctl[ID_COPY_ERROR], FALSE);
@@ -1088,7 +1093,7 @@ static void refresh_diagnostics(void) {
         phase_text[0] ? phase_text : tr(L"Not started"),
         transport_text[0] ? transport_text : tr(L"Not reported"),
         source, output,
-        hu_available && hu_selected ? L"hu (Magyar)" :
+        packs_available && packs_selected ? L"Magyar and additional packs" :
         interface_language ? L"Csak eredeti nyelvek" : L"Original only",
         last_scratch[0] ? last_scratch : tr(L"Not started"),
         last_error[0] ? last_error : tr(L"None reported"));
@@ -1266,8 +1271,8 @@ static DWORD WINAPI run_build(LPVOID opaque) {
         command, cap, L"\"%s\" -X utf8 \"%s\" \"%s\" --kit \"%s\" --output \"%s\"",
         job->python, job->tool, job->source, job->kit, job->output
     );
-    if (SUCCEEDED(hr) && !job->include_hungarian)
-        hr = StringCchCatW(command, cap, L" --no-hungarian");
+    if (SUCCEEDED(hr) && !job->include_extra_languages)
+        hr = StringCchCatW(command, cap, L" --no-additional-languages");
     if (SUCCEEDED(hr) && job->overwrite_output)
         hr = StringCchCatW(command, cap, L" --overwrite");
     if (SUCCEEDED(hr)) {
@@ -1331,11 +1336,11 @@ done:
 }
 
 static void set_busy(BOOL busy) {
-    static const int locked[] = {ID_SOURCE, ID_DESTINATION, ID_HU_PACK, ID_PICK_SOURCE,
+    static const int locked[] = {ID_SOURCE, ID_DESTINATION, ID_LANGUAGE_PACKS, ID_PICK_SOURCE,
                                  ID_PICK_DESTINATION, ID_BUILD};
     for (size_t index = 0; index < sizeof(locked) / sizeof(locked[0]); index++)
         EnableWindow(ctl[locked[index]], !busy &&
-                     (locked[index] != ID_HU_PACK || hu_available));
+                     (locked[index] != ID_LANGUAGE_PACKS || packs_available));
     EnableWindow(ctl[ID_CANCEL], busy);
     if (busy) {
         EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
@@ -1397,7 +1402,7 @@ static void start_build(void) {
         job->overwrite_output = TRUE;
     }
     approved_overwrite[0] = 0;  /* Consent is for one build only. */
-    job->include_hungarian = hu_selected && hu_available;
+    job->include_extra_languages = packs_selected && packs_available;
     if (!regular_file(job->python) || !regular_file(job->tool)) {
         MessageBoxW(main_window, tr(L"The portable runtime is incomplete. Extract the full release ZIP."),
                     tr(L"Missing application files"), MB_OK | MB_ICONERROR);
@@ -1626,10 +1631,10 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
             return 0;
         }
         case ID_PICK_DESTINATION: pick_into(ID_DESTINATION, TRUE); return 0;
-        case ID_HU_PACK:
-            if (!running && hu_available) {
-                hu_selected = !hu_selected;
-                InvalidateRect(ctl[ID_HU_PACK], NULL, FALSE);
+        case ID_LANGUAGE_PACKS:
+            if (!running && packs_available) {
+                packs_selected = !packs_selected;
+                InvalidateRect(ctl[ID_LANGUAGE_PACKS], NULL, FALSE);
                 diagnostics_dirty = TRUE;
             }
             return 0;

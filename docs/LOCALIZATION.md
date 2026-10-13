@@ -1,57 +1,75 @@
 # Localization
 
-Community language packs use XLIFF 2.1 as their editable source format and a
-deterministic compiler for the game's ordered binary text table. The original
-and translated game text is deliberately excluded from Git. This keeps the
-source repository distributable without publishing proprietary game content.
+Community translations use XLIFF 2.1 for editing and a versioned target-only
+JSON pack for desktop distribution. The public pack contains only the ordered
+translated targets, the language tag and a SHA-256 fingerprint of the original
+English text table. No original English source text, original game asset,
+binary or private editable XLIFF is distributed in the Builder.
 
-Each supported community locale has a small public configuration in
-`config/localizations/`. It declares a BCP 47 language tag, native display name,
-formatter rules, a redistributable flag source, a horizontal or vertical flag
-band layout, and the font already present in the user's installed game assets.
-Runtime code discovers only packs whose XLIFF file is available locally.
+The Hungarian pack is at `language_packs/hu.json` and contains 2,483 targets.
+Both portable Builders include it as an optional additional language by
+default. The game keeps all original languages from the user's own 1.8.1g
+archive. The Hungarian table is produced once during IPA creation at the
+user's computer, alongside localized formatter/font metadata. It is saved
+under `game/files/text/hu.texts` in the private IPA. Nothing rewrites
+existing language tables during play.
 
-To start a configured language pack after installing the game assets:
+The compiler checks the original source table SHA-256, translation entry
+count, Unicode NFC, formatting placeholders and available font glyphs before
+building a local IPA. A mismatched original archive or changed translation
+is rejected. The Builder does not fetch a game or translation over the
+network. The desktop English/Magyar interface switch is independent of the
+in-game language choice.
+
+## Maintaining and adding packs
+
+Each supported language has a configuration in `config/localizations/`.
+The configuration specifies its BCP 47 language tag, native name, distinct
+two-letter engine code, flag source, color bands, font and formatting data.
+The engine's localization and language-button layout are data-driven and
+handle multiple configured community packs without language-specific branches.
+
+For a new language, add its configuration and redistributable flag asset.
+Create its editable XLIFF from your locally installed original assets:
 
 ```sh
-python3 tools/localize.py init hu
+python3 tools/localize.py init xx
 ```
 
-Translate every `target` element in `localizations/hu.xlf`, preserve all format
-placeholders exactly, mark reviewed segments as `final`, and then run
-`./build.sh`. The build validates the source
-text, key order, Unicode NFC normalization, placeholders, locale metadata, font,
-and formatter data before it writes the ignored engine table to
-`assets/game/files/text/<engine-code>.texts` and shared runtime metadata under
-`assets/localizations/runtime/`.
+Translate the target elements, keep source and placeholder order unchanged,
+mark segments final, then export the public, source-stripped translation pack:
 
-On Windows, the original ZIP's built-in game languages and every validated
-private community catalog selected during IPA creation are compiled into that
-user's IPA. The build contains the generated `game/files/text/<code>.texts`
-table and `localizations/runtime` resources, not the editable XLIFF file.
-The user chooses English, Hungarian (when supplied), or another built-in
-language in the game's existing first-run language page or Settings language
-page. A selection takes effect through the game's own switch mechanism, is
-stored in its local language preference, and survives relaunch. There is no
-separate platform language menu or need to rebuild when switching between
-languages already packaged in the private IPA.
+```sh
+python3 tools/localize.py export-pack xx
+python3 tools/localize.py validate
+```
 
-For the private Windows one-file Builder, the build host may embed its
-private hu.xlf in the bundled portable kit. It is integrity-checked and
-offered as a checked Magyar option. Unchecking it excludes the Hungarian
-texts and shared formatting resources from the IPA; the iOS runtime tests
-installed language data before showing community choices. This avoids
-offering a nonexistent translation when using a template compiled with
-optional pack support. The Builder's English/Magyar display-language buttons
-are independent of the packaged game languages. Additional community packs
-should follow the same optional-checkbox pattern, with each pack listed in
-the GUI's language-option table and handled by the validated package compiler.
-This convenience does not imply permission to redistribute proprietary text.
+The `xx` code is a placeholder for the configured BCP 47 code. Inspect the
+generated `language_packs/xx.json` and confirm you can redistribute the
+translation before adding it to the public source manifest. Rebuild the
+generic iOS template and the desktop Builders after adding or changing
+language configurations so the in-game button definitions agree with the
+packaged catalogs. The runtime automatically discovers the enabled packs and
+adds them to the existing language menu. The desktop toggle currently
+controls the available additional-language set as a group. New languages
+are not silently enabled in existing installed IPAs; the user must create
+a new IPA with the selected language packs.
 
-Only Hungarian is currently configured as an additional community pack.
-Other languages require a separately prepared, validated catalog and config;
-no machine-translated or unreviewed packs are created automatically. The
-original game language assets remain subject to their original rights.
+Developers can still use private `localizations/<code>.xlf` catalogs during
+local builds. A private XLIFF and public JSON for the same language in one
+build input directory are rejected as ambiguous. The public Builder does
+not include editable XLIFF content.
+
+The user's game selects among packaged languages through its original
+language-selection mechanism. Its preference persists across relaunches;
+no online translation or periodic text replacement occurs. At startup a
+small compatibility hook registers community languages after the game's
+localization singleton is ready. This changes the available menu choices,
+not existing game text files.
+
+The translation itself may have copyright or derivative-work restrictions.
+Removing English source strings reduces distribution of original material
+but does not constitute permission from the game's rightsholders.
 
 The compiler creates one shared runtime formatter and font table for all
 installed community packs. These files are loaded before any language switch,
@@ -79,13 +97,10 @@ selects the configured community code once. This avoids depending on the
 engine's closed startup language enumeration while retaining native runtime
 language switching.
 
-Adding another language requires one configuration JSON file, a flag source
-with clear redistribution terms, and its local XLIFF file. `flag.layout` is
-`horizontal` or `vertical`; `flag.colors` lists 1 to 16 equal-sized bands in
-display order. No runtime source branch, position constant, or duplicated
-button implementation is needed. The engine pages receive all packs compiled
-for that installation, extend and center rows as necessary, and pass each
-pack's two-letter code through the existing language-selection flow.
+Flag sources need clear redistribution terms. `flag.layout` is
+`horizontal` or `vertical`, and `flag.colors` lists 1 to 16 equal-sized
+bands in display order. The game pages extend and center rows as needed and
+use the configured two-letter engine codes.
 
 The Hungarian flag in `resources/flags/hu.svg` comes from Wikimedia Commons,
 where the simple national flag is marked public domain. Its source page is

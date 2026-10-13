@@ -21,8 +21,8 @@ an asset downloader, or a signing service.
 
 The portable Mac .app includes its own arm64 CPython 3.14 runtime, the native
 AOT translator and a generic unsigned iOS template. The Builder interface
-supports Hungarian; the private Hungarian game-text catalog is not bundled. The user
-does not need to install Python, Homebrew, Xcode or anything else to build an
+supports Hungarian and includes a target-only translation pack, not the
+private editable XLIFF or original English source texts. The user does not need to install Python, Homebrew, Xcode or anything else to build an
 unsigned IPA; the only user-supplied input is the original 1.8.1g ZIP. Apple
 signing credentials, Xcode and device pairing remain required only for the
 optional signed IPA export or direct iPhone installation. The private app is
@@ -207,8 +207,8 @@ and trailing newlines cannot pass one layer and fail another.
 
 The portable Mac Builder offers the same primary workflow as Windows:
 choose the original ZIP and unsigned IPA destination, create the IPA and
-inspect the detailed log. The optional game-language toggle is disabled
-unless a separately authorized translation catalog has been supplied.
+inspect the detailed log. The optional game-language toggle is enabled
+by the included Hungarian target-only translation pack.
 English and Magyar switch the Builder interface independently of the
 game's language resources.
 The primary action is gold; selected language indicators are solid green,

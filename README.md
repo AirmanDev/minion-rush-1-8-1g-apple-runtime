@@ -37,6 +37,8 @@ contain the older 1.1.0 Mac-only Xcode importer. The 1.2.3 portable
 Mac/Windows candidate is being validated and is not a published Release.
 Its generic unsigned iOS template is compiled without the original game,
 precomputed game address tables, game assets, or the private Hungarian XLIFF.
+A separate target-only Hungarian JSON pack is included, with no original
+English source strings, and is compiled using the user's original ZIP.
 The desktop Builder generates the entire user-specific AOT profile and code
 before assembling the unsigned IPA. This reduces risks associated with
 distributing game-derived data but does not grant rights to a game's port.
@@ -51,8 +53,9 @@ can explicitly approve the application in Privacy & Security; managed
 systems may prevent it. Signing an iOS IPA for device installation is
 separate and still required.
 
-Version 1.2.3 finalizes third-party notices and the independent desktop
-branding; it does not modify the iOS engine, loading overlay or ARM64 compiler.
+Version 1.2.3 finalizes third-party notices, independent desktop branding
+and bundled source-stripped language packs. It does not modify the iOS engine,
+loading overlay or ARM64 compiler.
 The portable application is titled "Unofficial IPA Builder", with Minion Rush
 1.8.1g named solely as the supported original game. Source-controlled and
 bundled MinGW-w64, Python and GCC runtime notices are checksum-checked. The 1.2.2 working baseline
@@ -326,9 +329,11 @@ share one centered, automatically extending grid, and community flags use the
 same rounded silhouette and inactive tint as the original controls. Only the
 selected language uses its full flag colors and orange selection border.
 
-The Hungarian pack is created locally from `localizations/hu.xlf`. Its game
-strings remain outside Git with the other proprietary assets. XLIFF validation
-and deterministic compilation are part of every build. See
+The portable Builders include a versioned Hungarian target-only JSON pack,
+without the private editable XLIFF or original English source text. Its 2,483
+translated targets are verified against the user's source ZIP and compiled
+into a separate game language table during IPA creation. Additional languages
+use the same data-driven packaging and native menu. See
 `docs/LOCALIZATION.md` for the translation workflow and the configuration-only
 steps needed to add another banded flag and language without changing runtime
 code.

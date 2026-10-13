@@ -145,8 +145,9 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
             "window or choose it with Browse. Select a new .ipa save path.\n"
             + ("Optional local Hungarian game-language catalog was supplied.\n"
                if hungarian_xlf is not None else
-               "No third-party game translation ships in this Builder.\n")
+               "Community language packs contain translated text only.\n")
             + "The Builder interface supports English and Hungarian.\n"
+            + "Magyar is an additional game language, built offline from your source ZIP.\n"
             + "Original game languages come from your source ZIP.\n"
             + ("UTM test profile: supports private SPICE shared folders.\n"
                if mode == "utm-test" else "Release profile: no UTM-specific support.\n") +

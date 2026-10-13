@@ -49,6 +49,7 @@ ios/MinionRush/Assets.xcassets/Contents.json
 ios/MinionRush/MRAppDelegate.m
 ios/MinionRush/PrivacyInfo.xcprivacy
 ios/MinionRushUITests/MinionRushUITests.m
+language_packs/hu.json
 resources/flags/hu.svg
 run.sh
 src/native/a64_compiler.c
@@ -122,6 +123,7 @@ tests/test_native_ipa_output.py
 tests/test_native_macos_package.py
 tests/test_native_profile.py
 tests/test_package_portable_builders.py
+tests/test_target_language_packs.py
 tests/test_tools.py
 tests/test_windows_icon.py
 tests/test_windows_native.py

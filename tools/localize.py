@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -227,6 +228,19 @@ def create_xliff(source: list[TextEntry], code: str, destination: Path) -> None:
     ET.ElementTree(root).write(destination, encoding="utf-8", xml_declaration=True, short_empty_elements=False)
 
 
+def validate_target(original: str, target: str, index: int, path: Path) -> None:
+    if not target or (original.strip() and not target.strip()):
+        raise ValueError(f"empty translation at unit {index}: {path}")
+    if "\0" in target or unicodedata.normalize("NFC", target) != target:
+        raise ValueError(f"translation is not canonical Unicode at unit {index}: {path}")
+    if LETTER_RUN_PATTERN.search(target):
+        raise ValueError(f"translation contains a repeated-letter run at unit {index}: {path}")
+    if len(target) > max(24, len(original) * 4):
+        raise ValueError(f"translation expands excessively at unit {index}: {path}")
+    if token_signature(target) != token_signature(original):
+        raise ValueError(f"placeholder mismatch at unit {index}: {path}")
+
+
 def read_xliff(path: Path, source: list[TextEntry], code: str) -> list[TextEntry]:
     try:
         root = ET.parse(path).getroot()
@@ -251,20 +265,48 @@ def read_xliff(path: Path, source: list[TextEntry], code: str) -> list[TextEntry
         target_value = "" if target_node is None or target_node.text is None else target_node.text
         if source_value != original.value:
             raise ValueError(f"XLIFF source differs at unit {index}: {path}")
-        if not target_value or (original.value.strip() and not target_value.strip()):
-            raise ValueError(f"empty translation at unit {index}: {path}")
         if segment is None or segment.get("state") != "final":
             raise ValueError(f"translation is not final at unit {index}: {path}")
-        if "\0" in target_value or unicodedata.normalize("NFC", target_value) != target_value:
-            raise ValueError(f"translation is not canonical Unicode at unit {index}: {path}")
-        if LETTER_RUN_PATTERN.search(target_value):
-            raise ValueError(f"translation contains a repeated-letter run at unit {index}: {path}")
-        if len(target_value) > max(24, len(original.value) * 4):
-            raise ValueError(f"translation expands excessively at unit {index}: {path}")
-        if token_signature(target_value) != token_signature(original.value):
-            raise ValueError(f"placeholder mismatch at unit {index}: {path}")
+        validate_target(original.value, target_value, index, path)
         translated.append(TextEntry(original.key, target_value))
     return translated
+
+
+def read_target_pack(path: Path, source: list[TextEntry], code: str) -> list[TextEntry]:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 2 * 1024 * 1024:
+        raise ValueError(f"invalid additional language pack: {path}")
+    pack = load_json_object(path, encoding="utf-8")
+    if set(pack) != {"version", "language", "source_sha256", "targets"}:
+        raise ValueError(f"unknown additional language pack fields: {path}")
+    if pack["version"] != 1 or pack["language"] != code:
+        raise ValueError(f"unsupported additional language pack: {path}")
+    if pack["source_sha256"] != hashlib.sha256(encode_texts(source)).hexdigest():
+        raise ValueError(f"language pack does not match original game release: {path}")
+    targets = pack["targets"]
+    if not isinstance(targets, list) or len(targets) != len(source):
+        raise ValueError(f"language pack has the wrong entry count: {path}")
+    result = []
+    for index, (original, target) in enumerate(zip(source, targets)):
+        if not isinstance(target, str):
+            raise ValueError(f"invalid translated text at unit {index}: {path}")
+        validate_target(original.value, target, index, path)
+        result.append(TextEntry(original.key, target))
+    return result
+
+
+def export_target_pack(xliff: Path, original: Path, code: str, output: Path) -> None:
+    if output.exists() or output.is_symlink() or not output.parent.is_dir():
+        raise ValueError("language pack output must be a new regular file")
+    source = read_texts(original)
+    entries = read_xliff(xliff, source, code)
+    pack = {
+        "version": 1,
+        "language": code,
+        "source_sha256": hashlib.sha256(encode_texts(source)).hexdigest(),
+        "targets": [entry.value for entry in entries],
+    }
+    output.write_text(json.dumps(pack, ensure_ascii=True, separators=(",", ":")) + "\n", encoding="ascii")
+    read_target_pack(output, source, code)
 
 
 def write_if_changed(path: Path, data: bytes) -> None:
@@ -568,11 +610,17 @@ def prepare(root: Path, assets: Path, header: Path,
     translations: dict[str, list[TextEntry]] = {}
     for catalog in catalogs:
         translation = translations_root / f"{catalog.code}.xlf"
-        if translation.is_symlink():
-            raise ValueError(f"linked translation catalog is not supported: {translation}")
-        if not translation.is_file():
+        packed = translations_root / f"{catalog.code}.json"
+        if translation.is_symlink() or packed.is_symlink():
+            raise ValueError(f"linked translation catalog is not supported: {catalog.code}")
+        if translation.is_file() and packed.is_file():
+            raise ValueError(f"ambiguous language catalog: {catalog.code}")
+        if translation.is_file():
+            entries = read_xliff(translation, source, catalog.code)
+        elif packed.is_file():
+            entries = read_target_pack(packed, source, catalog.code)
+        else:
             continue
-        entries = read_xliff(translation, source, catalog.code)
         extract_font(catalog, assets, entries)
         translations[catalog.code] = entries
         enabled.append(catalog)
@@ -626,11 +674,20 @@ def command_validate(args: argparse.Namespace) -> None:
     catalogs = load_catalogs(root)
     enabled: list[Catalog] = []
     for catalog in catalogs:
-        translation = root / "localizations" / f"{catalog.code}.xlf"
-        if translation.is_file():
-            entries = read_xliff(translation, source, catalog.code)
-            extract_font(catalog, assets, entries)
-            enabled.append(catalog)
+        private = root / "localizations" / f"{catalog.code}.xlf"
+        included = root / "language_packs" / f"{catalog.code}.json"
+        if private.is_file() and included.is_file():
+            entries = read_xliff(private, source, catalog.code)
+            packaged = read_target_pack(included, source, catalog.code)
+            if entries != packaged:
+                raise ValueError(f"packaged translation differs from source: {catalog.code}")
+        elif private.is_file() or included.is_file():
+            entries = (read_xliff(private, source, catalog.code) if private.is_file()
+                       else read_target_pack(included, source, catalog.code))
+        else:
+            continue
+        extract_font(catalog, assets, entries)
+        enabled.append(catalog)
     formatter_data(enabled, formatter)
     localized_font_info(enabled, font_info)
     print(f"localization validation: passed ({len(catalogs)} configured)")
@@ -647,6 +704,15 @@ def parser() -> argparse.ArgumentParser:
     prepare_parser = subparsers.add_parser("prepare", help="compile every available language pack")
     prepare_parser.add_argument("--header", default="build/localization_config.h")
     prepare_parser.set_defaults(function=command_prepare)
+    export = subparsers.add_parser("export-pack", help="export only translated text")
+    export.add_argument("code")
+    export.add_argument("--input", type=Path)
+    export.add_argument("--output", type=Path)
+    export.set_defaults(function=lambda args: export_target_pack(
+        args.input or Path(args.root) / "localizations" / (args.code + ".xlf"),
+        Path(args.root) / args.assets_root / "game/files/text/en.texts",
+        args.code, args.output or Path(args.root) / "language_packs" / (args.code + ".json")
+    ))
     clean_parser = subparsers.add_parser("clean", help="remove generated localization outputs")
     clean_parser.set_defaults(function=command_clean)
     validate_parser = subparsers.add_parser("validate", help="validate configuration and available XLIFF files")

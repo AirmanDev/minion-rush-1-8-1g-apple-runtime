@@ -23,10 +23,10 @@ any earlier IPA if the new build fails. The standard EXE does not use the
 experimental UTM SPICE/WebDAV import transport.
 
 The English / Magyar selector changes the Windows **Builder UI**, not the
-game. The generic portable edition includes only the original game's
-language resources from the user's ZIP. No separately translated Hungarian
-XLIFF is shipped. The game-language toggle is disabled unless the builder
-was locally packaged with a separately authorized catalog. The EXE has
+game. The portable edition includes an optional target-only Hungarian pack and
+the original languages from the user's ZIP. No original English translation
+sources or private editable XLIFF are shipped. The checked language option
+adds Magyar as another game language during the local IPA build. The EXE has
 local error diagnostics and log export; logs may contain private file paths
 and must not be uploaded publicly.
 

@@ -59,17 +59,21 @@ final class InstallerModel {
   var interfaceLanguage: String {
     didSet { defaults.set(interfaceLanguage, forKey: "builderInterfaceLanguage") }
   }
-  var includeHungarian: Bool {
-    didSet { defaults.set(includeHungarian, forKey: "builderIncludeHungarian") }
+  var includeAdditionalLanguages: Bool {
+    didSet { defaults.set(includeAdditionalLanguages, forKey: "builderIncludeAdditionalLanguages") }
   }
   let nativeKit: URL
   var nativeKitAvailable: Bool {
     FileManager.default.fileExists(atPath: nativeKit.appendingPathComponent("manifest.json").path)
   }
-  var bundledHungarian: Bool {
-    nativeKitAvailable
-      && FileManager.default.fileExists(
-        atPath: nativeKit.appendingPathComponent("hu.xlf").path)
+  var hasAdditionalLanguages: Bool {
+    guard nativeKitAvailable else { return false }
+    if FileManager.default.fileExists(atPath: nativeKit.appendingPathComponent("hu.xlf").path) {
+      return true
+    }
+    let packs = source.appendingPathComponent("language_packs")
+    let files = try? FileManager.default.contentsOfDirectory(atPath: packs.path)
+    return files?.contains(where: { $0.hasSuffix(".json") }) ?? false
   }
   var canBuildIPA: Bool { !busy && archiveURL != nil && nativeKitAvailable }
   var textLanguage: String { interfaceLanguage == "hu" ? "hu" : "en" }
@@ -89,7 +93,9 @@ final class InstallerModel {
     interfaceLanguage =
       defaults.string(forKey: "builderInterfaceLanguage")
       ?? (Locale.current.language.languageCode?.identifier == "hu" ? "hu" : "en")
-    includeHungarian = defaults.object(forKey: "builderIncludeHungarian") as? Bool ?? true
+    includeAdditionalLanguages =
+      defaults.object(forKey: "builderIncludeAdditionalLanguages") as? Bool
+      ?? defaults.object(forKey: "builderIncludeHungarian") as? Bool ?? true
     outputURL = FileManager.default.homeDirectoryForCurrentUser
       .appendingPathComponent("Downloads/MinionRush-unsigned.ipa")
     layout = try JSONDecoder().decode(
@@ -152,7 +158,8 @@ final class InstallerModel {
         "build-native", "--archive", archive.path,
         "--destination", outputURL.path, "--native-kit", nativeKit.path,
       ]
-        + (includeHungarian && bundledHungarian ? [] : ["--no-hungarian"])
+        + (includeAdditionalLanguages && hasAdditionalLanguages
+          ? [] : ["--no-additional-languages"])
         + (overwrite ? ["--overwrite"] : []),
       phase: text("working"), operation: .buildNative
     )
