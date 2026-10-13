@@ -51,12 +51,14 @@ struct InstallerSelection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text(title).font(.subheadline.weight(.medium))
+      Text(title)
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(BuilderPalette.text)
       InstallerPopUp(
         options: options, selection: $selection, title: title,
         identifier: identifier, enabled: enabled
       ).frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .background(BuilderPalette.field, in: RoundedRectangle(cornerRadius: 8))
     }.frame(maxWidth: .infinity, alignment: .leading)
   }
 }
@@ -72,6 +74,7 @@ private struct InstallerPopUp: NSViewRepresentable {
     let button = NSPopUpButton(frame: .zero, pullsDown: false)
     button.controlSize = .large
     button.bezelStyle = .rounded
+    button.appearance = NSAppearance(named: .aqua)
     button.isBordered = true
     button.target = context.coordinator
     button.action = #selector(Coordinator.select(_:))
