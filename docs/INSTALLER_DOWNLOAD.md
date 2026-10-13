@@ -1,79 +1,67 @@
-# Minion Rush Installer for macOS
+# Minion Rush Installer 1.1.0 RC1 (macOS)
 
-This installer imports your own original Minion Rush 1.8.1g release ZIP and
-builds the preservation runtime for one connected iPhone or iPad. No game
-assets, Apple credentials, or signing profiles are included in this download.
+This public download is an asset-free Mac installer. It imports a lawfully
+obtained original Minion Rush 1.8.1g ZIP, signs the iOS app using the owner's
+Xcode setup, and installs it on a connected device or exports a signed IPA.
+It does not contain the original game, an Apple account, signing credentials,
+or the private prebuilt iOS template.
 
 ## Requirements
 
-- An Apple Silicon Mac running macOS 26.6 or later
-- Xcode 27 or later, including iOS platform support and first-launch setup
-- Your Apple Account signed in to Xcode; paid membership is not required
-- A paired iPhone or iPad running iOS/iPadOS 17 or later
-- Your own lawfully obtained, unmodified Minion Rush 1.8.1g release ZIP
+- Apple Silicon Mac running macOS 26.6 or later
+- Xcode 27 with iOS platform support and an Apple Account configured for signing
+- Paired iPhone or iPad running iOS/iPadOS 17 or later for installation
+- User-supplied, unmodified original 1.8.1g release ZIP
 
-## Download and open
+The private, standalone Mac and Windows IPA Builders have a separate,
+Xcode-free unsigned-IPA workflow. Those complete binaries are **not**
+distributed in this public release because their template and optional
+Hungarian translation have unresolved redistribution questions. The public
+Mac app therefore displays the unsigned Create IPA action as unavailable.
+Its Xcode-based import, signed export, and device installation remain usable.
 
-Download the ZIP and its matching `.sha256` file from the official repository:
-https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime
+## Download
 
-The checksum detects a damaged or changed download. It is not an Apple
-certificate or independent proof of the publisher's identity. In Terminal,
-open the folder containing both files and verify them with:
+Get the following files from the official
+[GitHub release](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases):
+
+- `minion-rush-installer-1.1.0-macos-arm64.zip`
+- `minion-rush-installer-1.1.0-macos-arm64.zip.sha256`
+
+Keep both files in the same folder. Verify the downloaded ZIP in Terminal:
 
 ```bash
-shasum -a 256 -c minion-rush-installer-1.0.0-macos-arm64.zip.sha256
+shasum -a 256 -c minion-rush-installer-1.1.0-macos-arm64.zip.sha256
 ```
 
-1. Extract the ZIP and read this guide.
-2. Move `Minion Rush Installer.app` to Applications.
-3. Try opening the app. This build is ad-hoc signed, not Developer ID signed
-   or notarized. macOS can block it because Apple has not verified it.
-4. If you trust this download, open System Settings > Privacy & Security.
-   Find the installer under Security and choose Open Anyway. Confirm the
-   prompt and authenticate if macOS asks.
-5. macOS remembers the exception for this app. A different download or update
-   may require another approval.
+The checksum detects file changes, but does not authenticate the publisher.
+Extract the ZIP and move `Minion Rush Installer.app` to Applications.
 
-The approval button is available for about an hour after an opening attempt.
-Managed Macs may prevent exceptions; ask the administrator rather than
-changing system-wide security settings. Do not override a malware alert or
-an invalid/damaged-signature warning. Re-download and check the package, or
-build the published source yourself. This project does not ask you to disable
-Gatekeeper, remove download quarantine, or install an untrusted certificate.
-
-Apple's instructions:
+The application is ad hoc signed, not Developer ID signed or notarized.
+macOS may block the first launch. If you trust the verified download, try
+opening it and then use System Settings > Privacy & Security > Open Anyway.
+Do not disable Gatekeeper, remove quarantine, or override a malware warning
+or invalid-signature warning. Apple's instructions:
 https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac
 
-## Install the game
+## Use
 
-Open Xcode once and sign in to your Apple Account. Connect and unlock the
-device, trust this Mac, and enable Developer Mode. Drop the release ZIP into
-the installer, choose the device, select or enter your signing team, and
-press Install. For a new Personal Team without a cached profile, first run
-a small iOS app from Xcode on the device with that team selected.
+1. Open Xcode once, sign in to your Apple Account and finish initial setup.
+2. Connect and unlock the device, trust the Mac and enable Developer Mode.
+3. Open the app, select your original ZIP, and expand
+   **Sign and install with Xcode**.
+4. Choose **Import ZIP for signed installation**, then select the device,
+   signing team, and bundle identifier.
+5. Choose **Install** or **Export signed IPA**. Keep the same team and bundle
+   identifier when updating an existing installation.
 
-The entire archive area opens the file chooser; device and team fields open
-across their full width. The log header can also be clicked anywhere. Choose
-**Export IPA** instead of Install to save a device-bound signed IPA without
-installing. On Windows, [Sideloadly](https://sideloadly.io/) can re-sign and install
-it with your Apple Account. See the
-[Windows guide](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/blob/main/docs/INSTALLER_WINDOWS.md) for
-iTunes/iCloud requirements and signing limits. There is no project-maintained
-Windows app. The IPA contains private game assets; do not publish or redistribute
-it. This project's tests do not cover Sideloadly's Windows installation workflow.
+A new Personal Team may need a one-time test project launched from Xcode to
+create a development profile. Free-account signatures typically expire after
+seven days. Existing save data may depend on the bundle identifier and
+signing identity.
 
-The activity log shows extraction, validation, compilation, signing, device
-installation, and startup verification. Open full log opens the complete
-private transcript. Logs can contain personal paths and device/team metadata;
-review them before sharing.
-
-Keep the same bundle identifier and signing team to update an existing game
-without deleting its data. A different identifier installs a separate app.
-Free Personal Teams allow three installed apps per device, and their signing
-profiles expire after seven days. Reinstall with the same identifier to renew
-the profile. The installer does not remove another app automatically.
-
-The repository's Apache License 2.0 covers the original project code, not
-Minion Rush, its trademarks, engine, characters, artwork, or other game data.
-This is an independent preservation project, not an official Gameloft release.
+The app and original game content are independent third-party works. This
+project is not endorsed by Gameloft. Never publish a completed IPA, private
+game archive, translation catalog or credentials. For detailed setup and
+limitations, see [Mac installer documentation](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/blob/main/docs/INSTALLER.md)
+and [legal scope](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/blob/main/docs/LEGAL.md).

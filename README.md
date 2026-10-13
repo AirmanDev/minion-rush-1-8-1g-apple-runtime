@@ -16,15 +16,25 @@ release 1.8.1g. See `docs/LEGAL.md`.
 
 ## Supported environment
 
-- Apple Silicon Mac running macOS 14 or later
-- Xcode 27 or later with the matching iOS SDK (local builds require macOS 26.6+)
-- ARM64 iPhone or iPad running iOS or iPadOS 17 or later
-- Python 3 and Xcode command-line tools for source development; the two
-  private portable Builders bundle their Python runtimes and do not require
-  Xcode for unsigned IPA creation
-- Optional, still experimental: Windows 11 ARM or x64 for the private native
-  IPA builder. Once a signed-off portable kit is available, Windows users
-  will not need a Mac, Xcode, Clang, or a separate Python installation.
+- Apple Silicon for the native Mac runtime and Builder.
+- macOS 26.6 or later for the Builder and current Xcode 27 toolchain. The
+  separately compiled macOS game runtime targets macOS 14 or later.
+- Windows 11 x64 or Windows 11 ARM (x64 emulation) for the private portable
+  Windows Builder. The original game ZIP must be supplied by the user.
+- iOS/iPadOS 17 or later for the resulting ARM64 application.
+- The private Mac and Windows Builders need neither Xcode nor a separately
+  installed Python runtime to produce an **unsigned IPA**. Signing is separate:
+  the optional Mac Xcode route uses an Apple Account and device provisioning;
+  Windows users can sign and install with Sideloadly.
+- Source development and native Apple signing still require the appropriate
+  SDK, developer tools and local Python interpreter.
+
+The public [Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
+contain an asset-free Mac application for the **Xcode signing/import route**.
+The standalone unsigned-IPA Builders are maintained and tested privately but
+are not public downloads: their prepared iOS template contains source-derived
+game metadata, and the bundled Hungarian catalog may contain protected text.
+See [legal and distribution scope](docs/LEGAL.md).
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -71,57 +81,41 @@ game data. The complete smoke test fails if a final network guard is reached.
 | `tools` | Build, packaging, installation, and validation tools |
 | `tests` | Automated tool tests |
 
-## Initial setup
+## Builders and installation
 
-For a native macOS interface, build and open the installer:
+The Mac and Windows applications have matching colors, icons and IPA workflow,
+with platform-native controls. Both private editions create a native, unsigned
+ARM64 IPA from a lawfully obtained original 1.8.1g ZIP.
+
+**Private Mac Builder:** one portable, ad-hoc signed `.app`, including the
+Python runtime, ARM64 compiler, iOS template and optional Hungarian catalog.
+No Xcode is needed for unsigned IPA creation. The app retains a separate Xcode
+signing, export and direct-device-install section. See
+[Mac Builder](docs/INSTALLER.md).
+
+**Private Windows Builder:** one portable x64 `.exe`, with the same local
+translator and prepared template. Windows 11 ARM uses x64 emulation.
+The standalone UTM test build is separate from the standard EXE. The generated
+IPA must be signed before installation, for example using
+[Sideloadly](https://sideloadly.io/). See
+[Windows Builder](docs/NATIVE_WINDOWS.md) and [signing guide](docs/INSTALLER_WINDOWS.md).
+
+**Public macOS installer:** build the asset-free source package locally with:
 
 ```bash
-./tools/build_installer.sh
-open "build/installer/Minion Rush Installer.app"
+./tools/package_installer.sh
 ```
 
-The native Mac UI now shares the Windows Builder's ZIP-to-unsigned-IPA
-workflow, language options, icon and controls. The prepared private version
-includes the unsigned iOS template, native translator and Hungarian catalog,
-without including the original game ZIP. Xcode 27 and an Apple Account are
-still required for the optional signed install/export pathway. See
-[installer setup and distribution](docs/INSTALLER.md)
-for signing, free-account limits, test coverage, and the shared UI contract.
-### Additional Windows support (experimental)
+The public `.app` does **not** embed the private iOS template, translator
+or Hungarian translation, so its unsigned Create IPA action is unavailable.
+Its existing Xcode-based ZIP import, signed IPA export and connected-device
+installation remain available. The current public download, checksum and
+Gatekeeper instructions are in [INSTALLER_DOWNLOAD.md](docs/INSTALLER_DOWNLOAD.md).
+An Apple Account and Xcode 27 are required for the public install/export flow.
 
-The [Windows native IPA builder](docs/NATIVE_WINDOWS.md) is a portable
-graphical Windows x64 app, also usable on Windows 11 ARM through x64 emulation.
-Drop your original 1.8.1g ZIP onto its window or use Browse, choose
-a new IPA save location, and select Create IPA. The optional Hungarian
-hu.xlf must be provided privately; it is neither in the original ZIP nor
-included in public release artifacts. The completed IPA requires signing
-with a separate sideloading tool before installation.
-
-The Windows kit includes an asset-free iOS template, the native GUI,
-a verified ARM64 AOT compiler and an isolated Python runtime. End users
-do not need Xcode, a Mac or an installed Python environment. The Mac Builder also produces unsigned IPA files from the original ZIP.
-Its private .app bundles a relocation-safe Python runtime and needs no
-additional installation for IPA creation. Xcode signing remains optional.
-
-The Mac native build, Mac installer, iOS device build, and IPA export remain
-fully maintained and have **not** been replaced. The Windows-generated IPA
-still needs independent iOS code signing before installation. On 2026-10-12,
-a Windows 11 ARM user test completed native compilation, unsigned IPA assembly,
-Sideloadly signing and installation, and successful gameplay on a physical
-iPhone running iOS 27. The user also confirmed sound, saved progress,
-Hungarian text, and the original ZIP-derived app icon. This is a verified
-user test, not a guarantee of compatibility across all Windows PCs/devices.
-Do not publish the template/kit as a release until legal review and remaining
-Windows GUI/signing tests are complete. See the
-[Windows install and signing guide](docs/INSTALLER_WINDOWS.md).
-Never publish finished IPAs or original game files.
-
-Download the installer ZIP and matching checksum from
-[Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases).
-Downloaded installer copies are ad-hoc signed, not notarized, and can require
-manual approval in macOS Privacy & Security. See the
-[download and opening guide](docs/INSTALLER_DOWNLOAD.md). To build the asset-free
-ZIP and its SHA-256 checksum locally, run `./tools/package_installer.sh`.
+The private Builders and their generated IPAs must not be uploaded to a public
+release. The source code and public Mac package contain no original game assets,
+private translation or signing credentials.
 
 For the command-line workflow, create the ignored `assets` directory:
 

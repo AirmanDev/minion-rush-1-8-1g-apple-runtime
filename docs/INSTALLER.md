@@ -55,10 +55,13 @@ which is kept as a developer-side build input. The private app is about
 56 MB, and its unsigned IPA workflow does not create redundant cached
 public source snapshots. The Xcode signing path retains source validation.
 
-The public app is built without private assets; the private package adds the
-prepared unsigned template and locally supplied language data. It does not
-embed the original release ZIP. Select a game ZIP and Create IPA to use the
-new unsigned workflow. For the optional signed install workflow, choose
+The public app is built without private assets or a native iOS template.
+Its **Create IPA** action is therefore disabled; it supports the existing
+Xcode-based import, signed IPA export, and device installation instead.
+The separately built private app includes a verified unsigned template,
+native ARM64 translator, Python runtime, and optional Hungarian catalog.
+It does not embed the original game ZIP. In the private app, select your ZIP
+and use **Create IPA** for unsigned output. For Xcode signing, choose
 **Import ZIP for signed installation**. Existing assets are replaced only after
 the entire candidate passes the shared engine, icon, game-data, and integrity
 checks. Rejected imports and cancellation before the commit leave the previous
@@ -186,12 +189,19 @@ Xcode and Apple provisioning, not a Windows sideloading dependency.
 The macOS ZIP and save dialogs retain native focus, accessibility and
 overwrite-confirmation behavior. Logs can be copied, opened and exported.
 
-The private Mac .app is built after the public app:
-  python3 tools/build_private_mac_builder.py --app
-  "build/installer/Minion Rush Installer.app" --template
-  "build/native-template/MinionRush-native-template-unsigned.zip"
-  --hungarian-xlf "localizations/hu.xlf" --output
-  "build/private/Minion Rush Installer.app"
+Build the private version only with locally authorized inputs:
+
+```bash
+python3 tools/build_private_mac_builder.py \
+  --app "build/installer/Minion Rush Installer.app" \
+  --template "build/native-template/MinionRush-native-template-unsigned.zip" \
+  --hungarian-xlf "localizations/hu.xlf" \
+  --python-runtime-archive "build/private-runtime-cache/cpython-3.14.8-aarch64-macos.tar.gz" \
+  --output "build/private/Minion Rush IPA Builder.app"
+```
+
+The private output path must not exist before packaging. The archive is
+pinned and hash-checked, and the resulting private `.app` is ad hoc signed.
 
 This is a private, ad-hoc signed artifact, not a notarized public release.
 The project-owned executable contains no original game data before a user
@@ -218,22 +228,21 @@ IPA export tests cover bundle layout, byte and executable-permission preservatio
 invalid input, rejected links, atomic replacement, and cleanup after failed writes.
 These checks do not validate a third-party signing tool or Windows USB drivers.
 
-The current UI revision was built and visually checked on macOS 27 with Xcode 27,
-including light/dark appearance, a minimum-size window, failure, and busy states.
-Native selector tests verify full-row hit targets, binding updates, and disabled
-state. Export of an existing signed app passed complete
-ZIP integrity checking without installing; its temporary IPA was removed.
-The earlier GUI flow's original ZIP passed import through both the backend and the native file chooser.
-The connected iPhone and iPad were enumerated. The user completed a separate-app
-iPhone installation through the native GUI on iOS 27. Its persisted operation
-log confirms compilation, signing, packaging, installation, and startup
-verification; the user also confirmed that the live activity log worked.
-The three-app free-signing limit was reproduced before that successful attempt.
-Runtime testing on macOS 26.6 and physical iPad installation through this GUI
-remain release checks. The new UI and export changes have not been retested with
-a fresh physical installation. Separately, the Windows 11 ARM workflow passed
-a user-reported physical iPhone signing, USB installation and gameplay test
-through Sideloadly on 2026-10-12; signing refresh is not yet verified.
+Current Builder validation (2026-10-13) includes native SwiftUI process,
+control and layout tests, Mac and Windows source/format checks, and an
+end-to-end private Mac IPA build and overwrite using the original ZIP. The
+resulting unsigned IPA passed ZIP-integrity and Hungarian resource checks.
+The Windows 11 ARM workflow was separately tested with Sideloadly and a
+physical iPhone; the user confirmed installation and gameplay. Those private
+tests do not certify other machines, iOS versions, signing renewal, or
+macOS Gatekeeper behavior.
+
+An earlier Xcode-based Mac installer was used to install on a physical
+iPhone, but the redesigned 1.1.0 interface has not undergone a fresh complete
+physical-device install test. The attempted current UI screenshot capture was
+blocked by the remote macOS WindowServer. Light/dark and manual visual
+inspection, clean-Mac browser download, macOS 26.6 and physical iPad testing
+remain release checks.
 
 The source repository contains no private assets or signing material. The
 download package also excludes these files. Paid developer membership is not

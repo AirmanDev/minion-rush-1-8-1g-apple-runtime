@@ -1,14 +1,20 @@
-# Experimental native Windows -> unsigned iPhone IPA support
+# Native Windows Builder for unsigned iPhone IPA files
 
-This optional workflow supplements the existing Apple Silicon Mac installer and
-native Xcode iOS workflow. It does not replace either. The goal is to let a
-Windows user compile their own original Minion Rush 1.8.1g ZIP into an IPA with
-native ARM64 machine code, without an interpreter, runtime JIT, or local Mac.
+The private portable Windows 11 Builder compiles a user-supplied original
+Minion Rush 1.8.1g ZIP into an unsigned native ARM64 IPA without a Mac,
+Xcode, Clang or separately installed Python. The app is a single x64 EXE
+(also usable on Windows 11 ARM through x64 emulation). It does not sign
+or install the IPA. The Mac Builder provides the equivalent private
+unsigned-IPA workflow using native SwiftUI.
 
-**Release status: Experimental. Physical iPhone signing, installation,
-gameplay, Hungarian text, saves, sound and the original icon have passed a
-user-reported Windows 11 ARM test on 2026-10-12. Public distribution is still
-blocked pending copyright review of the template and release readiness checks.**
+**Status:** The private Windows Builder is implemented and used. Windows 11
+ARM tests on 2026-10-12 and 2026-10-13 produced unsigned IPAs; the user
+confirmed successful Sideloadly signing, iPhone installation, gameplay,
+Hungarian text, saved progress, sound and the original icon. Automated
+Windows CI covers both GUI profiles and the one-file launcher. More hardware
+and interactive regression coverage remains desirable. **The complete private
+Builder is not a public GitHub Release asset.** Its unsigned iOS template
+contains engine-derived metadata requiring redistribution review.
 
 ## How the system works
 
@@ -48,10 +54,11 @@ assets, generated ARM64 data and the AOT manifest.
 
 ## Windows GUI release workflow
 
-1. Download the Windows ZIP from the project's official GitHub Release after
-   legal approval. Compare its SHA-256 to the published checksum and extract
-   the complete folder. Do not run the EXE inside a ZIP preview.
-2. Open MinionRush-Portable-Windows/MinionRush Builder.exe.
+1. Obtain the privately built and locally verified
+   `MinionRush-Builder.exe`. The private package is not hosted in the
+   public GitHub Release. Keep the original ZIP separate.
+2. Run the portable EXE directly. It extracts and verifies its own runtime
+   in a temporary folder and opens the native GUI. No installer is needed.
 3. Drop one original 1.8.1g ZIP onto the window or select Browse ZIP.
    In the standard release builder, choose a locally accessible ZIP. The
    separately compiled UTM test builder recognizes an original ZIP next to
@@ -67,7 +74,7 @@ assets, generated ARM64 data and the AOT manifest.
    destination volume, then replaces the old one only after successful
    assembly and verification. Cancelled or failed builds preserve the
    existing IPA. Confirmation is valid for one build only.
-5. Under Additional languages in IPA, check Magyar to include the bundled
+5. Under Additional languages in IPA, enable Magyar to include the bundled
    private Hungarian translation, or uncheck it to create an IPA containing
    only the original game languages. The checked option defaults to on when
    the catalog is built into the private EXE. No language-file picker or
@@ -135,10 +142,13 @@ Windows x64 compatibility. No administrator privileges are required.
 Unsigned Windows EXEs can trigger SmartScreen warnings. Prefer a verified
 code signing certificate and published checksums for final releases.
 
-The previous command-line pipeline was verified by the user on an iPhone
-running iOS 27 with original app icon, Hungarian localization, gameplay,
-sound and saves. The new GUI and cancellation lifecycle need an additional
-interactive Windows test before publishing it to all users.
+The user has tested the updated native GUI in a Windows 11 ARM UTM session,
+including the in-app Hungarian option and overwriting an existing IPA.
+The earlier unsigned IPA was signed with Sideloadly and installed on a
+physical iPhone running iOS 27. CI validates GUI startup, compiler output
+and source portability, but further physical-device and cancellation tests
+remain useful. Legal review, not missing implementation, is the principal
+reason the private full Builder is not a public download.
 
 ## Developer: build the unsigned template on a Mac
 
@@ -339,11 +349,11 @@ problems. This is user-reported physical-device testing, not automated
 hardware regression or comprehensive device coverage. The original game/IPA remains private and has not been
 uploaded to public releases.
 
-Still required before any public Windows kit: review the copyright status of
+Still required before any **public Windows kit**: review the copyright status of
 source-derived code maps/bindings and legal terms for redistributing the
 asset-free template, perform an interactive end-to-end test of the new Win32
 GUI on Windows, test additional real Windows systems, and validate
-sideload signing renewal and save retention after a signing refresh. No public Windows kit or private IPA has been released.
+sideload signing renewal and save retention after a signing refresh. No full private Windows kit or generated IPA is distributed publicly.
 
 ## Further reading
 

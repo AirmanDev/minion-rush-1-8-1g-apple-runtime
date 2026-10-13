@@ -1,6 +1,6 @@
 # Copyright, licensing and release review
 
-Review date: 2026-10-12. Scope: the historical Minion Rush 1.8.1g
+Review updated: 2026-10-13. Scope: the historical Minion Rush 1.8.1g
 compatibility runtime, native Windows ZIP-to-IPA builder, source-derived
 iOS executable template, optional translations and distribution packaging.
 
@@ -142,8 +142,17 @@ References:
 
 ## Release decision
 
-Public Windows GUI and portable-kit publication is on hold until all
-of these issues are resolved:
+The public GitHub release may include the project source and the asset-free,
+ad hoc signed Mac installer already supported by the public source manifest.
+This public installer uses the separate Xcode signing/import workflow and
+does not contain the private unsigned iOS template, compiler, Hungarian
+catalog or original game data. Its unsigned IPA action is unavailable.
+The private portable Mac and Windows Builder binaries must stay off the public
+release until the template-derived metadata, language translation and all
+bundled third-party component licenses receive appropriate review.
+
+Public Windows GUI and complete private portable-kit publication is on hold
+until these issues are resolved:
 
 1. Confirm lawful acquisition, the historical license and the exact
    uses for which copyright exceptions or authorization are claimed.
@@ -156,9 +165,11 @@ of these issues are resolved:
    compatibility checks, failure/cancellation/cleanup scenarios, and
    physical-device sideload and signing-renewal tests.
 
-The 2026-10-12 Windows-to-iPhone test confirms that the private
-command-line preparation and signing path worked for one test setup.
-It is not a legal clearance or a validation of the newer native GUI.
+Windows 11 ARM private tests on 2026-10-12 and 2026-10-13 confirmed
+unsigned IPA preparation and Sideloadly installation on one device.
+The newer GUI also passed local ZIP-to-IPA and overwrite testing.
+This does not establish public redistribution rights or compatibility
+across other machines and devices.
 
 This is a documented release assessment, not legal advice. Public
 distribution needs appropriate legal review or rightsholder permission.

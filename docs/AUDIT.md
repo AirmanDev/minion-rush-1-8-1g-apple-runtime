@@ -1,6 +1,6 @@
 # Code audit
 
-Review date: 2026-09-27. Scope: the maintained public source, native runtime,
+Historical review: 2026-09-27. Scope: the maintained public source, native runtime,
 Apple platform layers, installer, build and packaging tools, tests, and docs.
 Private assets were validated locally but are not part of the public repository.
 
@@ -115,7 +115,8 @@ bash -n ./*.sh tools/*.sh
 ./tools/package_installer.sh
 ```
 
-The final Python suite has 83 passing tests. Both iOS engine libraries compile
+At the 2026-09-27 review, the Python suite had 83 passing tests.
+The 2026-10-13 Builder audit above covers the expanded 147-test suite. Both iOS engine libraries compile
 with the shared iOS 17 deployment minimum. The final Mac smoke test passed both
 headless and windowed startup, render-target, audio, and offline checks. The
 unlocked windowed run completed 410 engine updates with no block faults or audio
