@@ -35,8 +35,8 @@ python3 tools/build_private_mac_builder.py --app "build/installer/Minion Rush In
   --template "build/native-template/MinionRush-native-template-language-toggle.zip" \
   --hungarian-xlf "localizations/hu.xlf" \
   --python-runtime-archive "build/private-runtime-cache/cpython-3.14.8-aarch64-macos.tar.gz" \
-  --output "build/private/Minion Rush Installer.app"
-open "build/private/Minion Rush Installer.app"
+  --output "build/private/Minion Rush IPA Builder.app"
+open "build/private/Minion Rush IPA Builder.app"
 ```
 
 The packaged Python runtime is a developer-side build input, never an
