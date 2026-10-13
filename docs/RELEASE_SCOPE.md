@@ -1,5 +1,19 @@
 # Portable Builder release scope
 
+## Builder 1.2.5 (macOS appearance compatibility)
+
+The native macOS popup menus for selecting a device and Apple signing team
+now use the application's established light control appearance in both light
+and dark macOS modes. Their SwiftUI labels and fields use the same explicitly
+defined foreground and background palette as the rest of the Builder.
+
+The 1.2.4 device discovery behavior is unchanged. A native layout test now
+checks a device list updated to two entries after initial presentation, and
+verifies selection, popup geometry, and Aqua effective appearance under a
+dark parent window. Mac and Windows versions still derive from one Info.plist.
+No AOT, game data, additional language, or signed-device deployment changes
+are included.
+
 ## Builder 1.2.4 (desktop interface and device refresh)
 
 The complete portable Mac and Windows Builders are available as separate

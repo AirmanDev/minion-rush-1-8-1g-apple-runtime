@@ -86,8 +86,29 @@ enum InstallerViewTests {
     try InstallerTests.require(
       model.selectedDevice == "selected", "Native selection uses the exact ID")
     try capture("ready-light")
+
+    // Device discovery often completes after the view first appears.
+    model.devices = [
+      Device(id: "iphone", udid: "sample1", name: "Airmancooma's iPhone", os: "27.0.1"),
+      Device(id: "ipad", udid: "sample2", name: "Zalan's iPad", os: "27.0.1"),
+    ]
+    model.selectedDevice = ""
+    settle()
+    try InstallerTests.require(
+      device.bounds.width > 350, "Two-device selector must not collapse")
+    try InstallerTests.require(
+      device.itemTitles.contains("Airmancooma's iPhone - 27.0.1"),
+      "Device refresh must update the dropdown entries")
+    try capture("two-devices-light")
+
     window.appearance = NSAppearance(named: .darkAqua)
     settle()
+    try InstallerTests.require(
+      device.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .aqua,
+      "Device selector must stay readable when macOS uses Dark Mode")
+    try InstallerTests.require(
+      device.bounds.width > 350 && device.isEnabled,
+      "Device selector must remain usable in Dark Mode")
     try capture("ready-dark")
     window.setContentSize(NSSize(width: 640, height: 660))
     settle()
