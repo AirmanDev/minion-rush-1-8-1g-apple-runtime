@@ -39,21 +39,17 @@ before assembling the unsigned IPA. This reduces risks associated with
 distributing game-derived data but does not grant rights to a game's port.
 See [release scope](docs/RELEASE_SCOPE.md) and [legal context](docs/LEGAL.md).
 
-The owner's earlier 1.2.1 Windows-built IPA was installed and displayed
-working game graphics on a physical iPhone. The newly added 1.2.2 loading
-UI has only been exercised in an iOS Simulator so far.
+## Runtime test status
 
-The 1.2.2 candidate also adds an iOS launch overlay, reporting real
-runtime milestones until the first actual drawn frame; it does not invent
-percentage completion. An engine error shows an explicit failure message.
+Version 1.2.1 fixed a black screen caused by the missing
+`MR_RUNTIME_PROFILE` setting in the iOS entry point. The owner confirmed that an IPA built with
+1.2.1 started on a physical iPhone.
 
-The 1.2.1 base fixes a critical 1.2.0 startup bug: Xcode previously
-compiled the iOS application delegate without `MR_RUNTIME_PROFILE`, so it
-skipped loading the generated address profile and showed a black screen.
-The corrected iOS and iOS Simulator builds load the profile at startup.
-The game renders on the iOS 18.6 and iOS 27.0 Simulators after initialization. The
-user's installed, signed physical-device build still needs retesting.
-
+Version 1.2.2 adds a startup overlay with game-data, graphics and engine
+initialization messages. It closes after the first rendered frame rather
+than a fixed delay. The overlay and gameplay rendering were tested on the
+iOS 27.0 Simulator; the profile-based runtime was also tested on iOS 18.6.
+A physical-device test of the 1.2.2 overlay is still outstanding.
 
 The iOS target builds for physical ARM64 devices and Apple Silicon's ARM64
 Simulator. Simulator tests cover clean iPhone and iPad startup, localization,
@@ -135,11 +131,10 @@ the full portable Mac Builder is packaged using
 `tools/build_portable_mac_builder.py`. Unsigned IPA creation is disabled
 in the separate asset-free Xcode-only installer.
 
-The initial 1.2.0 portable candidates have passed original-ZIP to native IPA
-conversion, including a native Windows 11 ARM GUI test with the exact
-portable EXE. The IPA contents and compression have been inspected on
-both platforms. This establishes desktop packaging correctness, not
-signed on-device gameplay compatibility.
+The 1.2.2 Mac and Windows Builders passed unsigned IPA creation from the
+original ZIP. The Windows test used the native GUI in a Windows 11 ARM VM
+with x64 emulation. IPA contents and checksums were checked separately.
+See [release scope](docs/RELEASE_SCOPE.md) for the test record.
 
 The remaining rights and license-review blockers are inventoried in
 [third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).

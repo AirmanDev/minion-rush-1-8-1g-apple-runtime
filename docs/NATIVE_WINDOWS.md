@@ -120,12 +120,9 @@ unsigned IPA through Create IPA using the user's locally staged original
 ZIP. The checked 1.2.0 GUI result contains 1,369 entries, 942,744 AOT
 blocks and no bundled Hungarian game translation. The generated file
 passes an independent full ZIP integrity and profile parse check.
-The 1.2.1 hotfix corrects the missing iOS startup profile loader in the
-Xcode-built runtime; the exact 1.2.1 Windows EXE passed the embedded
-portable self-test on the Windows 11 UTM guest, but a separate full
-Windows GUI building and an end-to-end compile using 1.2.2 have since passed.
-The packaged Mac 1.2.1 Builder did complete the end-to-end AOT IPA build;
-iOS 18.6 and 27.0 Simulators rendered the game with the fixed runtime.
+Version 1.2.1 corrected the missing iOS startup profile loader. Version
+1.2.2 subsequently passed the Windows GUI-to-IPA test. The fixed runtime
+rendered on the iOS 18.6 and 27.0 Simulators.
 
 Windows' mapped UTM WebDAV drive cannot directly read this 454 MB ZIP.
 For this private UTM test, the ZIP was first copied through UTM's
@@ -144,10 +141,9 @@ portable EXE self-test passed, and its normal Win32 GUI generated a
 367,839,044-byte native unsigned IPA through Create IPA using the
 owner's local source ZIP. Independent Windows ZipArchive and v3 profile
 header checks passed (1,369 entries; 109 bindings; 942,744 AOT blocks;
-164,353,244 bytes of ARM64 code). The new loading overlay needs an
-additional physical-device test, including audio and save continuity. Earlier Windows 11 ARM/Sideloadly iPhone results
-belong to the historical 1.1.0 build and do not establish 1.2.1 device
-compatibility.
+164,353,244 bytes of ARM64 code). The loading overlay still needs a
+physical-device test, including audio and save continuity. Tests of older builds do not establish 1.2.2
+device compatibility.
 
 The Windows candidate is not Authenticode signed. Apple-side code signing
 or sideloading requires the user's own account; the Builder does not sign.

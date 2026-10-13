@@ -1,5 +1,7 @@
-<!-- Historical 1.1.0 verification record. Current generic 1.2.0 status is in RELEASE_SCOPE.md. -->
 # Code audit
+
+This document records historical findings. For the current 1.2.2 candidate,
+see [release scope](RELEASE_SCOPE.md).
 
 Historical review: 2026-09-27. Scope: the maintained public source, native runtime,
 Apple platform layers, installer, build and packaging tools, tests, and docs.
