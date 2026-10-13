@@ -5,11 +5,12 @@ Two separate IPA preparation paths are supported in the source tree:
 - **Mac (maintained):** The portable SwiftUI Builder creates an unsigned
   IPA without Xcode, and optionally signs/installs via Xcode and the owner's
   Apple signing account. See [INSTALLER.md](INSTALLER.md).
-- **Windows (private portable Builder):** A portable builder takes
+- **Windows (portable Builder 1.2.0 candidate):** A portable builder takes
   the user's own 1.8.1g ZIP, compiles the original engine into native ARM64
   blocks on Windows, inserts them into a prebuilt unsigned iOS template, and
-  packages the original assets. The privately built EXE can include the optional Hungarian catalog; the
-  original app icon comes from the user's ZIP. No Mac is needed for this build.
+  packages the original assets. The EXE does not include the private
+  Hungarian game-text catalog or precomputed block tables. Its template is
+  game-independent; the original app icon comes from the user's ZIP. No Mac is needed for this build.
   See [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md). Windows output is an **unsigned
   IPA** and does not install or sign itself.
 
@@ -23,9 +24,10 @@ it. The new IPA is assembled in a private folder on the same volume and
 replaces the old file only after successful verification. Build failures do
 not destroy the previous IPA.
 
-The bundled Magyar option is a solid-green selection square, enabled by default
-when its private catalog is present. Uncheck it to exclude Hungarian resources from
-that IPA; the original game's languages are always included. There is no
+The Magyar game-language option is disabled unless an authorized, local
+catalog is supplied when building a non-public custom edition. The
+Builder's English / Magyar interface switch is available independently.
+The original game's languages are always included. There is no
 separate language-file picker. The game lists only installed language packs
 on its initial and Settings language pages, and no XLIFF needs to be copied
 to the iPhone. Use English / Magyar in the Builder header to change the
@@ -86,7 +88,8 @@ not make unsupported versions compatible.
 
 A private IPA contains the original game engine and assets. Never upload a
 completed IPA to a public GitHub release, issue, or public sharing service.
-A distributable Windows template and source-derived metadata require a legal
+The generic v3 template avoids bundling game-derived address metadata.
+An end-to-end review of the distributor's rights and the generated IPA requires a legal
 review before publication. The private Mac Builder also creates unsigned IPAs without Xcode, using
 SwiftUI. Public GitHub Releases distribute the separate asset-free Mac
 installer for the Xcode-based signing and installation path.

@@ -62,7 +62,7 @@ class WindowsKitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             kit = self.fixture(Path(directory))
             config = self.validate(kit)
-            self.assertEqual(config["version"], 4)
+            self.assertEqual(config["version"], 5)
             self.assertFalse((kit / "assets").exists())
             self.assertFalse((kit / "runtime/assets").exists())
             self.assertFalse((kit / "runtime/build").exists())
@@ -202,14 +202,14 @@ class WindowsKitTests(unittest.TestCase):
                         self.validate(kit)
                 finally:
                     path.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 4)
+            self.assertEqual(self.validate(kit)["version"], 5)
             tamper = kit / "python/python314._pth"
             original = tamper.read_bytes()
             tamper.write_bytes(b"import site\n")
             with self.assertRaisesRegex(ValueError, "integrity"):
                 self.validate(kit)
             tamper.write_bytes(original)
-            self.assertEqual(self.validate(kit)["version"], 4)
+            self.assertEqual(self.validate(kit)["version"], 5)
             (kit / "runtime/tools/untrusted.py").write_text("print('bad')")
             with self.assertRaisesRegex(ValueError, "extra files"):
                 self.validate(kit)

@@ -1,88 +1,116 @@
-# Release scope
+# Portable Builder release scope
 
-## What is ready
+## Candidate 1.2.0 (generic AOT runtime)
 
-The current full private Builders are version 1.1.0.
+The next portable Builder candidate supports the same local workflow on both
+platforms: a user imports their own unmodified Minion Rush 1.8.1g ZIP and
+receives an unsigned IPA containing ahead-of-time translated ARM64 code.
 
-- Mac: `build/private-releases/1.1.0/MinionRush-Builder-macOS-arm64.zip`
-- Windows: `build/private-releases/1.1.0/MinionRush-Builder-Windows-x64.exe`
-- Checksums: `build/private-releases/1.1.0/SHA256SUMS.txt`
+- Mac: ad hoc signed, self-contained arm64 SwiftUI .app.
+- Windows: self-contained x64 native Win32 .exe, also on Windows 11 ARM via
+  x64 emulation.
+- iOS/iPadOS deployment minimum: 17.0. No iOS JIT, ARM32 interpreter or
+  on-device code generation.
+- The host-only Python runtime, native AOT compiler and generic zero-code
+  iOS executable template are included in each desktop Builder.
+- The original game ZIP, APK, game assets, game-derived executable blocks,
+  address-map data, and private translation XLIFF are NOT included.
+- The Builder interface supports English and Hungarian. The original game's
+  available languages come from the user-supplied ZIP.
 
-Both bundle their Python runtime, native AOT translator, unsigned iOS template,
-and Hungarian catalog. Neither bundles the original game ZIP or a finished
-IPA. The user supplies their own original 1.8.1g ZIP and generates an unsigned
-IPA locally. Mac builds are ad hoc signed. Windows output is signed and
-installed separately using Sideloadly; Xcode signing remains an optional
-Mac-specific feature.
+The common toolchain compiles the owner's ARM32 engine into ARM64 instructions
+on the desktop. The same host tool creates a v3 binary profile containing
+the user's engine bindings, offline hooks, and native block-map offsets.
+The iOS runtime links a zeroed 192 MiB code slot without knowing any
+game-specific addresses. The unsigned IPA assembler inserts the generated
+ARM64 instructions and the profile along with the user's own game assets.
+The runtime validates the profile before executing already compiled blocks.
 
-The private Mac 1.1.0 app passed a complete original-ZIP-to-IPA test with an
-isolated bundled Python interpreter: 1,371 ZIP entries, including compiled
-Hungarian text. The produced IPA was deleted after verification. The Windows portable EXE and its embedded kit passed executable format,
-checksum, translation, and template presence tests. The Windows EXE is not
-Authenticode signed. Previous private Windows 11 ARM builds passed a
-user-reported Sideloadly/iPhone test. A fresh full device test for the new
-1.1.0 packaging is still recommended.
+The profile format, bounds and ABI are documented by:
+`config/native_profile.json`, `tools/native_profile.py`,
+`tools/build_generic_bindings.py`, `src/native/game_profile.c`,
+and `src/native/game_profile.h`. Only version 3 is accepted. There is no
+fallback to the game-derived v2 template.
 
-To rebuild the two private packages after compiling both Builders:
+## Build the candidate locally
+
+Build the generic template once, on a developer Mac with Xcode 27 or later:
 
 ```bash
-python3 tools/package_private_builders.py \
-  --app "build/private/Minion Rush IPA Builder.app" \
-  --windows-exe "build/windows-release/MinionRush-Builder.exe" \
-  --version 1.1.0 \
-  --output "$PWD/build/private-releases/1.1.0"
+mkdir -p build/ios-generic
+./tools/build_ios_template.sh \
+  "$PWD/build/ios-generic/MinionRush-generic-template-unsigned.zip"
 ```
 
-The output directory must not already exist. The packager checks the Mac
-version, embedded runtime, template and catalog, Mac ad hoc signature after
-ZIP extraction, Windows embedded kit and SHA-256 checksums. It does not upload
-any files to GitHub.
+Then build the portable host executables as described in
+[INSTALLER.md](INSTALLER.md) (Mac) and [NATIVE_WINDOWS.md](NATIVE_WINDOWS.md)
+(Windows). The portable release packager refuses an existing output folder:
 
-## Why these packages are not in the public Release
+```bash
+mkdir -p build/portable-releases
+python3 tools/package_portable_builders.py \
+  --app "$PWD/build/ios-generic/Minion Rush IPA Builder 1.2.0.app" \
+  --windows-exe "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.0.exe" \
+  --version 1.2.0 \
+  --output "$PWD/build/portable-releases/1.2.0"
+(cd build/portable-releases/1.2.0 && shasum -a 256 -c SHA256SUMS.txt)
+```
 
-The prebuilt unsigned iOS template is not the finished game and has no
-original game assets or translated machine-code instructions. However, the
-runtime was linked against approximately 943,000 original-engine-derived
-block-map entries and 115 generated game binding symbols. The generated
-addresses are technical data, but their distribution as part of a modified
-game runtime requires a case-specific copyright and license assessment.
+The packager verifies the Mac bundle's version, signature (including after
+extraction), runtime and kit integrity, the Windows EXE embedded archive,
+and the generic template version. It rejects private XLIFF and finished
+game IPAs. It does not upload anything.
 
-The bundled private Hungarian XLIFF contains 2,483 source text entries and
-2,483 translations from the original game's text. Ownership of the translated
-wording alone does not establish rights to publish an adaptation or copy
-the underlying original text.
+## Validation status
 
-EU case C-406/10 distinguishes unprotected program functionality and
-programming interfaces from copyright-protected source/object expression.
-Directive 2009/24/EC and sections 58-60 of Hungary's Copyright Act address
-software interoperability and its conditions. These provisions are not a
-blanket license to publish a translated game or redistribute game-derived
-binary material.
+The generic iOS runtime has built with Xcode 27. The original
+user-supplied ZIP was converted to a structurally valid unsigned ARM64 IPA
+using the generic template and also with the embedded runtime of the
+self-contained Mac Builder, without a bundled Hungarian game catalog.
+The profile contains 942,744 generated blocks and 109 engine binding values;
+these are generated by the user's own desktop compilation, never shipped in
+the generic Builder.
 
-Authoritative sources:
+A fresh Windows 11 GUI end-to-end import for 1.2.0, a signed on-device
+startup/gameplay regression, tested save-state continuity, broader iOS version
+coverage, clean-machine Gatekeeper/Authenticode checks and legal review
+remain required before calling this a publicly cleared release. Previous
+Windows/iPhone successes concerned the older 1.1.0 private package.
 
-- https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62010CJ0406
+## Legal and distribution limits
+
+The generic portable Builder reduces the direct game-material redistribution
+risks of v1.1.0. It is not a legal guarantee for the creation or use of a
+translated copy of the game. The publisher may hold rights in original
+machine code, text, artwork and gameplay assets included in the user's own
+generated IPA. The current code also describes engine symbol interfaces and
+identifiers. Whether an interoperability or lawful-use exception applies
+depends on the actual acts and their necessity; local processing and owning a
+copy do not automatically establish permission.
+
+The private Hungarian XLIFF contains 2,483 original game text entries and
+translations; it must not enter public kit packages or downloads without an
+independently verified distribution basis. It remains an optional separately
+configured local source; the default candidate runs with the original
+languages from the user's ZIP.
+
+The source code's Apache 2.0 license covers only contributions whose authors
+can license them. It does not license the game, its source assets, or the
+mark, and signing with Sideloadly/Xcode does not grant those rights. Third-
+party executable dependency licenses, the game's historical EULA, and the
+narrow scope of Hungarian/EU interoperability provisions require a concrete
+legal review before public release.
+
+Primary references:
+
 - https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0024
-- https://njt.jog.gov.hu/jogszabaly/1999-76-00-00
+- https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:62010CJ0406
+- https://njt.hu/jogszabaly/1999-76-00-00
 
-## Paths to a public full Builder release
+## Existing public Release
 
-1. Obtain appropriate distribution authorization for the prebuilt
-   template-derived content and the language catalog, together with a
-   third-party license review. Rights to an original game copy do not by
-   themselves provide redistribution permission.
-2. Alternatively, develop and test an independent generic iOS template that
-   receives all game-specific binding and block-map data only after the
-   user's ZIP is imported. The current native runtime compiles this metadata
-   into the template; removing it requires a runtime and IPA format change,
-   not just deleting manifest entries. The Hungarian translation would still
-   need authorization, or must be supplied separately by an authorized source.
-
-Until one of these paths has been reviewed, the full Mac and Windows Builder
-binaries remain local private packages. The public GitHub Release contains
-only the separate asset-free Mac Xcode installer, named accordingly. Its
-unsigned Create IPA action is unavailable without the private template.
-
-Do not publish the local full Builder packages, private language catalog,
-generated game IPA, or original game ZIP merely by changing GitHub
-visibility or attaching them to a draft Release.
+The already published GitHub 1.1.0 RC1 is a separate, Xcode-based Mac
+import/sign/install application. It does not contain the v3 generic portable
+runtime or Windows EXE. Do not replace or mislabel it before the 1.2.0
+candidate's remaining gates are passed. Do not publish any user ZIP,
+generated IPA, private translation, signing credentials or device identifiers.

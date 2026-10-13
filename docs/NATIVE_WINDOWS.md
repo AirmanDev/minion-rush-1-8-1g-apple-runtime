@@ -1,370 +1,130 @@
-# Native Windows Builder for unsigned iPhone IPA files
+# Native Windows unsigned IPA Builder
 
-The private portable Windows 11 Builder compiles a user-supplied original
-Minion Rush 1.8.1g ZIP into an unsigned native ARM64 IPA without a Mac,
-Xcode, Clang or separately installed Python. The app is a single x64 EXE
-(also usable on Windows 11 ARM through x64 emulation). It does not sign
-or install the IPA. The Mac Builder provides the equivalent private
-unsigned-IPA workflow using native SwiftUI.
+## User workflow
 
-**Status:** The private Windows Builder is implemented and used. Windows 11
-ARM tests on 2026-10-12 and 2026-10-13 produced unsigned IPAs; the user
-confirmed successful Sideloadly signing, iPhone installation, gameplay,
-Hungarian text, saved progress, sound and the original icon. Automated
-Windows CI covers both GUI profiles and the one-file launcher. More hardware
-and interactive regression coverage remains desirable. **The complete private
-Builder is not a public GitHub Release asset.** Its unsigned iOS template
-contains engine-derived metadata requiring redistribution review.
+The Windows 11 x64 portable EXE also works on Windows 11 ARM through x64
+emulation. It has a native Win32 interface and needs no separately installed
+Python, compiler, Xcode, or macOS machine.
 
-## How the system works
+1. Open the downloaded Builder EXE. On first launch it extracts its signed-off
+   inventory to a private temporary workspace.
+2. Drag a lawfully obtained, unmodified Minion Rush 1.8.1g release ZIP into
+   the window, or choose it with Browse.
+3. Select a local destination ending in `.ipa`. An existing IPA requires
+   explicit replacement confirmation.
+4. Click Create IPA. The host translates the original ARM32 engine into
+   ARM64 machine-code blocks ahead of time and writes an unsigned IPA.
+5. Use a separate signing tool such as Sideloadly with your own Apple account
+   before installing to an iPhone or iPad.
 
-The existing offline ARM32/Thumb -> ARM64 compiler generates four files from
-the user's own official, unmodified 1.8.1g engine. Three of those outputs are
-important for the iOS runtime:
+The output is native ARM64 and retains the original game's data, audio,
+artwork and saved-state format. The destination-side atomic writer protects
+any earlier IPA if the new build fails. The standard EXE does not use the
+experimental UTM SPICE/WebDAV import transport.
 
-1. minion_code.bin: native ARM64 machine-code blocks.
-2. minion_map.inc: ARM32/Thumb entry points and corresponding block offsets.
-3. game_bindings.h: fixed original-engine entry points and fingerprint.
+The English / Magyar selector changes the Windows **Builder UI**, not the
+game. The generic portable edition includes only the original game's
+language resources from the user's ZIP. No separately translated Hungarian
+XLIFF is shipped. The game-language toggle is disabled unless the builder
+was locally packaged with a separately authorized catalog. The EXE has
+local error diagnostics and log export; logs may contain private file paths
+and must not be uploaded publicly.
 
-The regular Mac/iOS build continues to embed the generated code and map at
-link time. The additional Windows path uses a special **developer-built**
-unsigned iOS Mach-O application template. It contains the same compiled host
-runtime and block map, but reserves a file-backed executable __MRCODE/__text
-section filled with zeros. No original game engine, artwork, DLC, audio, icon,
-or translated ARM64 instructions belong in this template. No compiled app
-icon catalog is included: after importing the user's ZIP, the Windows builder
-generates correctly sized iPhone/iPad PNG icons from its validated original
-app-icon.png and records them in CFBundleIcons. The final per-user IPA therefore
-uses the original game's launcher artwork; the developer's template does not.
+## How the generic native runtime works
 
-The Windows kit uses a locally shipped x64 AOT translator and Python standard
-library to validate the user's original ZIP, generate machine code, verify
-SHA-256 fingerprints of the code/map/bindings, fill only that reserved Mach-O
-section, and package the user's verified original assets into an **unsigned**
-Payload/MinionRush.app IPA archive. Windows 11 ARM supports running the
-Windows x64 offline compiler through emulation. iOS will run the ARM64 result
-natively after the IPA has been correctly signed.
+The distributable template is an unsigned ARM64 Mach-O app produced
+once by Xcode on the **developer's** Mac. It has a 192 MiB, zero-filled
+`__MRCODE/__text` executable slot, and no imported game, static
+game-specific binding addresses, machine-code instructions, or game files.
 
-The kit's prebuilt translator is verified by SHA-256 and executed directly
-from its existing kit location. It is never copied into the private AOT
-output or deleted by the preparation routine: Windows can keep executable
-images locked briefly after the child exits (WinError 5). This also avoids
-an unnecessary executable copy. The private output contains only original
-assets, generated ARM64 data and the AOT manifest.
+On each user's desktop, the AOT translator processes the validated original
+engine and writes `minion_code.bin`, `minion_map.inc` and
+`game_bindings.h`. The shared `native_profile.py` tool then packs
+the map and binding values into a strictly checked v3 `game-profile.bin`,
+which is placed inside that user's IPA. `native_ipa.py` inserts the
+generated ARM64 machine code into the zeroed Mach-O slot, adds private
+assets and creates an unsigned IPA. All modifications happen before signing.
+The iPhone loads the validated profile before gameplay, then executes native
+ARM64 blocks. There is no ARM32 interpreter or iOS JIT.
 
-## Windows GUI release workflow
+The same source, ABI limits and conversion stages are used on macOS;
+there is no parallel Windows-specific implementation of IPA patching.
+No compatibility path remains for the earlier game-derived v2 template.
 
-1. Obtain the privately built and locally verified
-   `MinionRush-Builder.exe`. The private package is not hosted in the
-   public GitHub Release. Keep the original ZIP separate.
-2. Run the portable EXE directly. It extracts and verifies its own runtime
-   in a temporary folder and opens the native GUI. No installer is needed.
-3. Drop one original 1.8.1g ZIP onto the window or select Browse ZIP.
-   In the standard release builder, choose a locally accessible ZIP. The
-   separately compiled UTM test builder recognizes an original ZIP next to
-   the kit in the private shared folder, fills its path automatically, and
-   uses the guest-local WebDAV transport to bypass the Windows file-picker
-   size limit. If necessary, paste a full absolute ZIP path in the source
-   field (Windows Explorer: Shift + right-click, Copy as path); enclosing
-   quotes are accepted. This test-only behavior is not in the release EXE.
-4. Select Save As and choose a writable folder and filename ending in .ipa.
-   If the file already exists, the Windows Save dialog asks for confirmation
-   before authorizing replacement. An existing IPA selected previously is
-   confirmed again at build start. The new IPA is built separately on the
-   destination volume, then replaces the old one only after successful
-   assembly and verification. Cancelled or failed builds preserve the
-   existing IPA. Confirmation is valid for one build only.
-5. Under Additional languages in IPA, enable Magyar to include the bundled
-   private Hungarian translation, or uncheck it to create an IPA containing
-   only the original game languages. The checked option defaults to on when
-   the catalog is built into the private EXE. No language-file picker or
-   separate hu.xlf is required. The iOS runtime only shows community
-   languages whose compiled text is actually present in that particular IPA.
-   The game's initial and in-game Settings language selectors retain their
-   persistent preference. Switching between included languages does not
-   require rebuilding. In the Builder header, English and Magyar switch the
-   Windows UI language independently of the IPA's contents. The Windows
-   system language determines the initial GUI language.
-6. Select Create IPA. Progress and the latest step appear in the
-   window without freezing the user interface. Show details expands the
-   diagnostics with the build phase, source, output, translation, transfer
-   method, workspace path, exit status, error and the available raw output.
-   Copy error copies the diagnostic summary, Copy full log includes the raw
-   output, and Save log writes a local UTF-8 text report. Error details
-   expand automatically on failure. Cancel terminates the child process
-   group and cleans its private scratch files.
-7. Open the chosen output folder. The IPA is unsigned, contains copyrighted
-   game assets from your own ZIP, and is for private use only.
-8. Sign and install it with a trusted external tool such as Sideloadly.
-   The GUI does not collect Apple account credentials or sign IPA files.
+## Build inputs for maintainers
 
-For a single-file distribution, use the native one-file launcher. The
-user receives only one EXE; that EXE contains a compressed, hash-checked
-portable kit (including Python, translator, template, and optionally a
-private Hungarian translation). On startup it expands into a unique Windows
-TEMP directory, executes the same GUI and build engine, waits for it to
-finish, and removes the extracted kit. Windows 11 includes the local tar
-extractor required by the launcher. This does not install applications,
-require administrator privileges, or bundle the original 1.8.1g source ZIP.
-The user still selects their own original ZIP. Private Hungarian XLIFF can
-be supplied at kit creation with --hungarian-xlf, then appears as a checked
-language option in the GUI. Unchecking it passes --no-hungarian and prevents
-compiling the extra language into that IPA. No source picker is exposed. It must not be committed or published without
-clear redistribution rights.
+The developer must have Xcode 27+ on an Apple Silicon Mac to produce the
+generic template. Neither the game ZIP nor a generated game map is needed:
 
-The kit contains an unsigned game-asset-free iOS template, the native
-Windows EXE, and a private Python runtime plus AOT compiler. Game assets,
-original icon and ARM64 machine instructions are generated only after
-the user imports their own original ZIP. No compiler, Python or Xcode
-installation is required by the Windows user.
+```bash
+mkdir -p build/ios-generic
+./tools/build_ios_template.sh \
+  "$PWD/build/ios-generic/MinionRush-generic-template-unsigned.zip"
+```
 
-The former batch and PowerShell startup wrappers were removed. The GUI
-starts the existing offline build engine with an explicit source ZIP,
-chosen destination, and optional language catalog; there is only one
-translation and IPA assembly implementation.
+The template output must be a new path and is refused if it exists.
+For the Windows native UI and one-file launcher, install a Windows x64
+cross-compiler with MinGW-w64 and run:
 
-The release and private UTM test builder have distinct compile-time
-configurations and version-4 kit manifests. Only the UTM test kit includes
-the guest-loopback SPICE/WebDAV transport module, which targets
-127.0.0.1:9843 for large shared ZIPs. The release kit excludes that module
-and the release GUI does not auto-select UTM share paths. Local archives
-use normal file I/O. The GUI uses short per-job Windows temporary paths
-to avoid classic 260-character filesystem-path failures.
-Successful and cancelled builds clean their private workspace. Failed
-builds retain the workspace for investigation, accessible through Open temp
-folder. This workspace can contain original copyrighted game files, so
-never share it or a diagnostic log publicly and remove it manually after
-troubleshooting. The Windows GUI's displayed log is capped at 4 MiB; it
-explicitly reports when later output is omitted.
+```bash
+./tools/build_windows_gui.sh release
+```
 
-An x64 Win32 GUI can run on x64 Windows and on Windows 11 ARM through
-Windows x64 compatibility. No administrator privileges are required.
-Unsigned Windows EXEs can trigger SmartScreen warnings. Prefer a verified
-code signing certificate and published checksums for final releases.
+Prepare the Windows kit with a verified Python 3.14.7 official embeddable
+distribution and host-compatible `a64-compiler.exe`. Both artifacts are
+developer-side build inputs; their pinned hashes are validated by the kit.
+The generic template is the one created above:
 
-The user has tested the updated native GUI in a Windows 11 ARM UTM session,
-including the in-app Hungarian option and overwriting an existing IPA.
-The earlier unsigned IPA was signed with Sideloadly and installed on a
-physical iPhone running iOS 27. CI validates GUI startup, compiler output
-and source portability, but further physical-device and cancellation tests
-remain useful. Legal review, not missing implementation, is the principal
-reason the private full Builder is not a public download.
+```bash
+python3 tools/build_windows_kit.py \
+  --python-embed-zip "$PWD/build/private-cache/python-3.14.7-embed-amd64.zip" \
+  --compiler "$PWD/build/private-cache/a64-compiler.exe" \
+  --gui-exe "$PWD/build/windows/MinionRush Builder.exe" \
+  --template "$PWD/build/ios-generic/MinionRush-generic-template-unsigned.zip" \
+  --output "$PWD/build/ios-generic/windows-kit-1.2" \
+  --mode release
 
-## Developer: build the unsigned template on a Mac
+python3 tools/build_windows_onefile.py \
+  --launcher "$PWD/build/windows/MinionRush Portable.exe" \
+  --kit "$PWD/build/ios-generic/windows-kit-1.2" \
+  --output "$PWD/build/ios-generic/MinionRush-Builder-Windows-1.2.0.exe"
+```
 
-First import the original release locally and run the normal existing build:
+Outputs are created only in new, nonexistent paths. The normal release
+profile does not contain UTM-specific transport. The separate `utm-test`
+build profile remains only for diagnosing an owner's private virtual-machine
+shared drive and is not a general Windows release target.
 
-    ./build.sh
+No private `--hungarian-xlf` option is used for the portable public
+candidate. Do not package game text, game-derived profile values, original
+ZIPs, signed IPAs or device credentials. The builder UI itself includes
+its original bilingual labels.
 
-Then run the isolated optional unsigned iOS template build:
+## Verification and limitations
 
-    ./tools/build_ios_template.sh
+The release kit verifies the checksums of its native Win32 application,
+AOT compiler, embedded Python interpreter, generic iOS template and
+source-controlled runtime. The onefile launcher checks the embedded ZIP
+before extracting it. The unsigned iOS template requires one thin ARM64
+Mach-O executable with an RX `__MRCODE/__text` code slot; the IPA assembler
+rejects unexpected assets and signature metadata. SHA-256 verifies the
+generated v3 profile and patched ARM64 code. Native output is assembled
+atomically. The VM-only network import is distinct from the standard
+filesystem import path.
 
-Default output:
-build/native-template/MinionRush-native-template-unsigned.zip
+The generic v3 Mac Builder has completed an original-ZIP-to-unsigned-IPA
+test. The 1.2 Windows EXE has been cross-compiled and its bundled kit
+validated, but a fresh Windows 11 GUI end-to-end test and physical iOS
+gameplay regression remain release gates. Earlier Windows 11 ARM/Sideloadly
+results belong to the historical 1.1.0 private build and do not establish
+1.2.0 device compatibility.
 
-The template builder uses Xcode's iPhoneOS SDK only on the developer's Mac,
-builds the isolated build/ios-template library, disables the asset-catalog
-app icon and code signing, builds a separate DerivedData tree, and rejects
-any app icon, original game assets/signatures or nonzero executable slot. It does not modify build/ios, the normal iOS target,
-or the existing Mac installer.
+The Windows candidate is not Authenticode signed. Apple-side code signing
+or sideloading requires the user's own account; the Builder does not sign.
+The iOS deployment minimum remains 17.0, but supported-range build checks
+are not a substitute for actual physical-device tests.
 
-A normal iOS device build remains:
-
-    ./tools/build_ios.sh
-    ./tools/package_ios.sh
-
-Only a **developer-owned, suitably reviewed asset-free template** may be
-offered publicly, not a privately generated full IPA. Although the Mach-O
-template contains no original machine-code instructions or original game
-assets, the embedded static block map and binding addresses are derived from
-the original game. Their redistribution requires independent copyright
-review; no legal conclusion is implied by these technical checks.
-
-## Developer: build a portable Windows kit
-
-The build host needs the unsigned template from the preceding step, a
-verified Windows x64 offline AOT executable, a native GUI EXE, and the
-official Python 3.14.7 Windows x64 embeddable ZIP. The latter is downloaded
-directly from python.org and pinned to SHA-256:
-
-d297e5ff019966817ad8502465176139f2d3d840fa4ed84b13bed399a6ab1f15
-
-Build the standard Windows x64 GUI on a Mac with MinGW-w64:
-
-    ./tools/build_windows_gui.sh
-
-Build and validate a release-profile kit (the default). UTM-specific
-transport source and test-only GUI behavior are not shipped in this kit:
-
-    python3 tools/build_windows_kit.py \
-      --mode release \
-      --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
-      --compiler /private/a64-compiler.exe \
-      --gui-exe build/windows/MinionRush\ Builder.exe \
-      --template build/native-template/MinionRush-native-template-unsigned.zip \
-      --output /private/MinionRush-Portable-Windows
-
-To create a single Windows EXE with the private Hungarian catalog:
-
-    python3 tools/build_windows_kit.py \
-      --mode release \
-      --hungarian-xlf /private/hu.xlf \
-      --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
-      --compiler /private/a64-compiler.exe \
-      --gui-exe build/windows/MinionRush\ Builder.exe \
-      --template build/native-template/MinionRush-native-template-unsigned.zip \
-      --output /private/MinionRush-Release-Private
-
-    python3 tools/build_windows_onefile.py \
-      --launcher build/windows/MinionRush\ Portable.exe \
-      --kit /private/MinionRush-Release-Private \
-      --output /private/MinionRush-Builder.exe
-
-This is a private artifact until the template and translation rights have
-been reviewed. The public candidate should not embed unlicensed text.
-
-For private UTM VM testing, compile and package a separate test profile:
-
-    ./tools/build_windows_gui.sh utm-test
-    python3 tools/build_windows_kit.py \
-      --mode utm-test \
-      --python-embed-zip /private/python-3.14.7-embed-amd64.zip \
-      --compiler /private/a64-compiler.exe \
-      --gui-exe build/windows/utm-test/MinionRush\ Builder.exe \
-      --template build/native-template/MinionRush-native-template-unsigned.zip \
-      --output /private/MinionRush-UTM-Test
-
-Create a release-profile candidate and checksum (no upload or GitHub release):
-
-    python3 tools/package_windows_release.py \
-      --kit /private/MinionRush-Portable-Windows \
-      --output /private/MinionRush-Windows-Builder-candidate.zip
-
-The private UTM test archive requires an explicit safety override:
-
-    python3 tools/package_windows_release.py \
-      --kit /private/MinionRush-UTM-Test \
-      --output /private/MinionRush-UTM-Test.zip \
-      --allow-test-profile
-
-Never label or publish that archive as the standard Windows release.
-
-The one-file test EXE is also explicit and must not be offered as a release:
-
-    python3 tools/build_windows_onefile.py \
-      --launcher build/windows/MinionRush\ Portable.exe \
-      --kit /private/MinionRush-UTM-Test \
-      --output /private/MinionRush-Builder-UTM-Test.exe \
-      --allow-test-profile
-
-When the private UTM one-file EXE sits next to the original ZIP in the
-guest's mapped shared folder, the test profile reads that original ZIP via
-the local SPICE/WebDAV service. The normal release profile does not contain
-this integration.
-
-The kit includes the native Win32 GUI, an isolated Python 3.14.7 runtime,
-the verified x64 AOT translator, public runtime source, and the developer-built
-unsigned iPhone application template. The portable Python
-python314._pth uses isolated module loading, explicitly permitting only
-python314.zip, the interpreter directory, and the kit's runtime/tools directory.
-No site import or system-wide PYTHONPATH is enabled. The full extracted
-Python interpreter and native-extension files have an additional SHA-256
-inventory; this prevents accidental file mismatches relative to the kit's
-manifest, but does not replace an independently authenticated release signature. Windows users require neither Xcode, a Mac, an installed Python runtime
-nor a C compiler. The input ZIP and optional community-language catalogs must be
-provided privately by the end user. The original game ZIP provides the
-launcher icon, but not the Hungarian translation.
-
-A source-manifest-based inventory protects the local runtime copy against
-accidental content mismatches. SHA-256 of the downloaded Python embeddable ZIP
-is pinned at kit creation. The GUI, compiler and template have hashes recorded in
-kit-manifest.json. The runtime verifies hashes again when launched.
-
-## Automated safety boundaries
-
-- No overwriting existing output archives or operating outside the intended
-  temporary working directory. Windows network ZIP sources are streamed into
-  local TEMP using bounded 1 MiB buffers. UTM's mapped SPICE WebDAV drive
-  can reject even the initial open of a 454 MB file (Errno 22) because of
-  Windows WebClient file-size limits. For recognized UTM loopback WebDAV
-  mappings only, the importer instead issues a direct HTTP GET to the guest's
-  own 127.0.0.1:9843 SPICE service, without proxies or redirects. The
-  result is size-checked before ZIP validation. Unrelated remote shares
-  continue using the regular file API. Local NTFS ZIPs are used directly
-  without an unnecessary copy. Scratch copies are deleted on success or
-  failure; reserve sufficient free Windows VM disk space.
-- Version-locked original 1.8.1g engine hash, asset content validation, bounded
-  original ZIP extraction, path-traversal and symlink checks.
-- Thin ARM64 MH_EXECUTE Mach-O only, exactly one file-backed executable
-  __MRCODE/__text section, strict offsets/size, zero-slot verification.
-- The code inserted must match the known template reference checksum.
-  CRLF normalization is applied solely to compare generated text metadata.
-- The unsigned template ZIP is checked for duplicate paths, encrypted entries,
-  unknown files, signing data, and game-data paths.
-- The user's original engine and assets never enter the public source release.
-  Native code is emitted only as private per-user output.
-- The source icon is validated against the original game's SHA-256 digest.
-  The app's own PNG icon variants are created after private ZIP import,
-  without Xcode, from the validated source artwork. Template-provided icon
-  catalogs or icon metadata are rejected to prevent duplicate icon sources.
-- No Android emulation, no iOS JIT, no remote upload or host networking.
-- iOS signature must be created only **after** the per-user IPA is assembled;
-  modifying a signed executable invalidates the signature.
-- Users must not share their IPA, ZIP, local logs, signing identity, or device
-  identifiers on GitHub issues or public cloud services.
-
-## Executed verification
-
-On 2026-10-12:
-
-- Windows 11 ARM VM started the x64 compiler without Windows SDK/Clang.
-- The complete original game engine translated to 938598 A32 and 4146 Thumb
-  native blocks. ARM64 code digest matched the Mac reference.
-- All four generated outputs matched the Mac references (after normalizing
-  Windows CRLF in the three text artifacts).
-- The Mac Xcode unsigned template build succeeded, producing a 164353244-byte
-  all-zero executable slot in __MRCODE/__text.
-- The Mac end-to-end assembly generated an unsigned IPA (376453529 bytes,
-  1367 ZIP members). The inserted native ARM64 code matched the original
-  compiled code SHA-256 exactly.
-- A **local ad-hoc signature** of that IPA's app bundle passed
-  codesign --verify --deep --strict, confirming the Mach-O can be signed
-  structurally. This ad-hoc signature is NOT sufficient for an iPhone.
-
-The same day, a complete Windows 11 ARM UTM end-to-end test succeeded:
-the portable kit read the original game ZIP over local SPICE WebDAV, compiled
-native ARM64 code, included the 2483-entry private Hungarian localization,
-generated the app's icon PNGs from the owner's original ZIP, and produced an
-unsigned IPA. The shared Windows report recorded PASS, an output size of
-447664313 bytes, and SHA-256:
-
-2a4702ff8627d67f6b0396b90ad4523a35e6e345410cc9c7271654bb063cb4fd
-
-The user then confirmed successful Sideloadly installation on an iPhone
-running iOS 27, working original app icon, Hungarian labels instead of ???,
-sound, introductory sequence, completed gameplay, and saves. The user
-subsequently confirmed repeated extended play without observed stability
-problems. This is user-reported physical-device testing, not automated
-hardware regression or comprehensive device coverage. The original game/IPA remains private and has not been
-uploaded to public releases.
-
-Still required before any **public Windows kit**: review the copyright status of
-source-derived code maps/bindings and legal terms for redistributing the
-asset-free template, perform an interactive end-to-end test of the new Win32
-GUI on Windows, test additional real Windows systems, and validate
-sideload signing renewal and save retention after a signing refresh. No full private Windows kit or generated IPA is distributed publicly.
-
-## Further reading
-
-- Apple Mach-O segments:
-  https://developer.apple.com/documentation/kernel/segment_command_64
-- Apple code-signing behavior:
-  https://developer.apple.com/library/archive/technotes/tn2206/
-- Modern iOS code signature requirements:
-  https://developer.apple.com/documentation/Xcode/using-the-latest-code-signature-format
-- Python Windows embeddable package:
-  https://docs.python.org/3/using/windows.html
-- Sideloadly official site:
-  https://sideloadly.io/
-- Legal boundary: docs/LEGAL.md
+Legal restrictions on the owner's source game and the generated IPA remain
+distinct from the distribution of the generic Builder.
+See [RELEASE_SCOPE.md](RELEASE_SCOPE.md) and
+[INSTALLER_WINDOWS.md](INSTALLER_WINDOWS.md).

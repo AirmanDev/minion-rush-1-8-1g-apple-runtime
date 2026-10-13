@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build an UNSIGNED native ARM64 iPhone template with an empty code section.
-# Original game data and translated machine code are never included.
+# No original game, game-specific address table or translated code is needed.
 set -Eeuo pipefail
 source "$(dirname "$0")/project_common.sh"
 
@@ -17,12 +17,8 @@ project_require_command xcodebuild
   printf 'ERROR: build directory is a symlink.\n' >&2
   exit 1
 }
-[[ -s "$OUT/minion_code.bin" && -s "$OUT/minion_map.inc" && -s "$OUT/game_bindings.h" ]] || {
-  printf 'ERROR: run ./build.sh with your own original game ZIP first.\n' >&2
-  exit 1
-}
 
-output="${1:-$PROJECT_ROOT/build/native-template/MinionRush-native-template-unsigned.zip}"
+output="${1:-$PROJECT_ROOT/build/ios-generic/MinionRush-generic-template-unsigned.zip}"
 [[ "$output" == /* && "$output" == *.zip ]] || {
   printf 'ERROR: output must be an absolute .zip path.\n' >&2
   exit 2
@@ -76,6 +72,6 @@ app="$derived/Build/Products/Release-iphoneos/$IOS_SCHEME.app"
 printf '== validate and package native template ==\n'
 mkdir -p "$(dirname "$output")"
 python3 tools/native_ipa.py create-template \
-  --app "$app" --compiled "$OUT" --output "$output"
+  --app "$app" --output "$output"
 printf 'DONE: unsigned asset-free native template: %s\n' "$output"
 printf 'Do not publish this template without a copyright and signing review.\n'

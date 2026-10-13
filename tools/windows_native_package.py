@@ -36,7 +36,7 @@ def validate_kit(kit: Path) -> dict:
         "version", "mode", "hungarian_xlf_sha256", "engine_sha256", "template_sha256", "compiler_sha256", "gui_sha256",
         "runtime_manifest_sha256", "runtime_files_sha256", "python_zip_sha256",
         "python_files_sha256",
-    } or config["version"] != 4 or config["mode"] not in ("release", "utm-test"):
+    } or config["version"] != 5 or config["mode"] not in ("release", "utm-test"):
         raise ValueError("Windows kit manifest format is invalid")
     if config["engine_sha256"] != OFFICIAL_ENGINE_SHA256:
         raise ValueError("Windows kit targets the wrong game engine")

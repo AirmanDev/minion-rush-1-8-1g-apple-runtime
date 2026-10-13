@@ -65,16 +65,24 @@ typedef struct {
 
 static language_page_state PAGES[MR_LANGUAGE_PAGE_COUNT];
 
-static const engine_language_button ENGINE_BUTTONS[] = {
-    {"en", MR_GAME_LOCALIZATION_EN},           {"fr", MR_GAME_LOCALIZATION_FR},
-    {"de", MR_GAME_LOCALIZATION_DE},           {"it", MR_GAME_LOCALIZATION_IT},
-    {"es", MR_GAME_LOCALIZATION_ES},           {"pt", MR_GAME_LOCALIZATION_PT},
-    {"ar", MR_GAME_LOCALIZATION_AR},           {"ja", MR_GAME_LOCALIZATION_JA},
-    {"ko", MR_GAME_LOCALIZATION_KO},           {"zh", MR_GAME_LOCALIZATION_ZH},
-    {"ru", MR_GAME_LOCALIZATION_RU},           {"tr", MR_GAME_LOCALIZATION_TR},
-    {"th", MR_GAME_LOCALIZATION_TH},           {"id", MR_GAME_LOCALIZATION_ID},
-    {"zh-Hant", MR_GAME_LOCALIZATION_ZH_HANT},
-};
+#define ENGINE_BUTTONS                                                                             \
+    ((const engine_language_button[]){                                                             \
+        {"en", MR_GAME_LOCALIZATION_EN},                                                           \
+        {"fr", MR_GAME_LOCALIZATION_FR},                                                           \
+        {"de", MR_GAME_LOCALIZATION_DE},                                                           \
+        {"it", MR_GAME_LOCALIZATION_IT},                                                           \
+        {"es", MR_GAME_LOCALIZATION_ES},                                                           \
+        {"pt", MR_GAME_LOCALIZATION_PT},                                                           \
+        {"ar", MR_GAME_LOCALIZATION_AR},                                                           \
+        {"ja", MR_GAME_LOCALIZATION_JA},                                                           \
+        {"ko", MR_GAME_LOCALIZATION_KO},                                                           \
+        {"zh", MR_GAME_LOCALIZATION_ZH},                                                           \
+        {"ru", MR_GAME_LOCALIZATION_RU},                                                           \
+        {"tr", MR_GAME_LOCALIZATION_TR},                                                           \
+        {"th", MR_GAME_LOCALIZATION_TH},                                                           \
+        {"id", MR_GAME_LOCALIZATION_ID},                                                           \
+        {"zh-Hant", MR_GAME_LOCALIZATION_ZH_HANT},                                                 \
+    })
 
 static uint32_t button_map_offset(mr_language_page kind) {
     return kind == MR_LANGUAGE_PAGE_OPTIONS ? OPTIONS_BUTTON_MAP_OFFSET : INITIAL_BUTTON_MAP_OFFSET;

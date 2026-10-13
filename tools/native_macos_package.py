@@ -24,7 +24,7 @@ def validate_native_kit(directory: Path) -> dict:
     config = json.loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(config, dict) or set(config) != {
         "version", "template_sha256", "compiler_sha256", "hungarian_sha256",
-    } or config["version"] != 1:
+    } or config["version"] != 2:
         raise ValueError("unsupported private Mac native kit")
     expected = {"manifest.json", "template.zip", "a64-compiler"}
     if config["hungarian_sha256"] is not None:

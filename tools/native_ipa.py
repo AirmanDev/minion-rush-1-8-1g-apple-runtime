@@ -24,22 +24,21 @@ from pathlib import Path, PurePosixPath
 
 sys.dont_write_bytecode = True
 
-from asset_contract import OFFICIAL_ENGINE_SHA256
 from common import ROOT, content_files
 from ipa_archive import export_ipa
 from ios_private_icon import install_private_icon
-from native_macho import file_sha256, find_code_slot, normalized_text_sha256, require_zero_slot
+from native_macho import file_sha256, find_code_slot, require_zero_slot
+from native_profile import VERSION as PROFILE_VERSION, create_profile, inspect_profile
 from validate_assets import inspect_assets
 
 APP_NAME = "MinionRush.app"
 EXE_NAME = "MinionRush"
 TEMPLATE_PREFIX = "Template/" + APP_NAME + "/"
 TEMPLATE_MANIFEST = "template-manifest.json"
-VERSION = 2
+VERSION = 3
 MAX_TEMPLATE_BYTES = 350 * 1024 * 1024
 MAX_TEMPLATE_MEMBERS = 512
 MAX_PRIVATE_ASSETS = 2 * 1024 * 1024 * 1024
-REFERENCE_FILES = ("minion_code.bin", "minion_map.inc", "game_bindings.h")
 PRIVATE_TOP_LEVEL = frozenset(("lib", "game", "localizations"))
 SIGNING_FILES = frozenset(("embedded.mobileprovision", "_CodeSignature", "SC_Info"))
 ALLOWED_TEMPLATE_FILES = frozenset((
@@ -120,39 +119,22 @@ def _collect_app_files(application: Path) -> list[tuple[Path, Path]]:
     return paths
 
 
-def _expected_references(compiled: Path) -> dict[str, str]:
-    hashes = {}
-    for name in REFERENCE_FILES:
-        file = compiled / name
-        if not file.is_file() or file.is_symlink():
-            raise ValueError("missing reference translation output: " + name)
-        hashes[name] = (
-            file_sha256(file) if name == "minion_code.bin"
-            else normalized_text_sha256(file)
-        )
-    return hashes
-
-
 def _validate_manifest(data: object) -> dict:
     if not isinstance(data, dict) or set(data) != {
         "version", "app_name", "executable_sha256", "slot_offset", "slot_size",
-        "engine_sha256", "references",
+        "profile_version",
     }:
-        raise ValueError("invalid template manifest")
-    if data["version"] != VERSION or data["app_name"] != APP_NAME:
-        raise ValueError("unsupported template version")
-    if data["engine_sha256"] != OFFICIAL_ENGINE_SHA256:
-        raise ValueError("template was not configured for the supported original engine")
-    if not isinstance(data["references"], dict):
-        raise ValueError("template references must be an object")
+        raise ValueError("invalid generic template manifest")
+    if (data["version"] != VERSION or data["app_name"] != APP_NAME
+            or data["profile_version"] != PROFILE_VERSION):
+        raise ValueError("unsupported generic template version")
     if (not isinstance(data["slot_offset"], int) or not isinstance(data["slot_size"], int)
             or data["slot_offset"] < 0 or not 64 <= data["slot_size"] <= 256*1024*1024):
         raise ValueError("invalid template code slot")
-    for digest in [data["executable_sha256"], *data["references"].values()]:
-        if not isinstance(digest, str) or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
-            raise ValueError("invalid template digest")
-    if set(data["references"]) != set(REFERENCE_FILES):
-        raise ValueError("invalid template reference files")
+    digest = data["executable_sha256"]
+    if (not isinstance(digest, str) or len(digest) != 64
+            or any(char not in "0123456789abcdef" for char in digest)):
+        raise ValueError("invalid executable digest")
     return data
 
 
@@ -168,7 +150,7 @@ def _validate_app_info(data: bytes) -> None:
             raise ValueError("unsigned template must not contain app icon metadata")
 
 
-def create_template(application: Path, compiled: Path, output: Path) -> dict:
+def create_template(application: Path, output: Path) -> dict:
     """Pack a verified unsigned, asset-free template built using Apple SDK."""
     if output.exists() or output.is_symlink():
         raise ValueError("refusing to overwrite an existing template archive")
@@ -182,17 +164,13 @@ def create_template(application: Path, compiled: Path, output: Path) -> dict:
     binary = bundle[EXE_NAME].read_bytes()
     slot = find_code_slot(binary)
     require_zero_slot(binary, slot)
-    references = _expected_references(compiled)
-    if (compiled / "minion_code.bin").stat().st_size != slot.size:
-        raise ValueError("reserved executable slot has the wrong length")
     manifest = _validate_manifest({
         "version": VERSION,
         "app_name": APP_NAME,
         "executable_sha256": hashlib.sha256(binary).hexdigest(),
         "slot_offset": slot.offset,
         "slot_size": slot.size,
-        "engine_sha256": OFFICIAL_ENGINE_SHA256,
-        "references": references,
+        "profile_version": PROFILE_VERSION,
     })
     fd, staging = tempfile.mkstemp(prefix=".mr-template-", suffix=".zip", dir=output.parent)
     try:
@@ -280,19 +258,19 @@ def assemble_unsigned_ipa(template: Path, private_aot: Path, output: Path) -> No
     assets = private_aot / "assets"
     if not private_aot.is_dir() or private_aot.is_symlink():
         raise ValueError("private AOT directory is missing or linked")
-    references = _expected_references(compiled)
+    profile = create_profile(compiled, ROOT / "src/native/game_symbols.def")
+    profile_info = inspect_profile(profile, ROOT / "src/native/game_symbols.def")
     game_assets = _validate_private_assets(assets)
     with tempfile.TemporaryDirectory(prefix=".mr-ipa-", dir=output.parent) as directory:
         app, manifest = _unpack_template(template, Path(directory))
-        if references != manifest["references"]:
-            raise ValueError("private translation does not match unsigned runtime template")
         codefile = compiled / "minion_code.bin"
-        if codefile.stat().st_size != manifest["slot_size"]:
-            raise ValueError("native code and executable slot have different sizes")
+        if (codefile.stat().st_size != profile_info["code_size"]
+                or codefile.stat().st_size > manifest["slot_size"]):
+            raise ValueError("native ARM64 code does not fit generic template slot")
         executable = app / EXE_NAME
         with executable.open("r+b") as destination, codefile.open("rb") as source:
             destination.seek(manifest["slot_offset"])
-            copied = shutil.copyfileobj(source, destination, length=1024 * 1024)
+            shutil.copyfileobj(source, destination, length=1024 * 1024)
             if source.read(1):
                 raise ValueError("native code is longer than reserved executable slot")
             destination.flush()
@@ -301,15 +279,16 @@ def assemble_unsigned_ipa(template: Path, private_aot: Path, output: Path) -> No
         with executable.open("rb") as stream:
             stream.seek(manifest["slot_offset"])
             hasher = hashlib.sha256()
-            remaining = manifest["slot_size"]
+            remaining = profile_info["code_size"]
             while remaining:
                 block = stream.read(min(1024*1024, remaining))
                 if not block:
                     raise ValueError("short native code image")
                 hasher.update(block)
                 remaining -= len(block)
-        if hasher.hexdigest() != references["minion_code.bin"]:
+        if hasher.hexdigest() != file_sha256(codefile):
             raise ValueError("native code section digest mismatch after assembly")
+        (app / "game-profile.bin").write_bytes(profile)
         for original, relative in game_assets:
             target = app / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -323,7 +302,6 @@ def main() -> int:
     subs = parser.add_subparsers(dest="action", required=True)
     template = subs.add_parser("create-template")
     template.add_argument("--app", type=Path, required=True)
-    template.add_argument("--compiled", type=Path, required=True)
     template.add_argument("--output", type=Path, required=True)
     assembler = subs.add_parser("assemble")
     assembler.add_argument("--template", type=Path, required=True)
@@ -332,7 +310,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.action == "create-template":
-            create_template(args.app, args.compiled, args.output)
+            create_template(args.app, args.output)
         else:
             assemble_unsigned_ipa(args.template, args.private_aot, args.output)
     except (OSError, ValueError, KeyError, zipfile.BadZipFile, plistlib.InvalidFileException) as exc:

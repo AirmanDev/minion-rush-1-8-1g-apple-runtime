@@ -50,19 +50,27 @@ typedef struct {
     uint32_t is_logged_in;
 } offline_api;
 
-static const offline_api API = {
-    .ui_set_visible = MR_GAME_UI_SET_VISIBLE,
-    .ui_set_active = MR_GAME_UI_SET_ACTIVE,
-    .server_time_seconds = MR_GAME_SERVER_TIME_SECONDS,
-    .server_time_status = MR_GAME_SERVER_TIME_STATUS,
-    .has_internet = MR_GAME_HAS_INTERNET,
-    .can_login = MR_GAME_CAN_LOGIN,
-    .is_logged_in = MR_GAME_IS_LOGGED_IN,
-};
-static const uint32_t UI_LOOKUP_FUNCTIONS[] = {
-    MR_GAME_MENU_GET_OBJECT,       MR_GAME_MENU_GET_BUTTON,       MR_GAME_MENU_GET_GRAPH,
-    MR_GAME_BASIC_PAGE_GET_OBJECT, MR_GAME_BASIC_PAGE_GET_BUTTON, MR_GAME_BASIC_PAGE_GET_GRAPH,
-};
+static offline_api API;
+static void initialize_api(void) {
+    API = (offline_api){
+        .ui_set_visible = MR_GAME_UI_SET_VISIBLE,
+        .ui_set_active = MR_GAME_UI_SET_ACTIVE,
+        .server_time_seconds = MR_GAME_SERVER_TIME_SECONDS,
+        .server_time_status = MR_GAME_SERVER_TIME_STATUS,
+        .has_internet = MR_GAME_HAS_INTERNET,
+        .can_login = MR_GAME_CAN_LOGIN,
+        .is_logged_in = MR_GAME_IS_LOGGED_IN,
+    };
+}
+#define UI_LOOKUP_FUNCTIONS                                                                        \
+    ((const uint32_t[]){                                                                           \
+        MR_GAME_MENU_GET_OBJECT,                                                                   \
+        MR_GAME_MENU_GET_BUTTON,                                                                   \
+        MR_GAME_MENU_GET_GRAPH,                                                                    \
+        MR_GAME_BASIC_PAGE_GET_OBJECT,                                                             \
+        MR_GAME_BASIC_PAGE_GET_BUTTON,                                                             \
+        MR_GAME_BASIC_PAGE_GET_GRAPH,                                                              \
+    })
 static ui_call_state UI_CALL;
 static ui_object UI_OBJECTS[MAX_UI_OBJECTS];
 static uint32_t UI_OBJECT_COUNT;
@@ -108,7 +116,7 @@ static int blocked_function(uint32_t address) {
                            address & ~1u);
 }
 
-static uint64_t BLOCKED_HITS[MR_GAME_BLOCKED_FUNCTION_COUNT];
+static uint64_t *BLOCKED_HITS;
 
 static void blocked_note(uint32_t address) {
     uint32_t target = address & ~1u;
@@ -199,6 +207,7 @@ apply:
 
 int mr_offline_init(mr_cpu *cpu) {
     mr_offline_shutdown();
+    initialize_api();
     if (!cpu || classify_ui_object("Shop_IAP") != UI_BLOCKED ||
         classify_ui_object("GoogleButton") != UI_BLOCKED ||
         classify_ui_object("Friends_Button") != UI_BLOCKED ||
@@ -210,7 +219,11 @@ int mr_offline_init(mr_cpu *cpu) {
         MR_GAME_BLOCKED_FUNCTION_COUNT <= MR_GAME_EXACT_BLOCKED_FUNCTION_COUNT ||
         MR_GAME_OFFLINE_HOOK_FUNCTION_COUNT < MR_GAME_BLOCKED_FUNCTION_COUNT)
         return -1;
-    if (mr_offline_events_init() != 0) return -1;
+    BLOCKED_HITS = calloc(MR_GAME_BLOCKED_FUNCTION_COUNT, sizeof *BLOCKED_HITS);
+    if (!BLOCKED_HITS || mr_offline_events_init() != 0) {
+        mr_offline_shutdown();
+        return -1;
+    }
 
     LOG_OFFLINE = getenv("MR_OFFLINE_LOG") != NULL;
     ENABLED = 1;
@@ -219,6 +232,8 @@ int mr_offline_init(mr_cpu *cpu) {
 
 void mr_offline_shutdown(void) {
     mr_offline_events_shutdown();
+    free(BLOCKED_HITS);
+    BLOCKED_HITS = NULL;
     mr_a64_set_dynamic_hook(0, 0);
     memset(&UI_CALL, 0, sizeof UI_CALL);
     memset(UI_OBJECTS, 0, sizeof UI_OBJECTS);

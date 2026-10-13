@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Package local, fully portable Mac/Windows Builders for private testing.
+"""Verify and package generic, game-data-free Mac and Windows portable Builders.
 
 This tool deliberately has no GitHub upload or public publishing action.
-The kit's generated iOS template and bundled translation need a separate
-rights review before any redistribution.
+The tool verifies only the locally generated, game-data-free candidate.
+Public redistribution still requires applicable rights and license review.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import io
+import json
 import os
 import plistlib
 import shutil
@@ -21,13 +22,30 @@ from pathlib import Path
 
 from build_windows_onefile import BUNDLE_MAGIC, FOOTER, MAX_BUNDLE_BYTES
 from common import ROOT
+from native_ipa import (EXE_NAME, TEMPLATE_MANIFEST, TEMPLATE_PREFIX,
+                        _check_template_zip, _validate_manifest)
 from native_macos_package import validate_native_kit
-from native_macho import file_sha256
+from native_macho import file_sha256, find_code_slot, require_zero_slot
 
 APP = "Minion Rush IPA Builder.app"
 WIN = "MinionRush-Builder-Windows-x64.exe"
 MAC = "MinionRush-Builder-macOS-arm64.zip"
-RELEASE_DIR = ROOT / "build/private-releases"
+RELEASE_DIR = ROOT / "build/portable-releases"
+
+
+def verify_generic_template(contents: bytes) -> None:
+    with zipfile.ZipFile(io.BytesIO(contents)) as source:
+        _check_template_zip(source)
+        manifest = _validate_manifest(json.loads(source.read(TEMPLATE_MANIFEST)))
+        if manifest["version"] != 3:
+            raise ValueError("portable Builder must use the generic v3 iOS template")
+        binary = source.read(TEMPLATE_PREFIX + EXE_NAME)
+        if hashlib.sha256(binary).hexdigest() != manifest["executable_sha256"]:
+            raise ValueError("generic iOS template executable digest mismatch")
+        slot = find_code_slot(binary)
+        if (slot.offset, slot.size) != (manifest["slot_offset"], manifest["slot_size"]):
+            raise ValueError("generic iOS template code slot mismatch")
+        require_zero_slot(binary, slot)
 
 
 def verify_windows(executable: Path) -> None:
@@ -50,11 +68,13 @@ def verify_windows(executable: Path) -> None:
         if kit.testzip():
             raise ValueError("corrupt embedded Windows kit")
         names = set(kit.namelist())
-        if not any(name.endswith("/private-localizations/hu.xlf") for name in names):
-            raise ValueError("Windows Builder is missing private Hungarian selection")
-        if not any(name.endswith("/MinionRush-native-template-unsigned.zip")
-                   for name in names):
-            raise ValueError("Windows Builder is missing unsigned iOS template")
+        if any(name.endswith(".xlf") for name in names):
+            raise ValueError("public Windows package must not contain private language text")
+        templates = [name for name in names
+                     if name.endswith("/MinionRush-native-template-unsigned.zip")]
+        if len(templates) != 1:
+            raise ValueError("Windows Builder is missing a unique generic iOS template")
+        verify_generic_template(kit.read(templates[0]))
         if any(name.lower().endswith((".ipa", ".apk", ".jpk")) for name in names):
             raise ValueError("original game content must not enter the Builder")
 
@@ -64,8 +84,9 @@ def verify_mac(app: Path, version: str) -> None:
         raise ValueError("invalid Mac Builder")
     resources = app / "Contents/Resources"
     config = validate_native_kit(resources / "NativeKit")
-    if config["hungarian_sha256"] is None:
-        raise ValueError("Mac Builder is missing private Hungarian selection")
+    if config["hungarian_sha256"] is not None:
+        raise ValueError("public Mac package must not contain a private language catalog")
+    verify_generic_template((resources / "NativeKit/template.zip").read_bytes())
     if not (resources / "PythonRuntime/bin/python3.14").is_file():
         raise ValueError("Mac Builder has no embedded Python")
     info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
@@ -79,13 +100,13 @@ def package(app: Path, windows: Path, output: Path, version: str) -> None:
     if not version or any(c not in "0123456789." for c in version):
         raise ValueError("expected a numeric Mac release version")
     if output.exists() or output.is_symlink():
-        raise ValueError("private release directory already exists")
+        raise ValueError("portable release directory already exists")
     if (not output.is_absolute() or not output.parent.is_dir()
             or output.parent.resolve() != RELEASE_DIR.resolve()):
-        raise ValueError("private releases must stay under build/private-releases")
+        raise ValueError("portable releases must stay under build/portable-releases")
     verify_mac(app, version)
     verify_windows(windows)
-    with tempfile.TemporaryDirectory(prefix=".mr-private-release-", dir=output.parent) as tmp:
+    with tempfile.TemporaryDirectory(prefix=".mr-portable-release-", dir=output.parent) as tmp:
         stage = Path(tmp) / "files"
         stage.mkdir()
         normalized = Path(tmp) / APP
@@ -96,12 +117,12 @@ def package(app: Path, windows: Path, output: Path, version: str) -> None:
                         str(normalized), str(archive)], check=True, timeout=95)
         with zipfile.ZipFile(archive) as zipped:
             if zipped.testzip() is not None:
-                raise ValueError("corrupt private Mac Builder ZIP")
+                raise ValueError("corrupt portable Mac Builder ZIP")
             names = zipped.namelist()
             if not any(name.endswith("/NativeKit/template.zip") for name in names):
                 raise ValueError("Mac ZIP lost its iOS template")
-            if not any(name.endswith("/NativeKit/hu.xlf") for name in names):
-                raise ValueError("Mac ZIP lost the Hungarian catalog")
+            if any(name.endswith(".xlf") for name in names):
+                raise ValueError("public Mac ZIP contains private language text")
             if any(name.lower().endswith((".ipa", ".apk", ".jpk")) for name in names):
                 raise ValueError("Mac ZIP contains game content")
         extracted = Path(tmp) / "extract"
@@ -119,9 +140,9 @@ def package(app: Path, windows: Path, output: Path, version: str) -> None:
         digest, filename = line.split("  ", 1)
         if file_sha256(output / filename) != digest:
             raise ValueError("private release checksum mismatch")
-    print("Validated private Mac and Windows Builders:", output)
+    print("Validated portable Mac and Windows Builders:", output)
     print("No complete game IPA or original game ZIP bundled.")
-    print("Not cleared for public download or redistribution.")
+    print("Legal and device review required before public publishing.")
 
 
 def main() -> int:

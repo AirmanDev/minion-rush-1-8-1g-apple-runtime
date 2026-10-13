@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "code_slot_bytes": 201326592,
+  "max_blocks": 1200000,
+  "max_blocked": 1024,
+  "max_hooks": 2048
+}

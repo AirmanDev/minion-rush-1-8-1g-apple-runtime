@@ -143,13 +143,17 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
             "================================\n"
             "Open MinionRush Builder.exe. Drag your original 1.8.1g ZIP onto the\n"
             "window or choose it with Browse. Select a new .ipa save path.\n"
-            "The optional private Hungarian hu.xlf is compiled into the resulting IPA.\n"
-            "Use the game's existing language selector to switch languages.\n"
+            + ("Optional local Hungarian game-language catalog was supplied.\n"
+               if hungarian_xlf is not None else
+               "No third-party game translation ships in this Builder.\n")
+            + "The Builder interface supports English and Hungarian.\n"
+            + "Original game languages come from your source ZIP.\n"
             + ("UTM test profile: supports private SPICE shared folders.\n"
                if mode == "utm-test" else "Release profile: no UTM-specific support.\n") +
             "The output is unsigned. Sign it with Sideloadly before installing.\n"
             "The original game ZIP and final IPA are private. Do not publish them.\n"
-            "This package includes the original-game-free iOS template.\n"
+            "The generic iOS template contains no original game data, precomputed\n"
+            "engine bindings or translated machine instructions.\n"
             "The application is not an Apple product or official game release.\n",
             encoding="ascii",
         )
@@ -171,7 +175,7 @@ def build_kit(python_zip: Path, compiler_exe: Path, template: Path,
             encoding="utf-8"
         )
         config = {
-            "version": 4,
+            "version": 5,
             "mode": mode,
             "hungarian_xlf_sha256": (
                 file_sha256(staged / "private-localizations/hu.xlf") if hungarian_xlf is not None

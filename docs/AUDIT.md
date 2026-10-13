@@ -1,3 +1,4 @@
+<!-- Historical 1.1.0 verification record. Current generic 1.2.0 status is in RELEASE_SCOPE.md. -->
 # Code audit
 
 Historical review: 2026-09-27. Scope: the maintained public source, native runtime,
