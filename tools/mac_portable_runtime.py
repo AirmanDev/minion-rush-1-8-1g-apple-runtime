@@ -9,6 +9,7 @@ import tarfile
 from pathlib import Path, PurePosixPath
 
 from native_macho import file_sha256
+from third_party_notices import MAC_ONLY_NOTICES, verify_notice
 
 PYTHON_VERSION = "3.14.8"
 ARCHIVE_SHA256 = "ed14e9042f36c0aa18383f5d9729bcbf17847e842666a793b5a5a5d8505c0ca1"
@@ -106,10 +107,17 @@ def install_runtime(archive: Path, destination: Path) -> None:
             raise ValueError("embedded Python self-test failed: " + result.stderr[-1600:])
         if result.stdout.strip() != PYTHON_VERSION:
             raise ValueError("unexpected portable Python version")
+        notices = destination / "ThirdPartyLicenses"
+        notices.mkdir()
+        upstream = Path(__file__).resolve().parents[1] / "third_party_licenses/mac_python"
+        for name, digest in MAC_ONLY_NOTICES.items():
+            source = upstream / name
+            verify_notice(source, digest)
+            shutil.copy2(source, notices / name)
         (destination / "ORIGIN.txt").write_text(
             f"{ORIGIN}\nSHA256: {ARCHIVE_SHA256}\n"
             "This package includes Python and third-party components; see "
-            "lib/python3.14/LICENSE.txt and bundled upstream licenses.\n",
+            "lib/python3.14/LICENSE.txt, ThirdPartyLicenses/ and Runtime/third_party_licenses/.\n",
             encoding="ascii")
     except BaseException:
         shutil.rmtree(destination)

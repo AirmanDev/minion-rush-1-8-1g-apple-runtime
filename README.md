@@ -150,7 +150,9 @@ original ZIP. The Windows test used the native GUI in a Windows 11 ARM VM
 with x64 emulation. IPA contents and checksums were checked separately.
 See [release scope](docs/RELEASE_SCOPE.md) for the test record.
 
-The remaining rights and license-review blockers are inventoried in
+The currently identified Python component notices are distributed with the
+portable Builder candidate and checked against pinned digests. Remaining
+rights and dependency-review blockers are inventoried in
 [third-party and release gates](docs/THIRD_PARTY_AND_RELEASE_GATE.md).
 
 The 1.2.3 binaries must not be described as legally cleared or fully

@@ -17,6 +17,20 @@ owner-supplied original archive.
 | Game symbol names, interfaces, and technical references | `src/native/game_symbols.def`, shim/compatibility source | Interface names can be functional and may fall outside protection as expression under CJEU C-406/10, but their precise provenance, degree of copying, associated contracts and exceptions have **not** been individually legally cleared. They cannot be marked cleared merely because they are identifiers. |
 | UI name and references to Minion Rush, Gameloft, Minions | UI title, docs, sample metadata | Nominative descriptive use differs from using a protected mark as a product identity; assess risk of misleading affiliation and trademark permission. The game, characters, art and marks are **not** covered by the project Apache license. |
 
+The 1.2.3 binary inventory was reviewed directly, not inferred solely from
+build scripts. The Mac ZIP contains 771 non-directory files; its bundled Python
+reports OpenSSL 3.5.9, SQLite 3.53.1 and mpdecimal 4.0.0. The Windows onefile
+contains a 220-entry embedded kit, including libcrypto-3.dll, libssl-3.dll,
+libffi-8.dll, libtommath.dll, sqlite3.dll and _zstd.pyd. The Windows CPython
+LICENSE.txt already includes libffi and bzip2 notices, which are not copied
+again as separate Windows-specific license files. Additional upstream notices
+for OpenSSL 3, mpdecimal, Expat, liblzma, Zstandard and LibTomMath are now
+included in both generic runtime source bundles, with exact SHA-256 validation;
+Mac-specific libffi and bzip2 notices are placed under PythonRuntime only.
+The original upstream license text is preserved. This inventory does not
+establish every static library contribution or the legal suitability of all
+software and trademarks for public release.
+
 Packaging checks ensure the two bundled Python and project license texts are
 present and prevent game/translation artifacts from entering generic bundles.
 These checks are **technical**, not a substitute for a complete component
@@ -32,7 +46,7 @@ license audit or actual redistribution rights.
 - [ ] Collect evidence of the historical 1.8.1g original ZIP's lawful acquisition and its applicable license terms; evaluate user-side copying/adaptation, including relevant local exceptions.
 - [ ] Have qualified legal counsel assess whether the particular AOT transformation, public symbol/interface use and individually generated IPAs are permitted under Hungarian/EU law and any controlling contract.
 - [ ] Verify trademark/product naming and rights if the public Builder is advertised under a third-party game name or character artwork.
-- [x] Bundle and checksum-validate the official MinGW-w64 runtime copyright notices and both embedded CPython license files.
+- [x] Bundle and checksum-validate the MinGW-w64, CPython and identified additional Python component notices.
 - [ ] Finish independent review of all bundled Python extensions, GCC/toolchain components and any other required copyright notices.
 - [x] Distribution is direct GitHub Releases download, not an App Store submission.
 - [x] Publisher chose an ad hoc-signed Mac Builder and unsigned Windows EXE, without Developer ID, notarization or Authenticode. No further desktop signing work is planned. The iOS IPA still needs signing for installation.

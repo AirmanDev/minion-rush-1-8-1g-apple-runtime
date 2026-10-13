@@ -127,6 +127,12 @@ tests/test_windows_icon.py
 tests/test_windows_native.py
 third_party_licenses/mingw-w64-COPYING.txt
 third_party_licenses/mingw-w64-runtime-COPYING.txt
+third_party_licenses/python-expat-LICENSE.txt
+third_party_licenses/python-liblzma-LICENSE.txt
+third_party_licenses/python-libtommath-LICENSE.txt
+third_party_licenses/python-mpdecimal-LICENSE.txt
+third_party_licenses/python-openssl-3-LICENSE.txt
+third_party_licenses/python-zstd-LICENSE.txt
 tools/asset_contract.py
 tools/build_builder_palette.py
 tools/build_generic_bindings.py
@@ -168,6 +174,7 @@ tools/select_ios_simulators.py
 tools/signing.py
 tools/test_installer.sh
 tools/test_ios_simulator.sh
+tools/third_party_notices.py
 tools/validate_assets.py
 tools/validate_installer.py
 tools/validate_source.py

@@ -27,6 +27,24 @@ request explicit approval if the app carries download quarantine.
 macOS 26.6 or later is required.
 This does not change the game executable's macOS 14 deployment minimum.
 
+## Portable Mac download and integrity
+
+The 1.2.3 portable Mac ZIP is a local candidate, not yet a public Release.
+After rights clearance and publication, download both
+MinionRush-Builder-macOS-arm64.zip and SHA256SUMS.txt from the same
+GitHub Release. In Terminal run:
+
+    shasum -a 256 MinionRush-Builder-macOS-arm64.zip
+
+Compare the result with the Mac archive line in SHA256SUMS.txt. This
+checks integrity against the published digest, not publisher identity.
+Extract the .app, select your lawfully obtained original ZIP and create
+the unsigned IPA. macOS may require explicit per-app approval in System
+Settings > Privacy & Security > Open Anyway. Do not disable Gatekeeper
+or remove download quarantine; managed Macs may prohibit approval.
+Sign the resulting IPA separately before installation. Back up existing
+saves before changing an app identifier or signing team.
+
 ## Build and use
 
 The generic v3 template is created once on the developer Mac without
@@ -54,8 +72,9 @@ release](https://github.com/astral-sh/python-build-standalone/releases/tag/20261
 and the macOS Apple Silicon CPython 3.14.8 install_only_stripped archive.
 The packager checks its SHA-256 against
 `ed14e9042f36c0aa18383f5d9729bcbf17847e842666a793b5a5a5d8505c0ca1`
-before embedding the runtime. CPython and dependency licenses are retained
-in the embedded library. The portable .app uses the embedded Python directly
+before embedding the runtime. CPython's original license and pinned component
+notices are included in the portable package's PythonRuntime and Runtime
+license directories. The portable .app uses the embedded Python directly
 and refuses to run without it, rather than silently using the user's Python.
 Only the standard library modules required by the Builder are packaged:
 unused Tcl/Tk, pip, IDLE, `ensurepip`, and their development files are

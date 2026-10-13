@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from build_windows_onefile import BUNDLE_MAGIC, FOOTER
+from third_party_notices import COMMON_NOTICES
 from package_portable_builders import package, verify_generic_template, verify_windows
 from test_native_ipa import macho
 
@@ -43,6 +44,8 @@ def synthetic_windows(path: Path, names: list[str]) -> None:
                 (b"synthetic Python license" * 80 if name.endswith("/python/LICENSE.txt")
                  else (ROOT / "third_party_licenses/mingw-w64-runtime-COPYING.txt").read_bytes()
                  if name.endswith("/mingw-w64-runtime-COPYING.txt") else
+                 (ROOT / "third_party_licenses" / name.rsplit("/", 1)[-1]).read_bytes()
+                 if name.rsplit("/", 1)[-1] in COMMON_NOTICES else
                  b"synthetic non-game data"))
     payload = packed.getvalue()
     launcher = b"MZ" + b"\0" * 62
@@ -58,7 +61,8 @@ NAMES = [
     "MinionRush-Portable-Windows/python/LICENSE.txt",
     "MinionRush-Portable-Windows/runtime/LICENSE",
     "MinionRush-Portable-Windows/runtime/third_party_licenses/mingw-w64-runtime-COPYING.txt",
-]
+] + ["MinionRush-Portable-Windows/runtime/third_party_licenses/" + name
+     for name in COMMON_NOTICES]
 
 
 class PortableBuilderPackagingTests(unittest.TestCase):
@@ -67,6 +71,16 @@ class PortableBuilderPackagingTests(unittest.TestCase):
             executable = Path(location) / "Builder.exe"
             synthetic_windows(executable, NAMES)
             verify_windows(executable)
+
+    def test_rejects_missing_python_component_notice(self):
+        missing = next(iter(COMMON_NOTICES))
+        with tempfile.TemporaryDirectory() as location:
+            executable = Path(location) / "Builder.exe"
+            synthetic_windows(executable, [
+                name for name in NAMES if not name.endswith("/" + missing)
+            ])
+            with self.assertRaisesRegex(ValueError, "license notice"):
+                verify_windows(executable)
 
     def test_template_is_independently_verified_and_empty(self):
         verify_generic_template(generic_template())

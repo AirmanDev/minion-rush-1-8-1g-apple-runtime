@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+from third_party_notices import COMMON_NOTICES, MAC_ONLY_NOTICES, verify_notice
 from mac_portable_runtime import (ARCHIVE_SHA256, PYTHON_VERSION, install_runtime,
                                   SKIP_ROOTS, SKIP_STDLIB)
 
@@ -21,6 +22,12 @@ class PortableMacRuntimeTests(unittest.TestCase):
             ARCHIVE_SHA256,
             "ed14e9042f36c0aa18383f5d9729bcbf17847e842666a793b5a5a5d8505c0ca1",
         )
+
+    def test_dependency_notices_are_pinned(self):
+        for name, digest in COMMON_NOTICES.items():
+            verify_notice(ROOT / "third_party_licenses" / name, digest)
+        for name, digest in MAC_ONLY_NOTICES.items():
+            verify_notice(ROOT / "third_party_licenses/mac_python" / name, digest)
 
     def test_modified_or_missing_archive_is_refused_without_output(self):
         with tempfile.TemporaryDirectory() as directory:

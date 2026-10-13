@@ -140,10 +140,11 @@ translation, generated IPA, reverse engineering act or historical
 contract is permitted. A case-specific legal review is still necessary
 before publicly representing full distribution clearance.
 
-A full release requires verified Windows GUI E2E testing, physical
-iPhone/iPad gameplay regression, dependency license audit, trustworthy
-installer checksums, accurate direct-download trust guidance, and
-inspection of the remaining publicly exposed engine symbol names.
+Windows GUI E2E testing and local package checksum validation are complete
+for the 1.2.3 candidate. Public release still requires completing the
+third-party notice and distribution-rights assessment, inspecting exposed
+engine symbols, and additional device regressions (including iPad, save
+continuity, accessibility and failure handling).
 
 Do not publish original game ZIPs, generated user IPAs, saved games,
 private XLIFF catalogs, or account credentials.

@@ -58,15 +58,15 @@ the success dialog is displayed.
 
 The preferred Windows user-facing package is now a single portable EXE.
 It unpacks a verified temporary copy of the runtime (the embedded Python,
-native converter, unsigned iOS template and the privately provided language
-catalog) on launch, then runs the existing native Builder GUI. Closing the
+native converter and unsigned iOS template) on launch, then runs the existing
+native Builder GUI. Closing the
 GUI removes its extracted runtime. This is a portable, self-contained
 launcher, not an installer and not a single standalone Windows process.
 Windows 11's built-in tar.exe is used locally. The 1.8.1g original game ZIP
-must still be supplied by the user. A private hu.xlf included by the
-developer appears as a checked language option and becomes compiled iOS
-language data only when that option is selected;
-the iPhone app does not need any external .xlf.
+must still be supplied by the user. The standard 1.2.3 release candidate
+contains no private hu.xlf. A separately authorized, privately built kit can
+include a game-language catalog, but that kit is not a public download.
+The iPhone app does not need any external .xlf.
 
 Two Windows build profiles are maintained. The standard release candidate
 does not include UTM/SPICE test transport, while the separately compiled
@@ -93,6 +93,21 @@ An end-to-end review of the distributor's rights and the generated IPA requires 
 review before publication. The private Mac Builder also creates unsigned IPAs without Xcode, using
 SwiftUI. Public GitHub Releases distribute the separate asset-free Mac
 installer for the Xcode-based signing and installation path.
+
+## Portable Builder download and integrity
+
+The 1.2.3 portable EXE is not yet a published Release. After distribution
+rights are cleared and GitHub Releases publishes the candidate, download
+MinionRush-Builder-Windows-x64.exe and SHA256SUMS.txt from the same release.
+In PowerShell run:
+
+    (Get-FileHash -LiteralPath 'MinionRush-Builder-Windows-x64.exe' -Algorithm SHA256).Hash
+
+Compare that hexadecimal value with the matching line in SHA256SUMS.txt.
+The EXE is unsigned and may trigger an unknown-publisher or SmartScreen
+warning. Approve that individual file only if its origin and checksum are
+trusted. Do not disable Windows Defender or override a malware warning.
+Keep the original game archive private.
 
 ## Set up Windows
 

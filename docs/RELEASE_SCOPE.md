@@ -39,7 +39,12 @@ change the native engine, iOS loading overlay, ARM64 translation format or
 gameplay. The upstream MinGW-w64 runtime licensing text is bundled intact,
 with its original copyright signs and a pinned SHA-256. Package validation
 rejects a missing or altered notice in both Mac and Windows bundles.
-Only that upstream license file is exempted from the ASCII source rule.
+The third-party Python dependency inventory now also carries pinned upstream
+notices for OpenSSL, mpdecimal, Expat, liblzma, Zstandard and LibTomMath, plus
+Mac-specific libffi and bzip2 notices. These are license-only additions, not
+iOS runtime changes. The originals reviewed are ASCII and require no new
+source style exemption. Only the existing MinGW-w64 upstream notice is exempt
+from the ASCII source rule.
 
 The owner reported that the 1.2.2 Windows-built IPA launched, displayed
 its loading overlay and ran on a physical iPhone. No code-side regression
