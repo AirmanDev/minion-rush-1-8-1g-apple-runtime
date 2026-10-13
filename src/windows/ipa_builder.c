@@ -742,7 +742,7 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
         fill = pressed ? COL_PRESSED : hot ? COL_HOVER : COL_CARD;
         edge = hot ? COL_EDGE_HOT : COL_FIELD_EDGE;
     }
-    if (disabled) {
+    if (disabled && role != ROLE_CHECK) {
         fill = edge = COL_FIELD_OFF;
         text = COL_DISABLED;
     }
@@ -760,15 +760,6 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
         COLORREF mark = checked ? COL_GOOD : COL_CARD;
         round_box(canvas.dc, square, S(5), COL_CARD, mark,
                   focused ? COL_NAVY : checked ? COL_GOOD : COL_FIELD_EDGE, focused ? 2 : 1);
-        if (checked && !disabled) {
-            HPEN pen = CreatePen(PS_SOLID, S(2), RGB(255, 255, 255));
-            HPEN previous_pen = (HPEN)SelectObject(canvas.dc, pen);
-            MoveToEx(canvas.dc, square.left + S(5), square.top + S(11), NULL);
-            LineTo(canvas.dc, square.left + S(10), square.top + S(16));
-            LineTo(canvas.dc, square.left + S(18), square.top + S(7));
-            SelectObject(canvas.dc, previous_pen);
-            DeleteObject(pen);
-        }
     } else {
         round_box(canvas.dc, item->rcItem, S(8), backdrop, fill, edge, edge_width);
     }
