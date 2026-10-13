@@ -31,10 +31,20 @@ For local tests, install your own lawfully obtained 1.8.1g copy with
 - Comments should explain only non-obvious invariants, formats, or design
   constraints.
 - Follow `.clang-format`, `.editorconfig`, and the conventions of the module.
-- Do not commit device logs, generated headers, editor metadata, personal
-  paths, signing data, or device identifiers.
+- Do not commit device logs, arbitrary generated build outputs, editor
+  metadata, personal paths, signing data, or device identifiers. The generated
+  native Builder palette files are the intentional source-controlled exception.
 - Add every maintained text file to the sorted `config/source_manifest.txt`.
 - Extend a shared implementation instead of adding a parallel copy.
+- Keep IPA output checks and atomic replacement in `native_ipa_output.py`
+  on both platforms, not in separate Mac/Windows branches.
+- Edit Builder colors only in `config/builder_theme.json`, run
+  `python3 tools/build_builder_palette.py`, and commit both generated
+  native color files. CI checks deterministic equality.
+- When changing the Mac private app, preserve the pinned Python runtime
+  source archive, ad hoc signature, original-ZIP separation and optional
+  Xcode signing path. Do not treat passing builds as public-redistribution
+  rights clearance.
 
 Windows changes must keep archive import, AOT translation and IPA assembly
 in their existing Python modules. `src/windows/ipa_builder.c` owns only native
@@ -53,6 +63,7 @@ Asset-free checks:
 ```bash
 bash -n ./*.sh tools/*.sh
 python3 -m unittest discover -s tests -v
+python3 tools/build_builder_palette.py --check
 python3 tools/validate_source.py
 ./tools/format_source.sh --check
 ```

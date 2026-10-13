@@ -33,10 +33,15 @@ Private original ZIPs and translations were not modified.
   remains platform native rather than duplicated UI implementation.
 - The canonical generated unsigned iOS template is kept under a single
   filename, `build/native-template/MinionRush-native-template-unsigned.zip`.
-  Versioned portable Builder staging outputs and obsolete derived test
-  artifacts were identified for removal. The current portable Mac .app,
-  Windows EXEs, verified compilers, source ZIPs, private translation and
-  reproducible toolchain archives are preserved.
+  After the current packages were verified and installed locally, 38
+  obsolete generated paths were removed (approximately 3.33 GiB): older
+  Windows kit versions, outdated release archives, Xcode template caches,
+  temporary IPA fixtures, previous Mac candidate apps, and audit staging.
+  The Mac private build directory now has one current .app, and the Windows
+  shared directory has only two latest EXEs and the source ZIP.
+  Verified compilers, source ZIPs, the private translation, pinned runtime
+  archives and current iOS/native developer outputs were preserved.
+  Potentially user-authored promotional media were deliberately not removed.
 
 Validation: 147 Python unit tests (146 passed, one Windows-only UTM
 drive-mapping test skipped on macOS), native SwiftUI selector/model/layout
