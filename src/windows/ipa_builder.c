@@ -16,10 +16,10 @@
 #endif
 
 enum {
-    ID_TITLE = 101, ID_SUBTITLE,
+    ID_TITLE = 101, ID_SUBTITLE, ID_UI_EN, ID_UI_HU,
     ID_SOURCE_HINT, ID_SOURCE_LABEL, ID_SOURCE, ID_PICK_SOURCE,
     ID_DESTINATION_LABEL, ID_DESTINATION, ID_PICK_DESTINATION,
-    ID_CATALOG_HINT, ID_CATALOG_LABEL, ID_CATALOG, ID_PICK_CATALOG,
+    ID_PACK_HINT, ID_PACK_LABEL, ID_HU_PACK,
     ID_BUILD, ID_CANCEL, ID_OPEN_FOLDER,
     ID_STATE, ID_DETAIL, ID_DETAILS_TOGGLE,
     ID_DIAGNOSTICS, ID_COPY_ERROR, ID_COPY_LOG, ID_SAVE_LOG, ID_OPEN_TEMP,
@@ -53,7 +53,7 @@ enum {
 
 typedef enum {
     ROLE_TITLE, ROLE_SUBTITLE, ROLE_LABEL, ROLE_HINT, ROLE_FIELD,
-    ROLE_PRIMARY, ROLE_SECONDARY, ROLE_BROWSE, ROLE_LINK,
+    ROLE_PRIMARY, ROLE_SECONDARY, ROLE_BROWSE, ROLE_LINK, ROLE_LANG, ROLE_CHECK,
     ROLE_STATUS, ROLE_DETAIL, ROLE_LOG
 } Role;
 
@@ -76,6 +76,8 @@ static const Spec specs[] = {
     {ID_SUBTITLE, L"STATIC",
      L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.",
      LABEL_STYLE, ROLE_SUBTITLE},
+    {ID_UI_EN, L"BUTTON", L"English", BUTTON_STYLE, ROLE_LANG},
+    {ID_UI_HU, L"BUTTON", L"Magyar", BUTTON_STYLE, ROLE_LANG},
     {ID_SOURCE_HINT, L"STATIC", L"Drop or paste a ZIP path", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
     {ID_SOURCE_LABEL, L"STATIC", L"Original game ZIP", LABEL_STYLE, ROLE_LABEL},
     {ID_SOURCE, L"EDIT", L"", SOURCE_STYLE, ROLE_FIELD},
@@ -83,10 +85,9 @@ static const Spec specs[] = {
     {ID_DESTINATION_LABEL, L"STATIC", L"Save unsigned IPA to", LABEL_STYLE, ROLE_LABEL},
     {ID_DESTINATION, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
     {ID_PICK_DESTINATION, L"BUTTON", L"Save As...", BUTTON_STYLE, ROLE_BROWSE},
-    {ID_CATALOG_HINT, L"STATIC", L"Optional hu.xlf, can be auto-detected", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
-    {ID_CATALOG_LABEL, L"STATIC", L"Hungarian translation", LABEL_STYLE, ROLE_LABEL},
-    {ID_CATALOG, L"EDIT", L"", FIELD_STYLE, ROLE_FIELD},
-    {ID_PICK_CATALOG, L"BUTTON", L"Choose hu.xlf...", BUTTON_STYLE, ROLE_BROWSE},
+    {ID_PACK_HINT, L"STATIC", L"Original languages are always included", LABEL_STYLE | SS_RIGHT, ROLE_HINT},
+    {ID_PACK_LABEL, L"STATIC", L"Additional languages in IPA", LABEL_STYLE, ROLE_LABEL},
+    {ID_HU_PACK, L"BUTTON", L"Magyar (Hungarian)", BUTTON_STYLE, ROLE_CHECK},
     {ID_BUILD, L"BUTTON", L"Create IPA", BUTTON_STYLE, ROLE_PRIMARY},
     {ID_CANCEL, L"BUTTON", L"Cancel", BUTTON_STYLE, ROLE_SECONDARY},
     {ID_OPEN_FOLDER, L"BUTTON", L"Open output folder", BUTTON_STYLE, ROLE_SECONDARY},
@@ -102,22 +103,28 @@ static const Spec specs[] = {
     {ID_LOG, L"EDIT", L"", WS_CHILD | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY, ROLE_LOG}
 };
 
-static const Row rows[3] = {
+static const Row rows[] = {
     {ID_SOURCE_LABEL, ID_SOURCE_HINT, ID_SOURCE, ID_PICK_SOURCE},
-    {ID_DESTINATION_LABEL, 0, ID_DESTINATION, ID_PICK_DESTINATION},
-    {ID_CATALOG_LABEL, ID_CATALOG_HINT, ID_CATALOG, ID_PICK_CATALOG}
+    {ID_DESTINATION_LABEL, 0, ID_DESTINATION, ID_PICK_DESTINATION}
+};
+
+/* Additional language packs use this one UI/packaging contract. */
+typedef struct { int control; const WCHAR *file; const WCHAR *code; } PackOption;
+static const PackOption pack_options[] = {
+    {ID_HU_PACK, L"private-localizations\\hu.xlf", L"hu"}
 };
 
 typedef struct {
     RECT slot[ID_LAST];
-    RECT header, card, well[3], status_card, dot, track, details_card, log_well;
+    RECT header, card, well[2], status_card, dot, track, details_card, log_well;
 } Geometry;
 
 typedef struct { HDC dc, target; HBITMAP bitmap, previous; RECT area; } Canvas;
 
 typedef struct {
     WCHAR python[32768], tool[32768], kit[32768];
-    WCHAR source[32768], output[32768], catalog[32768], scratch[32768];
+    WCHAR source[32768], output[32768], scratch[32768];
+    BOOL include_hungarian;
     HWND window;
     HANDLE job; /* owned and closed by the UI thread */
 } Build;
@@ -136,6 +143,9 @@ static BOOL diagnostics_dirty, log_truncated;
 static HANDLE active_job;
 static volatile LONG cancel_requested;
 static BOOL running, aborted, log_open, detail_dirty;
+static BOOL hu_available, hu_selected = TRUE;
+static int interface_language; /* 0 = English, 1 = Magyar */
+static LPCWSTR status_key = L"Ready. The output is unsigned and requires Sideloadly.";
 static UiState ui_state = STATE_IDLE;
 
 typedef BOOL (WINAPI *DpiAwarenessSetter)(HANDLE);
@@ -149,6 +159,113 @@ static void bind_symbol(void *target, size_t size, HMODULE module, const char *n
     memcpy(target, &address, size);
 }
 
+/* Text stays in one table; future GUI locales only extend this mapping. */
+typedef struct { LPCWSTR english, hungarian; } UiText;
+static const UiText ui_texts[] = {
+    {L"Build an unsigned iPhone IPA from your own original 1.8.1g ZIP.", L"K\u00e9sz\u00edts al\u00e1\u00edratlan iPhone IPA-t az eredeti 1.8.1g ZIP-b\u0151l."},
+    {L"Drop or paste a ZIP path", L"ZIP beh\u00faz\u00e1sa vagy \u00fatvonal beilleszt\u00e9se"},
+    {L"Original game ZIP", L"Eredeti j\u00e1t\u00e9k ZIP-f\u00e1jl"},
+    {L"Browse ZIP...", L"ZIP kiv\u00e1laszt\u00e1sa..."},
+    {L"Save unsigned IPA to", L"IPA ment\u00e9si helye"},
+    {L"Save As...", L"Ment\u00e9s m\u00e1sk\u00e9nt..."},
+    {L"Original languages are always included", L"Az eredeti nyelvek mindig el\u00e9rhet\u0151k"},
+    {L"Additional languages in IPA", L"Tov\u00e1bbi nyelvek az IPA-ban"},
+    {L"Magyar (Hungarian)", L"Magyar"},
+    {L"Create IPA", L"IPA k\u00e9sz\u00edt\u00e9se"},
+    {L"Cancel", L"Megszak\u00edt\u00e1s"},
+    {L"Open output folder", L"Kimeneti mappa megnyit\u00e1sa"},
+    {L"Show details", L"R\u00e9szletek"},
+    {L"Hide details", L"R\u00e9szletek elrejt\u00e9se"},
+    {L"Copy error", L"Hiba m\u00e1sol\u00e1sa"},
+    {L"Copy full log", L"Teljes napl\u00f3 m\u00e1sol\u00e1sa"},
+    {L"Save log...", L"Napl\u00f3 ment\u00e9se..."},
+    {L"Open temp folder", L"Ideiglenes mappa megnyit\u00e1sa"},
+    {L"Ready. The output is unsigned and requires Sideloadly.", L"K\u00e9sz. Az IPA al\u00e1\u00edr\u00e1s\u00e1hoz Sideloadly sz\u00fcks\u00e9ges."},
+    {L"Building native ARM64 IPA. Keep this window open.", L"Nat\u00edv ARM64 IPA k\u00e9sz\u00fcl. Hagyd nyitva az ablakot."},
+    {L"Could not start build thread.", L"Nem siker\u00fclt elind\u00edtani az \u00f6ssze\u00e1ll\u00edt\u00e1st."},
+    {L"Cancelling...", L"Megszak\u00edt\u00e1s folyamatban..."},
+    {L"Unsigned IPA created. Sign with Sideloadly before installing.", L"Az IPA elk\u00e9sz\u00fclt. Telep\u00edt\u00e9s el\u0151tt \u00edrd al\u00e1 a Sideloadlyban."},
+    {L"Build cancelled.", L"Az \u00f6ssze\u00e1ll\u00edt\u00e1s megszak\u00edtva."},
+    {L"Build failed. Review the diagnostic details below.", L"Az \u00f6ssze\u00e1ll\u00edt\u00e1s hib\u00e1ra futott. N\u00e9zd meg a r\u00e9szleteket."},
+    {L"Choose your original ZIP...", L"V\u00e1laszd ki az eredeti ZIP-et..."},
+    {L"Choose where to save...", L"V\u00e1lassz ment\u00e9si helyet..."},
+    {L"Save unsigned IPA", L"Al\u00e1\u00edratlan IPA ment\u00e9se"},
+    {L"Choose original Minion Rush 1.8.1g ZIP", L"Az eredeti Minion Rush 1.8.1g ZIP kiv\u00e1laszt\u00e1sa"},
+    {L"Unsigned iOS package (*.ipa)", L"Al\u00e1\u00edratlan iOS-csomag (*.ipa)"},
+    {L"Original ZIP (*.zip)", L"Eredeti ZIP (*.zip)"},
+    {L"Select an existing original .zip file.", L"V\u00e1lassz ki egy l\u00e9tez\u0151 eredeti .zip f\u00e1jlt."},
+    {L"Source ZIP required", L"Eredeti ZIP sz\u00fcks\u00e9ges"},
+    {L"Choose an output .ipa path.", L"Add meg az IPA ment\u00e9si hely\u00e9t."},
+    {L"Output required", L"Ment\u00e9si hely sz\u00fcks\u00e9ges"},
+    {L"The output filename must end in .ipa.", L"A kimeneti f\u00e1jl nev\u00e9nek .ipa v\u00e9gz\u0151d\u00e9s\u0171nek kell lennie."},
+    {L"Invalid filename", L"\u00c9rv\u00e9nytelen f\u00e1jln\u00e9v"},
+    {L"This output already exists. Choose a different filename.", L"Ez a f\u00e1jl m\u00e1r l\u00e9tezik. V\u00e1lassz m\u00e1sik f\u00e1jlnevet."},
+    {L"Existing output", L"L\u00e9tez\u0151 kimeneti f\u00e1jl"},
+    {L"The bundled Hungarian language file is missing.", L"Hi\u00e1nyzik a be\u00e9p\u00edtett magyar nyelvi f\u00e1jl."},
+    {L"Missing translation", L"Hi\u00e1nyz\u00f3 ford\u00edt\u00e1s"},
+    {L"The portable runtime is incomplete. Extract the full release ZIP.", L"A hordozhat\u00f3 futtat\u00f3k\u00f6rnyezet hi\u00e1nyos."},
+    {L"Missing application files", L"Hi\u00e1nyz\u00f3 alkalmaz\u00e1sf\u00e1jlok"},
+    {L"Cannot create a private temporary workspace.", L"Nem siker\u00fclt l\u00e9trehozni az ideiglenes munkamapp\u00e1t."},
+    {L"Temporary storage unavailable", L"Az ideiglenes t\u00e1rhely nem \u00e9rhet\u0151 el"},
+    {L"Unable to protect child process tree.", L"A h\u00e1tt\u00e9rfolyamatok v\u00e9delme sikertelen."},
+    {L"Build cannot start", L"Nem ind\u00edthat\u00f3 az \u00f6ssze\u00e1ll\u00edt\u00e1s"},
+    {L"Stop creating the IPA? The unfinished temporary files may need to be removed.", L"Megszak\u00edtod az IPA k\u00e9sz\u00edt\u00e9s\u00e9t? A f\u00e9lk\u00e9sz f\u00e1jlokat esetleg t\u00f6r\u00f6lni kell."},
+    {L"Cancel build", L"\u00d6ssze\u00e1ll\u00edt\u00e1s megszak\u00edt\u00e1sa"},
+    {L"Unsigned IPA created successfully. It is ready for signing with Sideloadly.", L"Az IPA sikeresen elk\u00e9sz\u00fclt. Al\u00e1\u00edrhatod a Sideloadly alkalmaz\u00e1sban."},
+    {L"Build complete", L"\u00d6ssze\u00e1ll\u00edt\u00e1s k\u00e9sz"},
+    {L"Drop exactly one original .zip file.", L"Pontosan egy eredeti .zip f\u00e1jlt h\u00fazz ide."},
+    {L"ZIP required", L"ZIP sz\u00fcks\u00e9ges"},
+    {L"Could not copy the report to the clipboard.", L"Nem siker\u00fclt a v\u00e1g\u00f3lapra m\u00e1solni a jelent\u00e9st."},
+    {L"Clipboard unavailable", L"A v\u00e1g\u00f3lap nem \u00e9rhet\u0151 el"},
+    {L"The diagnostic log could not be saved.", L"Nem siker\u00fclt menteni a napl\u00f3t."},
+    {L"Save failed", L"A ment\u00e9s sikertelen"},
+    {L"Save local build diagnostics", L"\u00d6ssze\u00e1ll\u00edt\u00e1si napl\u00f3 ment\u00e9se"},
+    {L"Text log (*.txt)", L"Sz\u00f6veges napl\u00f3 (*.txt)"},
+    {L"Running", L"Folyamatban"},
+    {L"Completed", L"Befejezve"},
+    {L"Failed", L"Hiba"},
+    {L"Cancelled", L"Megszak\u00edtva"},
+    {L"Ready", L"K\u00e9sz"},
+    {L"Not started", L"M\u00e9g nem indult el"},
+    {L"Not reported", L"Nincs adat"},
+    {L"None reported", L"Nincs hiba"},
+    {L"English", L"English"},
+    {L"Magyar", L"Magyar"},
+};
+
+static LPCWSTR tr(LPCWSTR english) {
+    if (!interface_language || !english) return english;
+    for (size_t i = 0; i < sizeof(ui_texts) / sizeof(ui_texts[0]); i++)
+        if (wcscmp(english, ui_texts[i].english) == 0) return ui_texts[i].hungarian;
+    return english;
+}
+
+static void relayout(void);
+
+static void update_interface(void) {
+#ifdef MR_UTM_TEST
+    SetWindowTextW(main_window, interface_language ?
+        L"Minion Rush IPA-k\u00e9sz\u00edt\u0151 - UTM teszt" :
+        L"Minion Rush IPA Builder - UTM test build");
+#else
+    SetWindowTextW(main_window, interface_language ?
+        L"Minion Rush IPA-k\u00e9sz\u00edt\u0151" : L"Minion Rush IPA Builder");
+#endif
+    for (size_t i = 0; i < sizeof(specs) / sizeof(specs[0]); i++) {
+        int id = specs[i].id;
+        if (id == ID_SOURCE || id == ID_DESTINATION || id == ID_STATE ||
+            id == ID_DETAIL || id == ID_DIAGNOSTICS || id == ID_LOG ||
+            id == ID_DETAILS_TOGGLE) continue;
+        SetWindowTextW(ctl[id], tr(specs[i].text));
+    }
+    SetWindowTextW(ctl[ID_DETAILS_TOGGLE], tr(log_open ? L"Hide details" : L"Show details"));
+    SetWindowTextW(ctl[ID_STATE], tr(status_key));
+    InvalidateRect(ctl[ID_UI_EN], NULL, FALSE);
+    InvalidateRect(ctl[ID_UI_HU], NULL, FALSE);
+    InvalidateRect(ctl[ID_HU_PACK], NULL, FALSE);
+    relayout();
+}
+
 /* ---- Small utilities ------------------------------------------------ */
 
 static Role role_of(int id) {
@@ -158,14 +275,15 @@ static Role role_of(int id) {
 }
 
 static BOOL is_button_role(Role role) {
-    return role == ROLE_PRIMARY || role == ROLE_SECONDARY || role == ROLE_BROWSE || role == ROLE_LINK;
+    return role == ROLE_PRIMARY || role == ROLE_SECONDARY || role == ROLE_BROWSE ||
+           role == ROLE_LINK || role == ROLE_LANG || role == ROLE_CHECK;
 }
 
 static HFONT font_for(Role role) {
     switch (role) {
     case ROLE_TITLE: return fonts[FONT_TITLE];
     case ROLE_LABEL: case ROLE_PRIMARY: case ROLE_SECONDARY:
-    case ROLE_BROWSE: case ROLE_LINK: return fonts[FONT_LABEL];
+    case ROLE_BROWSE: case ROLE_LINK: case ROLE_LANG: case ROLE_CHECK: return fonts[FONT_LABEL];
     case ROLE_HINT: case ROLE_DETAIL: return fonts[FONT_SMALL];
     case ROLE_STATUS: return fonts[FONT_STATUS];
     case ROLE_LOG: return fonts[FONT_MONO];
@@ -373,8 +491,10 @@ static int compute_geometry(Geometry *g, int width, int height) {
     if (inner < S(320)) inner = S(320);
     int right = margin + inner;
     g->header = make_rect(0, 0, width, S(88));
-    place_slot(g, ID_TITLE, margin, S(14), inner, S(38));
+    place_slot(g, ID_TITLE, margin, S(14), inner - S(160), S(38));
     place_slot(g, ID_SUBTITLE, margin, S(54), inner, S(22));
+    place_slot(g, ID_UI_EN, right - S(158), S(16), S(74), S(30));
+    place_slot(g, ID_UI_HU, right - S(78), S(16), S(74), S(30));
 
     int row_height = label_height + S(4) + field_height;
     int card_top = g->header.bottom + S(20);
@@ -382,9 +502,9 @@ static int compute_geometry(Geometry *g, int width, int height) {
     g->card = make_rect(margin, card_top, right, card_top + card_height);
     int pick_width = button_width(ID_PICK_SOURCE, 112);
     if (button_width(ID_PICK_DESTINATION, 112) > pick_width) pick_width = button_width(ID_PICK_DESTINATION, 112);
-    if (button_width(ID_PICK_CATALOG, 112) > pick_width) pick_width = button_width(ID_PICK_CATALOG, 112);
+
     int card_inner = inner - 2 * pad, label_width = card_inner * 45 / 100;
-    for (int index = 0; index < 3; index++) {
+    for (size_t index = 0; index < sizeof(rows) / sizeof(rows[0]); index++) {
         int top = card_top + S(18) + index * (row_height + row_gap);
         int field_top = top + label_height + S(4);
         int left = margin + pad;
@@ -399,6 +519,13 @@ static int compute_geometry(Geometry *g, int width, int height) {
              edit_width, body_height);
     }
 
+    int option_top = card_top + S(18) + 2 * (row_height + row_gap);
+    place_slot(g, ID_PACK_LABEL, margin + pad, option_top, label_width, label_height);
+    place_slot(g, ID_PACK_HINT, margin + pad + label_width, option_top,
+               card_inner - label_width, label_height);
+    place_slot(g, ID_HU_PACK, margin + pad, option_top + label_height + S(4),
+               card_inner, field_height);
+
     int actions_top = g->card.bottom + S(16), actions_height = S(40);
     int build_width = button_width(ID_BUILD, 132), cancel_width = button_width(ID_CANCEL, 96);
     int open_width = button_width(ID_OPEN_FOLDER, 150);
@@ -408,8 +535,9 @@ static int compute_geometry(Geometry *g, int width, int height) {
 
     int status_top = actions_top + actions_height + S(16), status_pad = S(18);
     int line_top = status_top + S(16), dot_size = S(10);
-    int toggle_width = text_width(ROLE_LINK, L"Show details");
-    if (text_width(ROLE_LINK, L"Hide details") > toggle_width) toggle_width = text_width(ROLE_LINK, L"Hide details");
+    int toggle_width = text_width(ROLE_LINK, tr(L"Show details"));
+    if (text_width(ROLE_LINK, tr(L"Hide details")) > toggle_width)
+        toggle_width = text_width(ROLE_LINK, tr(L"Hide details"));
     toggle_width += S(28);
     int dot_left = margin + status_pad;
     g->dot = make_rect(dot_left, line_top + (S(24) - dot_size) / 2,
@@ -503,7 +631,7 @@ static void resize_client(int client_width, int client_height, BOOL centre) {
 static void set_log_visible(BOOL visible) {
     if (log_open == visible) return;
     log_open = visible;
-    SetWindowTextW(ctl[ID_DETAILS_TOGGLE], visible ? L"Hide details" : L"Show details");
+    SetWindowTextW(ctl[ID_DETAILS_TOGGLE], tr(visible ? L"Hide details" : L"Show details"));
     if (!visible && (GetFocus() == ctl[ID_LOG] || GetFocus() == ctl[ID_DIAGNOSTICS] ||
                       GetFocus() == ctl[ID_COPY_ERROR] || GetFocus() == ctl[ID_COPY_LOG] ||
                       GetFocus() == ctl[ID_SAVE_LOG] || GetFocus() == ctl[ID_OPEN_TEMP]))
@@ -559,7 +687,7 @@ static void paint_scene(HDC dc) {
     solid(dc, 0, geo.header.top, geo.header.right, geo.header.bottom, COL_NAVY);
     solid(dc, 0, geo.header.bottom - S(3), geo.header.right, geo.header.bottom, COL_GOLD);
     round_box(dc, geo.card, S(12), COL_BACKGROUND, COL_CARD, COL_CARD_EDGE, 1);
-    for (int index = 0; index < 3; index++) {
+    for (size_t index = 0; index < sizeof(rows) / sizeof(rows[0]); index++) {
         HWND field_window = ctl[rows[index].field];
         BOOL focused = GetFocus() == field_window;
         round_box(dc, geo.well[index], S(8), COL_CARD,
@@ -591,9 +719,19 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
     BOOL pressed = (item->itemState & ODS_SELECTED) != 0;
     BOOL focused = (item->itemState & ODS_FOCUS) != 0;
     BOOL hot = hot_control == item->hwndItem && !disabled;
-    COLORREF backdrop = (role == ROLE_BROWSE || role == ROLE_LINK) ? COL_CARD : COL_BACKGROUND;
+    BOOL checked = role == ROLE_CHECK && hu_selected;
+    BOOL chosen = role == ROLE_LANG &&
+                  ((item->CtlID == ID_UI_HU) == (interface_language == 1));
+    COLORREF backdrop = (role == ROLE_BROWSE || role == ROLE_LINK || role == ROLE_CHECK)
+                        ? COL_CARD : role == ROLE_LANG ? COL_NAVY : COL_BACKGROUND;
     COLORREF fill = COL_CARD, edge = COL_FIELD_EDGE, text = COL_TEXT;
-    if (role == ROLE_PRIMARY) {
+    if (role == ROLE_LANG) {
+        fill = chosen ? COL_GOLD : COL_NAVY;
+        edge = chosen ? COL_GOLD : COL_NAVY_MUTED;
+        text = chosen ? COL_NAVY : RGB(255, 255, 255);
+    } else if (role == ROLE_CHECK) {
+        fill = edge = COL_CARD;
+    } else if (role == ROLE_PRIMARY) {
         fill = pressed ? COL_GOLD_DOWN : hot ? COL_GOLD_HOT : COL_GOLD;
         edge = fill;
         text = COL_NAVY;
@@ -616,7 +754,24 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
     Canvas canvas;
     canvas_open(&canvas, item->hDC, item->rcItem);
     solid(canvas.dc, item->rcItem.left, item->rcItem.top, item->rcItem.right, item->rcItem.bottom, backdrop);
-    round_box(canvas.dc, item->rcItem, S(8), backdrop, fill, edge, edge_width);
+    if (role == ROLE_CHECK) {
+        RECT square = make_rect(item->rcItem.left + S(2), item->rcItem.top + S(7),
+                                item->rcItem.left + S(24), item->rcItem.top + S(29));
+        COLORREF mark = checked ? COL_GOOD : COL_CARD;
+        round_box(canvas.dc, square, S(5), COL_CARD, mark,
+                  focused ? COL_NAVY : checked ? COL_GOOD : COL_FIELD_EDGE, focused ? 2 : 1);
+        if (checked && !disabled) {
+            HPEN pen = CreatePen(PS_SOLID, S(2), RGB(255, 255, 255));
+            HPEN previous_pen = (HPEN)SelectObject(canvas.dc, pen);
+            MoveToEx(canvas.dc, square.left + S(5), square.top + S(11), NULL);
+            LineTo(canvas.dc, square.left + S(10), square.top + S(16));
+            LineTo(canvas.dc, square.left + S(18), square.top + S(7));
+            SelectObject(canvas.dc, previous_pen);
+            DeleteObject(pen);
+        }
+    } else {
+        round_box(canvas.dc, item->rcItem, S(8), backdrop, fill, edge, edge_width);
+    }
     WCHAR caption[64] = {0};
     GetWindowTextW(item->hwndItem, caption, 64);
     HFONT previous = (HFONT)SelectObject(canvas.dc, font_for(role));
@@ -624,8 +779,10 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
     SetTextColor(canvas.dc, text);
     RECT label = item->rcItem;
     if (pressed) OffsetRect(&label, 0, 1);
+    if (role == ROLE_CHECK) label.left += S(38);
     DrawTextW(canvas.dc, caption, -1, &label,
-              DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+              DT_SINGLELINE | DT_VCENTER |
+              (role == ROLE_CHECK ? DT_LEFT : DT_CENTER) | DT_NOPREFIX | DT_END_ELLIPSIS);
     SelectObject(canvas.dc, previous);
     canvas_close(&canvas);
 }
@@ -633,8 +790,7 @@ static void draw_button(const DRAWITEMSTRUCT *item) {
 static void paint_placeholder(HWND field_window, int id) {
     if (GetWindowTextLengthW(field_window) > 0) return;
     LPCWSTR hint = id == ID_SOURCE ? L"Choose your original ZIP..." :
-                   id == ID_DESTINATION ? L"Choose where to save..." :
-                   id == ID_CATALOG ? L"Not selected" : NULL;
+                   id == ID_DESTINATION ? L"Choose where to save..." : NULL;
     if (!hint) return;
     HDC dc = GetDC(field_window);
     RECT area;
@@ -642,7 +798,7 @@ static void paint_placeholder(HWND field_window, int id) {
     HFONT previous = (HFONT)SelectObject(dc, fonts[FONT_BODY]);
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, COL_MUTED);
-    DrawTextW(dc, hint, -1, &area, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+    DrawTextW(dc, tr(hint), -1, &area, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
     SelectObject(dc, previous);
     ReleaseDC(field_window, dc);
 }
@@ -786,6 +942,18 @@ static void create_controls(HWND window) {
             SendMessageW(created, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
     }
     EnableWindow(ctl[ID_CANCEL], FALSE);
+    for (size_t index = 0; index < sizeof(pack_options) / sizeof(pack_options[0]); index++) {
+        const PackOption *option = &pack_options[index];
+        WCHAR bundled[32768] = {0};
+        BOOL available = SUCCEEDED(StringCchPrintfW(bundled, 32768,
+                                                  L"%s\\%s", kit_path, option->file)) &&
+                         regular_file(bundled);
+        EnableWindow(ctl[option->control], available);
+        if (wcscmp(option->code, L"hu") == 0) {
+            hu_available = available;
+            hu_selected = available;
+        }
+    }
     EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
     EnableWindow(ctl[ID_OPEN_TEMP], FALSE);
     EnableWindow(ctl[ID_COPY_ERROR], FALSE);
@@ -799,16 +967,15 @@ static void create_controls(HWND window) {
 
 /* ---- File dialogs --------------------------------------------------- */
 
-static BOOL choose_file(BOOL is_save, BOOL translation, WCHAR *path, size_t capacity) {
+static BOOL choose_file(BOOL is_save, WCHAR *path, size_t capacity) {
     IFileDialog *dialog = NULL;
     CLSID const *clsid = is_save ? &CLSID_FileSaveDialog : &CLSID_FileOpenDialog;
     HRESULT hr = CoCreateInstance(clsid, NULL, CLSCTX_INPROC_SERVER,
                                   &IID_IFileDialog, (void **)&dialog);
     if (FAILED(hr)) return FALSE;
     COMDLG_FILTERSPEC filters[1] = {
-        {translation ? L"XLIFF catalog (*.xlf)" :
-                       is_save ? L"Unsigned iOS package (*.ipa)" : L"Original ZIP (*.zip)",
-         translation ? L"*.xlf" : is_save ? L"*.ipa" : L"*.zip"}
+        {tr(is_save ? L"Unsigned iOS package (*.ipa)" : L"Original ZIP (*.zip)"),
+         is_save ? L"*.ipa" : L"*.zip"}
     };
     IFileDialog_SetFileTypes(dialog, 1, filters);
     IFileDialog_SetFileTypeIndex(dialog, 1);
@@ -817,9 +984,8 @@ static BOOL choose_file(BOOL is_save, BOOL translation, WCHAR *path, size_t capa
     options |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
     if (!is_save) options |= FOS_FILEMUSTEXIST;
     IFileDialog_SetOptions(dialog, options);
-    IFileDialog_SetTitle(dialog,
-        translation ? L"Select private Hungarian hu.xlf" :
-        is_save ? L"Save unsigned IPA" : L"Choose original Minion Rush 1.8.1g ZIP");
+    IFileDialog_SetTitle(dialog, tr(is_save ? L"Save unsigned IPA" :
+                                    L"Choose original Minion Rush 1.8.1g ZIP"));
     if (is_save) {
         IFileDialog_SetDefaultExtension(dialog, L"ipa");
         IFileDialog_SetFileName(dialog, L"MinionRush-unsigned.ipa");
@@ -844,7 +1010,8 @@ static BOOL choose_file(BOOL is_save, BOOL translation, WCHAR *path, size_t capa
 
 static void set_status(UiState state, LPCWSTR text) {
     ui_state = state;
-    SetWindowTextW(ctl[ID_STATE], text);
+    status_key = text;
+    SetWindowTextW(ctl[ID_STATE], tr(text));
     InvalidateRect(main_window, &geo.dot, FALSE);
     InvalidateRect(main_window, &geo.track, FALSE);
 }
@@ -913,31 +1080,41 @@ static void send_log(HWND window, const char *bytes, int length) {
 /* ---- Diagnostic report and export ---------------------------------- */
 
 static void refresh_diagnostics(void) {
-    WCHAR source[2048] = {0}, output[2048] = {0}, catalog[2048] = {0};
+    WCHAR source[2048] = {0}, output[2048] = {0};
     WCHAR summary[16384] = {0};
     GetWindowTextW(ctl[ID_SOURCE], source, 2048);
     GetWindowTextW(ctl[ID_DESTINATION], output, 2048);
-    GetWindowTextW(ctl[ID_CATALOG], catalog, 2048);
-    LPCWSTR status = ui_state == STATE_BUSY ? L"Running" :
-                     ui_state == STATE_OK ? L"Completed" :
-                     ui_state == STATE_FAILED ? L"Failed" :
-                     ui_state == STATE_STOPPED ? L"Cancelled" : L"Ready";
+
+    LPCWSTR status = tr(ui_state == STATE_BUSY ? L"Running" :
+                         ui_state == STATE_OK ? L"Completed" :
+                         ui_state == STATE_FAILED ? L"Failed" :
+                         ui_state == STATE_STOPPED ? L"Cancelled" : L"Ready");
     StringCchPrintfW(summary, 16384,
+        interface_language ?
+        L"\u00c1llapot: %s    Kil\u00e9p\u00e9si k\u00f3d: %lu\r\n"
+        L"F\u00e1zis: %.180s\r\n"
+        L"Adat\u00e1tvitel: %.170s\r\n"
+        L"Forr\u00e1s ZIP: %.1900s\r\n"
+        L"Kimeneti IPA: %.1900s\r\n"
+        L"Tov\u00e1bbi nyelvek: %.1900s\r\n"
+        L"Ideiglenes munkamappa: %.1900s\r\n"
+        L"Hiba: %.3800s" :
         L"Status: %s    Exit code: %lu\r\n"
         L"Phase: %.180s\r\n"
         L"Transport: %.170s\r\n"
         L"Source ZIP: %.1900s\r\n"
         L"Output IPA: %.1900s\r\n"
-        L"Language: %.1900s\r\n"
+        L"Additional languages: %.1900s\r\n"
         L"Private workspace: %.1900s\r\n"
         L"Error: %.3800s",
         status, (unsigned long)last_exit_code,
-        phase_text[0] ? phase_text : L"Not started",
-        transport_text[0] ? transport_text : L"Not reported",
+        phase_text[0] ? phase_text : tr(L"Not started"),
+        transport_text[0] ? transport_text : tr(L"Not reported"),
         source, output,
-        catalog[0] ? catalog : L"Auto-detect / none",
-        last_scratch[0] ? last_scratch : L"Not started",
-        last_error[0] ? last_error : L"None reported");
+        hu_available && hu_selected ? L"hu (Magyar)" :
+        interface_language ? L"Csak eredeti nyelvek" : L"Original only",
+        last_scratch[0] ? last_scratch : tr(L"Not started"),
+        last_error[0] ? last_error : tr(L"None reported"));
     SetWindowTextW(ctl[ID_DIAGNOSTICS], summary);
     diagnostics_dirty = FALSE;
 }
@@ -984,8 +1161,8 @@ static void copy_report(BOOL error_only) {
     WCHAR *report = get_report(!error_only);
     if (!report) return;
     if (!copy_to_clipboard(report))
-        MessageBoxW(main_window, L"Could not copy the report to the clipboard.",
-                    L"Clipboard unavailable", MB_OK | MB_ICONWARNING);
+        MessageBoxW(main_window, tr(L"Could not copy the report to the clipboard."),
+                    tr(L"Clipboard unavailable"), MB_OK | MB_ICONWARNING);
     HeapFree(GetProcessHeap(), 0, report);
 }
 
@@ -994,11 +1171,11 @@ static void save_report(void) {
     IFileDialog *dialog = NULL;
     if (FAILED(CoCreateInstance(&CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER,
                                 &IID_IFileDialog, (void **)&dialog))) return;
-    COMDLG_FILTERSPEC filter = {L"Text log (*.txt)", L"*.txt"};
+    COMDLG_FILTERSPEC filter = {tr(L"Text log (*.txt)"), L"*.txt"};
     IFileDialog_SetFileTypes(dialog, 1, &filter);
     IFileDialog_SetDefaultExtension(dialog, L"txt");
     IFileDialog_SetFileName(dialog, L"MinionRush-build-log.txt");
-    IFileDialog_SetTitle(dialog, L"Save local build diagnostics");
+    IFileDialog_SetTitle(dialog, tr(L"Save local build diagnostics"));
     BOOL selected = FALSE;
     if (SUCCEEDED(IFileDialog_Show(dialog, main_window))) {
         IShellItem *item = NULL;
@@ -1030,8 +1207,8 @@ static void save_report(void) {
             if (!CloseHandle(file)) ok = FALSE;
         }
     }
-    if (!ok) MessageBoxW(main_window, L"The diagnostic log could not be saved.",
-                         L"Save failed", MB_OK | MB_ICONERROR);
+    if (!ok) MessageBoxW(main_window, tr(L"The diagnostic log could not be saved."),
+                    tr(L"Save failed"), MB_OK | MB_ICONERROR);
     if (utf8) HeapFree(GetProcessHeap(), 0, utf8);
     HeapFree(GetProcessHeap(), 0, report);
 }
@@ -1112,11 +1289,8 @@ static DWORD WINAPI run_build(LPVOID opaque) {
         command, cap, L"\"%s\" -X utf8 \"%s\" \"%s\" --kit \"%s\" --output \"%s\"",
         job->python, job->tool, job->source, job->kit, job->output
     );
-    if (SUCCEEDED(hr) && job->catalog[0]) {
-        hr = StringCchCatW(command, cap, L" --hungarian-xlf \"");
-        if (SUCCEEDED(hr)) hr = StringCchCatW(command, cap, job->catalog);
-        if (SUCCEEDED(hr)) hr = StringCchCatW(command, cap, L"\"");
-    }
+    if (SUCCEEDED(hr) && !job->include_hungarian)
+        hr = StringCchCatW(command, cap, L" --no-hungarian");
     if (SUCCEEDED(hr)) {
         hr = StringCchCatW(command, cap, L" --scratch-root \"");
         if (SUCCEEDED(hr)) hr = StringCchCatW(command, cap, job->scratch);
@@ -1178,10 +1352,11 @@ done:
 }
 
 static void set_busy(BOOL busy) {
-    static const int locked[] = {ID_SOURCE, ID_DESTINATION, ID_CATALOG, ID_PICK_SOURCE,
-                                 ID_PICK_DESTINATION, ID_PICK_CATALOG, ID_BUILD};
+    static const int locked[] = {ID_SOURCE, ID_DESTINATION, ID_HU_PACK, ID_PICK_SOURCE,
+                                 ID_PICK_DESTINATION, ID_BUILD};
     for (size_t index = 0; index < sizeof(locked) / sizeof(locked[0]); index++)
-        EnableWindow(ctl[locked[index]], !busy);
+        EnableWindow(ctl[locked[index]], !busy &&
+                     (locked[index] != ID_HU_PACK || hu_available));
     EnableWindow(ctl[ID_CANCEL], busy);
     if (busy) {
         EnableWindow(ctl[ID_OPEN_FOLDER], FALSE);
@@ -1205,53 +1380,48 @@ static void start_build(void) {
     StringCchPrintfW(job->tool, 32768,
                      L"%s\\runtime\\tools\\windows_native_package.py", kit_path);
     if (!get_text(ctl[ID_SOURCE], job->source, 32768)) {
-        MessageBoxW(main_window, L"Select an existing original .zip file.",
-                    L"Source ZIP required", MB_OK | MB_ICONWARNING);
+        MessageBoxW(main_window, tr(L"Select an existing original .zip file."),
+                    tr(L"Source ZIP required"), MB_OK | MB_ICONWARNING);
         goto failure;
     }
     unquote_path(job->source);
     if (!is_zip(job->source) || !regular_file(job->source)) {
-        MessageBoxW(main_window, L"Select an existing original .zip file.",
-                    L"Source ZIP required", MB_OK | MB_ICONWARNING);
+        MessageBoxW(main_window, tr(L"Select an existing original .zip file."),
+                    tr(L"Source ZIP required"), MB_OK | MB_ICONWARNING);
         goto failure;
     }
     if (!get_text(ctl[ID_DESTINATION], job->output, 32768) ||
             wcslen(job->output) < 5) {
-        MessageBoxW(main_window, L"Choose an output .ipa path.",
-                    L"Output required", MB_OK | MB_ICONWARNING);
+        MessageBoxW(main_window, tr(L"Choose an output .ipa path."),
+                    tr(L"Output required"), MB_OK | MB_ICONWARNING);
         goto failure;
     }
     size_t output_len = wcslen(job->output);
     if (output_len < 4 || _wcsicmp(job->output + output_len - 4, L".ipa") != 0) {
-        MessageBoxW(main_window, L"The output filename must end in .ipa.",
-                    L"Invalid filename", MB_OK | MB_ICONWARNING);
+        MessageBoxW(main_window, tr(L"The output filename must end in .ipa."),
+                    tr(L"Invalid filename"), MB_OK | MB_ICONWARNING);
         goto failure;
     }
     if (GetFileAttributesW(job->output) != INVALID_FILE_ATTRIBUTES) {
-        MessageBoxW(main_window, L"This output already exists. Choose a different filename.",
-                    L"Existing output", MB_OK | MB_ICONWARNING);
+        MessageBoxW(main_window, tr(L"This output already exists. Choose a different filename."),
+                    tr(L"Existing output"), MB_OK | MB_ICONWARNING);
         goto failure;
     }
-    get_text(ctl[ID_CATALOG], job->catalog, 32768);
-    if (job->catalog[0] && !regular_file(job->catalog)) {
-        MessageBoxW(main_window, L"The selected hu.xlf catalog was not found.",
-                    L"Missing translation", MB_OK | MB_ICONWARNING);
-        goto failure;
-    }
+    job->include_hungarian = hu_selected && hu_available;
     if (!regular_file(job->python) || !regular_file(job->tool)) {
-        MessageBoxW(main_window, L"The portable runtime is incomplete. Extract the full release ZIP.",
-                    L"Missing application files", MB_OK | MB_ICONERROR);
+        MessageBoxW(main_window, tr(L"The portable runtime is incomplete. Extract the full release ZIP."),
+                    tr(L"Missing application files"), MB_OK | MB_ICONERROR);
         goto failure;
     }
     if (!create_job_scratch(job->scratch, 32768)) {
-        MessageBoxW(main_window, L"Cannot create a private temporary workspace.",
-                    L"Temporary storage unavailable", MB_OK | MB_ICONERROR);
+        MessageBoxW(main_window, tr(L"Cannot create a private temporary workspace."),
+                    tr(L"Temporary storage unavailable"), MB_OK | MB_ICONERROR);
         goto failure;
     }
     active_job = create_kill_job();
     if (!active_job) {
-        MessageBoxW(main_window, L"Unable to protect child process tree.",
-                    L"Build cannot start", MB_OK | MB_ICONERROR);
+        MessageBoxW(main_window, tr(L"Unable to protect child process tree."),
+                    tr(L"Build cannot start"), MB_OK | MB_ICONERROR);
         RemoveDirectoryW(job->scratch);
         goto failure;
     }
@@ -1290,8 +1460,8 @@ failure:
 static void stop_build(void) {
     if (!running || !active_job) return;
     int choice = MessageBoxW(main_window,
-        L"Stop creating the IPA? The unfinished temporary files may need to be removed.",
-        L"Cancel build", MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
+        tr(L"Stop creating the IPA? The unfinished temporary files may need to be removed."),
+        tr(L"Cancel build"), MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
     // The build can finish while the question is open.
     if (choice != IDYES || !running || !active_job) return;
     aborted = TRUE;
@@ -1317,8 +1487,8 @@ static void finish_build(DWORD exit_code) {
         show_detail(last_output);
         EnableWindow(ctl[ID_OPEN_FOLDER], TRUE);
         SetFocus(ctl[ID_OPEN_FOLDER]);
-        MessageBoxW(main_window, L"Unsigned IPA created successfully. It is ready for signing with Sideloadly.",
-                    L"Build complete", MB_OK | MB_ICONINFORMATION);
+        MessageBoxW(main_window, tr(L"Unsigned IPA created successfully. It is ready for signing with Sideloadly."),
+                    tr(L"Build complete"), MB_OK | MB_ICONINFORMATION);
     } else if (aborted) {
         set_status(STATE_STOPPED, L"Build cancelled.");
     } else {
@@ -1330,9 +1500,9 @@ static void finish_build(DWORD exit_code) {
     refresh_diagnostics();
 }
 
-static void pick_into(int target, BOOL is_save, BOOL translation) {
+static void pick_into(int target, BOOL is_save) {
     WCHAR selection[32768];
-    if (choose_file(is_save, translation, selection, 32768)) set_path(ctl[target], selection);
+    if (choose_file(is_save, selection, 32768)) set_path(ctl[target], selection);
 }
 
 static void accept_drop(HDROP drop) {
@@ -1340,8 +1510,8 @@ static void accept_drop(HDROP drop) {
     if (!running && DragQueryFileW(drop, 0xFFFFFFFF, NULL, 0) == 1 &&
         DragQueryFileW(drop, 0, selected, 32768) && is_zip(selected) && regular_file(selected))
         set_path(ctl[ID_SOURCE], selected);
-    else if (!running) MessageBoxW(main_window, L"Drop exactly one original .zip file.",
-                                   L"ZIP required", MB_OK | MB_ICONWARNING);
+    else if (!running) MessageBoxW(main_window, tr(L"Drop exactly one original .zip file."),
+                    tr(L"ZIP required"), MB_OK | MB_ICONWARNING);
     DragFinish(drop);
 }
 
@@ -1364,11 +1534,8 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         ui_dpi = query_dpi(window);
         create_controls(window);
         rebuild_fonts();
-        WCHAR included_catalog[32768] = {0};
-        if (SUCCEEDED(StringCchPrintfW(included_catalog, 32768,
-                                       L"%s\\private-localizations\\hu.xlf", kit_path)) &&
-            regular_file(included_catalog))
-            set_path(ctl[ID_CATALOG], included_catalog);
+        interface_language = PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_HUNGARIAN;
+        update_interface();
 #ifdef MR_UTM_TEST
         WCHAR nearby[32768] = {0};
         if (nearby_original_zip(nearby, 32768))
@@ -1438,7 +1605,7 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         return 0;
     case WM_COMMAND:
         switch (LOWORD(wparam)) {
-        case ID_SOURCE: case ID_DESTINATION: case ID_CATALOG:
+        case ID_SOURCE: case ID_DESTINATION:
             if (HIWORD(wparam) == EN_SETFOCUS || HIWORD(wparam) == EN_KILLFOCUS)
                 InvalidateRect(window, NULL, FALSE);
             return 0;
@@ -1450,11 +1617,23 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
                 return 0;
             }
 #endif
-            pick_into(ID_SOURCE, FALSE, FALSE);
+            pick_into(ID_SOURCE, FALSE);
             return 0;
         }
-        case ID_PICK_DESTINATION: pick_into(ID_DESTINATION, TRUE, FALSE); return 0;
-        case ID_PICK_CATALOG: pick_into(ID_CATALOG, FALSE, TRUE); return 0;
+        case ID_PICK_DESTINATION: pick_into(ID_DESTINATION, TRUE); return 0;
+        case ID_HU_PACK:
+            if (!running && hu_available) {
+                hu_selected = !hu_selected;
+                InvalidateRect(ctl[ID_HU_PACK], NULL, FALSE);
+                diagnostics_dirty = TRUE;
+            }
+            return 0;
+        case ID_UI_EN: case ID_UI_HU:
+            interface_language = LOWORD(wparam) == ID_UI_HU;
+            update_interface();
+            diagnostics_dirty = TRUE;
+            if (log_open) refresh_diagnostics();
+            return 0;
         case ID_BUILD: start_build(); return 0;
         case ID_CANCEL: stop_build(); return 0;
         case ID_DETAILS_TOGGLE:

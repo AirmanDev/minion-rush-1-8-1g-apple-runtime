@@ -62,14 +62,17 @@ assets, generated ARM64 data and the AOT manifest.
    quotes are accepted. This test-only behavior is not in the release EXE.
 4. Select Save As and choose a writable folder and a new filename ending
    in .ipa. Existing IPA files are never overwritten.
-5. Optionally select a private Hungarian hu.xlf catalog. This translation is
-   not part of the original game ZIP. The builder can also use
-   MinionRush-Private-Languages/hu.xlf next to the portable kit. The private
-   IPA embeds the compiled language text, formatter and font metadata; the
-   editable XLIFF is not put into the iOS app. The game already provides
-   initial and in-game Settings language selectors for choosing installed
-   languages, with persistent preferences. Switching among built-in languages
-   and an included Hungarian pack does not require rebuilding.
+5. Under Additional languages in IPA, check Magyar to include the bundled
+   private Hungarian translation, or uncheck it to create an IPA containing
+   only the original game languages. The checked option defaults to on when
+   the catalog is built into the private EXE. No language-file picker or
+   separate hu.xlf is required. The iOS runtime only shows community
+   languages whose compiled text is actually present in that particular IPA.
+   The game's initial and in-game Settings language selectors retain their
+   persistent preference. Switching between included languages does not
+   require rebuilding. In the Builder header, English and Magyar switch the
+   Windows UI language independently of the IPA's contents. The Windows
+   system language determines the initial GUI language.
 6. Select Create IPA. Progress and the latest step appear in the
    window without freezing the user interface. Show details expands the
    diagnostics with the build phase, source, output, translation, transfer
@@ -92,9 +95,9 @@ finish, and removes the extracted kit. Windows 11 includes the local tar
 extractor required by the launcher. This does not install applications,
 require administrator privileges, or bundle the original 1.8.1g source ZIP.
 The user still selects their own original ZIP. Private Hungarian XLIFF can
-be supplied at kit creation with --hungarian-xlf and is then selected by
-the GUI automatically, compiled into the private iOS IPA, and need not be
-selected again by end users. It must not be committed or published without
+be supplied at kit creation with --hungarian-xlf, then appears as a checked
+language option in the GUI. Unchecking it passes --no-hungarian and prevents
+compiling the extra language into that IPA. No source picker is exposed. It must not be committed or published without
 clear redistribution rights.
 
 The kit contains an unsigned game-asset-free iOS template, the native

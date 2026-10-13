@@ -175,7 +175,8 @@ def _stage_source_archive(source: Path, temporary: Path, *, mode: str = "release
 
 def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
                         hungarian_xlf: Path | None = None,
-                        scratch_root: Path | None = None) -> None:
+                        scratch_root: Path | None = None,
+                        include_hungarian: bool = True) -> None:
     if output.exists() or output.is_symlink():
         raise ValueError("refusing to overwrite an existing unsigned IPA")
     if not output.is_absolute() or not output.parent.is_dir():
@@ -183,7 +184,11 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
     kit = kit.resolve(strict=True)
     config = validate_kit(kit)
     translations_root = None
-    if hungarian_xlf is not None:
+    if not include_hungarian and hungarian_xlf is not None:
+        raise ValueError("explicit Hungarian catalog conflicts with disabled language")
+    if not include_hungarian:
+        print("Additional languages: none (original game languages only)", flush=True)
+    elif hungarian_xlf is not None:
         selected = hungarian_xlf
         if (selected.name.lower() != "hu.xlf" or not selected.is_file()
                 or selected.is_symlink()):
@@ -212,6 +217,7 @@ def create_unsigned_ipa(zip_path: Path, kit: Path, output: Path,
             prebuilt_compiler=kit / "a64-compiler.exe",
             compiler_sha256=config["compiler_sha256"],
             translations_root=translations_root,
+            enable_localizations=include_hungarian,
         )
         print("2/3: Assemble the unsigned IPA and embed original game data.", flush=True)
         assemble_unsigned_ipa(
@@ -236,13 +242,16 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True, help="new unsigned IPA")
     parser.add_argument("--hungarian-xlf", type=Path,
                         help="optional private hu.xlf translation catalog")
+    parser.add_argument("--no-hungarian", action="store_true",
+                        help="exclude the bundled Hungarian language from this IPA")
     parser.add_argument("--scratch-root", type=Path,
                         help="private per-job directory managed by the graphical launcher")
     args = parser.parse_args()
     try:
         create_unsigned_ipa(args.source_zip, args.kit, args.output,
                             hungarian_xlf=args.hungarian_xlf,
-                            scratch_root=args.scratch_root)
+                            scratch_root=args.scratch_root,
+                            include_hungarian=not args.no_hungarian)
     except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as exc:
         print("Windows native IPA build failed:", exc, file=sys.stderr)
         return 1

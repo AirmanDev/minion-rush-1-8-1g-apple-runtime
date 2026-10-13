@@ -102,6 +102,7 @@ tests/InstallerViewTests.swift
 tests/safe_area_test.c
 tests/test_installer.py
 tests/test_ipa_archive.py
+tests/test_localization_optional.py
 tests/test_native_aot.py
 tests/test_native_ipa.py
 tests/test_tools.py

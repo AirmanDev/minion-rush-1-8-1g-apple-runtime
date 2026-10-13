@@ -75,7 +75,8 @@ def check_destination(destination: Path) -> Path:
 def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
             prebuilt_compiler: Path | None = None,
             compiler_sha256: str | None = None,
-            translations_root: Path | None = None) -> dict:
+            translations_root: Path | None = None,
+            enable_localizations: bool = True) -> dict:
     zip_path = zip_path.resolve(strict=True)
     if not zip_path.is_file() or zip_path.suffix.lower() != ".zip":
         raise ValueError("source must be a local ZIP archive")
@@ -115,11 +116,11 @@ def prepare(zip_path: Path, destination: Path, *, cc: str = "clang",
         # build. The original ZIP has no community translation by itself.
         # Language catalogs are private add-ons, not part of the original ZIP.
         # An absent translation must not prevent native builds in English.
-        if translations_root is None:
+        if enable_localizations and translations_root is None:
             local = ROOT / "localizations"
             if local.is_dir() and not local.is_symlink():
                 translations_root = local
-        if translations_root is not None:
+        if enable_localizations and translations_root is not None:
             print("Preparing configured localizations", flush=True)
             locale_header = staging / "localization_config.h"
             enabled = prepare_localizations(

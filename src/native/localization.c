@@ -13,6 +13,8 @@
 
 static char PACK_ROOT[LOCALIZATION_PATH_CAPACITY];
 static char PREFERENCE_PATH[LOCALIZATION_PATH_CAPACITY];
+static unsigned AVAILABLE[MR_LOCALIZATION_CONFIG_COUNT ? MR_LOCALIZATION_CONFIG_COUNT : 1u];
+static unsigned AVAILABLE_COUNT;
 static atomic_int ACTIVE = ATOMIC_VAR_INIT(MR_LOCALIZATION_ORIGINAL);
 static atomic_int REQUEST = ATOMIC_VAR_INIT(MR_LOCALIZATION_NO_REQUEST);
 static atomic_int ENGINE_BOOTSTRAP = ATOMIC_VAR_INIT(1);
@@ -26,8 +28,9 @@ static int language_matches(const char *candidate, const char *configured) {
 }
 
 static int find_language(const char *code) {
-    for (unsigned index = 0; index < MR_LOCALIZATION_CONFIG_COUNT; index++)
-        if (language_matches(code, MR_LOCALIZATION_CONFIGS[index].code)) return (int)index;
+    for (unsigned index = 0; index < AVAILABLE_COUNT; index++)
+        if (language_matches(code, MR_LOCALIZATION_CONFIGS[AVAILABLE[index]].code))
+            return (int)index;
     return MR_LOCALIZATION_ORIGINAL;
 }
 
@@ -65,6 +68,24 @@ void mr_localization_init(const char *pack_root, const char *data_root, const ch
                          (int)sizeof PREFERENCE_PATH)
         PREFERENCE_PATH[0] = '\0';
 
+    AVAILABLE_COUNT = 0;
+    /* The iOS template may support more packs than the user's final IPA.
+       Only expose those whose compiled text is actually installed. */
+    for (unsigned index = 0; index < MR_LOCALIZATION_CONFIG_COUNT; index++) {
+        const char *code = MR_LOCALIZATION_CONFIGS[index].engine_code;
+        char text_path[LOCALIZATION_PATH_CAPACITY];
+        char runtime_path[LOCALIZATION_PATH_CAPACITY];
+        if (!PACK_ROOT[0] ||
+            snprintf(text_path, sizeof text_path, "%s/../game/files/text/%s.texts",
+                     PACK_ROOT, code) >= (int)sizeof text_path ||
+            snprintf(runtime_path, sizeof runtime_path,
+                     "%s/runtime/localizationText/langs.json", PACK_ROOT) >=
+                         (int)sizeof runtime_path)
+            continue;
+        if (access(text_path, R_OK) == 0 && access(runtime_path, R_OK) == 0)
+            AVAILABLE[AVAILABLE_COUNT++] = index;
+    }
+
     char saved[64];
     const char *wanted = override_language;
     if (!wanted || !*wanted)
@@ -75,11 +96,11 @@ void mr_localization_init(const char *pack_root, const char *data_root, const ch
 }
 
 unsigned mr_localization_count(void) {
-    return MR_LOCALIZATION_CONFIG_COUNT;
+    return AVAILABLE_COUNT;
 }
 
 const mr_localization_definition *mr_localization_get(unsigned index) {
-    return index < MR_LOCALIZATION_CONFIG_COUNT ? &MR_LOCALIZATION_CONFIGS[index] : NULL;
+    return index < AVAILABLE_COUNT ? &MR_LOCALIZATION_CONFIGS[AVAILABLE[index]] : NULL;
 }
 
 int mr_localization_current(void) {
@@ -88,12 +109,16 @@ int mr_localization_current(void) {
 
 const char *mr_localization_code(void) {
     int index = mr_localization_current();
-    return index >= 0 ? MR_LOCALIZATION_CONFIGS[index].code : "en";
+    const mr_localization_definition *definition =
+        index >= 0 ? mr_localization_get((unsigned)index) : NULL;
+    return definition ? definition->code : "en";
 }
 
 const char *mr_localization_engine_code(void) {
     int index = mr_localization_current();
-    return index >= 0 ? MR_LOCALIZATION_CONFIGS[index].engine_code : "en";
+    const mr_localization_definition *definition =
+        index >= 0 ? mr_localization_get((unsigned)index) : NULL;
+    return definition ? definition->engine_code : "en";
 }
 
 const char *mr_localization_engine_query_code(void) {
@@ -109,11 +134,13 @@ void mr_localization_finish_engine_bootstrap(void) {
 
 const char *mr_localization_country_code(void) {
     int index = mr_localization_current();
-    return index >= 0 ? MR_LOCALIZATION_CONFIGS[index].country : "US";
+    const mr_localization_definition *definition =
+        index >= 0 ? mr_localization_get((unsigned)index) : NULL;
+    return definition ? definition->country : "US";
 }
 
 void mr_localization_request(int index) {
-    if (index < MR_LOCALIZATION_ORIGINAL || index >= (int)MR_LOCALIZATION_CONFIG_COUNT) return;
+    if (index < MR_LOCALIZATION_ORIGINAL || index >= (int)AVAILABLE_COUNT) return;
     atomic_store_explicit(&REQUEST, index, memory_order_release);
 }
 
@@ -122,10 +149,10 @@ int mr_localization_take_request(void) {
 }
 
 int mr_localization_activate(int index) {
-    if (index < MR_LOCALIZATION_ORIGINAL || index >= (int)MR_LOCALIZATION_CONFIG_COUNT) return 0;
+    if (index < MR_LOCALIZATION_ORIGINAL || index >= (int)AVAILABLE_COUNT) return 0;
     int previous = atomic_exchange_explicit(&ACTIVE, index, memory_order_acq_rel);
     if (previous == index) return 0;
-    write_preference(index >= 0 ? MR_LOCALIZATION_CONFIGS[index].code : "en");
+    write_preference(mr_localization_code());
     return 1;
 }
 

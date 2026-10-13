@@ -97,6 +97,35 @@ class NativeAotTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "new"):
                 prepare(archive, target)
 
+    def test_optional_localization_can_be_disabled_in_aot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            original = root / "original.zip"
+            original.write_bytes(b"synthetic")
+            output = root / "private"
+
+            def install(source: Path, project: Path, assets: Path):
+                engine = assets / "lib/libdespicablemefree.so"
+                engine.parent.mkdir(parents=True)
+                engine.write_bytes(b"synthetic ELF")
+
+            def compile_fake(destination: Path, cc: str = "clang"):
+                destination.write_bytes(b"synthetic C compiler")
+
+            def run(command, **kwargs):
+                for name, path in zip(AOT_PRODUCTS, command[2:]):
+                    Path(path).write_bytes(name.encode("ascii"))
+                return subprocess.CompletedProcess(command, 0)
+
+            with (mock.patch("prepare_native_aot.install_release", install),
+                  mock.patch("prepare_native_aot.compile_host_compiler", compile_fake),
+                  mock.patch("prepare_native_aot.prepare_localizations",
+                             side_effect=AssertionError("Disabled translation compiled")),
+                  mock.patch("prepare_native_aot.subprocess.run", run)):
+                details = prepare(original, output, enable_localizations=False)
+            self.assertEqual(details["status"], "private-aot-only")
+            self.assertTrue((output / "compiled/minion_code.bin").is_file())
+
     def test_rejects_untrusted_prebuilt_windows_compiler(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

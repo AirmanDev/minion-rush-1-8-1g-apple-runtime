@@ -349,6 +349,43 @@ class WindowsKitTests(unittest.TestCase):
                 "http://127.0.0.1:9843/original-1.8.1g-PRIVATE.zip",
             )
 
+    def test_embedded_hungarian_checkbox_controls_ipa_contents(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.zip"
+            source.write_bytes(b"synthetic source")
+            kit = root / "kit"
+            kit.mkdir()
+            embedded = kit / "private-localizations"
+            embedded.mkdir()
+            (embedded / "hu.xlf").write_bytes(b"synthetic private Hungarian catalog")
+            output = root / "result.ipa"
+            state = []
+
+            def capture(archive, destination, **kwargs):
+                state.append((kwargs["translations_root"],
+                              kwargs["enable_localizations"]))
+                self.assertEqual(archive, source)
+
+            def assemble(template, folder, destination):
+                destination.write_bytes(b"unsigned synthetic IPA")
+
+            with (mock.patch("windows_native_package.validate_kit",
+                             return_value={"mode": "release", "compiler_sha256": "0" * 64,
+                                           "hungarian_xlf_sha256": "a" * 64}),
+                  mock.patch("windows_native_package.prepare", capture),
+                  mock.patch("windows_native_package.assemble_unsigned_ipa", assemble)):
+                create_unsigned_ipa(source, kit, output, include_hungarian=True)
+                self.assertEqual(state[-1], (embedded.resolve(), True))
+                output.unlink()
+                create_unsigned_ipa(source, kit, output, include_hungarian=False)
+                self.assertEqual(state[-1], (None, False))
+                with self.assertRaisesRegex(ValueError, "conflicts"):
+                    create_unsigned_ipa(source, kit, root / "other.ipa",
+                                        hungarian_xlf=embedded / "hu.xlf",
+                                        include_hungarian=False)
+            self.assertEqual(output.read_bytes(), b"unsigned synthetic IPA")
+
     def test_builder_allows_original_zip_without_optional_language(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

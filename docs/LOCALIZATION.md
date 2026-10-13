@@ -38,8 +38,15 @@ languages already packaged in the private IPA.
 
 For the private Windows one-file Builder, the build host may embed its
 private hu.xlf in the bundled portable kit. It is integrity-checked and
-automatically selected when the user builds an IPA. This convenience does
-not imply permission to redistribute translated proprietary game text.
+offered as a checked Magyar option. Unchecking it excludes the Hungarian
+texts and shared formatting resources from the IPA; the iOS runtime tests
+installed language data before showing community choices. This avoids
+offering a nonexistent translation when using a template compiled with
+optional pack support. The Builder's English/Magyar display-language buttons
+are independent of the packaged game languages. Additional community packs
+should follow the same optional-checkbox pattern, with each pack listed in
+the GUI's language-option table and handled by the validated package compiler.
+This convenience does not imply permission to redistribute proprietary text.
 
 Only Hungarian is currently configured as an additional community pack.
 Other languages require a separately prepared, validated catalog and config;

@@ -16,12 +16,14 @@ To use the Mac path, export the IPA locally and transfer it privately.
 The Windows portable kit contains MinionRush Builder.exe. Extract all files,
 launch the GUI, drag an original ZIP onto the window or use Browse, select
 Save As to choose a new output IPA path, and select Create IPA. A private
-Hungarian hu.xlf can be selected optionally. The resulting private iOS app
-contains the compiled language data and the original game's built-in
-languages. The language can be switched through the game's own initial
-language screen or Settings page; no XLIFF needs to be copied to the iPhone.
-The window shows the current
-step in a compact status panel. **Show details** expands build diagnostics,
+The bundled Magyar option is a checkbox, enabled by default when its
+private catalog is present. Uncheck it to exclude Hungarian resources from
+that IPA; the original game's languages are always included. There is no
+separate language-file picker. The game lists only installed language packs
+on its initial and Settings language pages, and no XLIFF needs to be copied
+to the iPhone. Use English / Magyar in the Builder header to change the
+Windows interface language without changing the IPA language selection.
+The window shows the current step in a compact status panel. **Show details** expands build diagnostics,
 including paths, phase, transfer method and detailed error; it opens
 automatically on failure. Copy error, Copy full log and Save log provide
 local reporting. On failure the private workspace is retained, can be opened
@@ -39,7 +41,8 @@ GUI removes its extracted runtime. This is a portable, self-contained
 launcher, not an installer and not a single standalone Windows process.
 Windows 11's built-in tar.exe is used locally. The 1.8.1g original game ZIP
 must still be supplied by the user. A private hu.xlf included by the
-developer is automatically selected and becomes compiled iOS language data;
+developer appears as a checked language option and becomes compiled iOS
+language data only when that option is selected;
 the iPhone app does not need any external .xlf.
 
 Two Windows build profiles are maintained. The standard release candidate
