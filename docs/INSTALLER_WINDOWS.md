@@ -32,6 +32,13 @@ code ahead of time and assembles the IPA from the user's original data.
 No private game ZIP, precompiled game-specific native code, generated IPA
 or Apple credentials are included in the public Builder.
 
+The ZIP may contain only the verified original APK and its complete
+game data directory; the APK basename does not need to be
+`Unmodded.apk`. The importer identifies the original game engine and
+app icon by SHA-256, not by filename. This reduced-ZIP format passed a
+full Mac Builder v1.2.8 IPA build; it was not separately retested on
+Windows. See [release scope](RELEASE_SCOPE.md#reduced-zip-mac-regression-2026-10-14).
+
 The native iOS template and compiler match the Mac edition. The
 Hungarian target-only text pack is compiled locally after checking
 the original text-table fingerprint; it does not replace existing

@@ -71,6 +71,34 @@ third public download.
 - Broader device/OS coverage, clean-machine first launch and uncommon
   signing, cancellation and recovery scenarios remain potential tests.
 
+### Reduced-ZIP Mac regression (2026-10-14)
+
+The installed Mac Builder v1.2.8 completed its regular unsigned-IPA
+creation path with a new, reduced input ZIP. It contained only the
+SHA-256-verified original 1.8.1g APK, deliberately renamed to a different
+`.apk` filename, and the complete original
+`com.gameloft.android.ANMP.GloftDMHM` game data directory. The four
+other APKs from the source archive were excluded. The input
+ZIP had 1,378 files and was 348,311,076 bytes (332.18 MiB).
+
+The complete build returned success. Independent output inspection found
+1,372 IPA members, a native ARM64 Mach-O executable, the expected game
+database, configuration and DLC paths, an English text table and a
+separate Hungarian table with 2,483 entries. ZIP CRC checks passed.
+No Android APK was embedded in the resulting IPA. The installed Mac
+Builder source matched the checked-out shared conversion modules.
+
+The importer matches APKs by the original engine and app-icon SHA-256,
+not by basename or ZIP compressed size. It permits up to 20,000 ZIP
+entries and 2 GiB of total uncompressed source data. The source still
+needs exactly one matching game data directory containing the expected
+files, including `PN.db` and `files/`. An APK by itself is insufficient.
+
+This regression did not sign the IPA, install it on a physical device,
+or rerun the reduced ZIP in Windows. Existing Windows v1.2.8 release
+tests remain separate evidence; sharing the conversion code does not
+prove every platform-specific path behaves identically.
+
 ## Signing and trust
 
 The Mac Builder is ad hoc signed, not Developer ID signed or notarized.

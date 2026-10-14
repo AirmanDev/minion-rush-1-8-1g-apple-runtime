@@ -9,6 +9,29 @@ Historical review: 2026-09-27. Scope: the maintained public source, native runti
 Apple platform layers, installer, build and packaging tools, tests, and docs.
 Private assets were validated locally but are not part of the public repository.
 
+## Post-release Mac regression and cleanup - 2026-10-14
+
+The installed v1.2.8 Mac Builder built an unsigned IPA from a newly
+packed official-only source ZIP, with an arbitrary renamed APK and
+the complete original game data tree. The source engine and original
+icon passed their expected SHA-256 checks. The AOT translator and IPA
+assembly both completed. Independent inspection verified the ARM64
+Mach-O, 1,372 IPA members, English and Hungarian text tables (2,483
+entries each), required game data/DLC and an intact ZIP directory.
+The temporary test ZIP, IPA, logs and scratch workspace were removed.
+The original source archive, save data and the installed Builder
+were not changed. This test did not sign or install the new IPA on
+a device and was not repeated on Windows.
+
+At the start of maintenance, there was one local and one remote `main` branch,
+a single `builder-v1.2.8` tag, a single public v1.2.8 release with
+three checksum-matching assets, and no linked worktrees. Old generated
+iOS template libraries and the Xcode derived-data cache were removed
+as regenerable build output (about 1.0 GiB). Current release assets,
+native developer outputs, and possibly user-authored promotional files
+were retained. Finder metadata and Python bytecode caches were removed.
+The Git branch and release inventory was rechecked after integration.
+
 ## Builder audit - 2026-10-13
 
 Scope: all maintained sources in the public manifest (164 entries at this

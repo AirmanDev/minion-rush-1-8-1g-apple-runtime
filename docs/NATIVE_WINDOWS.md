@@ -49,6 +49,9 @@ ARM64 blocks. There is no ARM32 interpreter or iOS JIT.
 
 The same source, ABI limits and conversion stages are used on macOS;
 there is no parallel Windows-specific implementation of IPA patching.
+The reduced, official-APK-only ZIP with an arbitrarily renamed APK
+passed the Mac v1.2.8 build and IPA integrity checks on 2026-10-14;
+that particular input has not had a separate Windows execution test.
 No compatibility path remains for the earlier game-derived v2 template.
 
 ## Build inputs for maintainers
