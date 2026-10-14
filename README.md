@@ -68,6 +68,14 @@ the owner also confirmed a successful direct installation and gameplay
 on a physical iPhone, including working audio and retained save data.
 This does not establish compatibility with all devices or iOS versions.
 
+A 2026-10-14 Mac Builder v1.2.8 regression also built and validated an
+unsigned IPA from a reduced ZIP containing only the verified official APK
+(with an arbitrary filename) and the complete original game data directory.
+The IPA contained the ARM64 executable, original English table, and all
+2,483 Hungarian targets; archive integrity checks passed. This specific
+reduced-ZIP input was not retested on Windows or installed on a device.
+See [release scope](docs/RELEASE_SCOPE.md#reduced-zip-mac-regression-2026-10-14).
+
 The Builder displays an independent product title, uses a project-owned icon
 and identifies Minion Rush 1.8.1g only to describe compatible input.
 Mac and Windows include the applicable Python, GCC and other inventoried

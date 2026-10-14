@@ -57,6 +57,12 @@ private signing or installation process. A recipient must supply their
 own appropriate signature and has responsibility for the legality
 of their use. The Builder does not provide Apple credentials.
 
+The input ZIP may contain only the original APK plus its complete game
+data directory; unrelated APKs are not needed. The official APK is
+recognized by the game-engine and icon checksums, regardless of its
+filename. A Mac v1.2.8 regression verified that reduced input and the
+generated unsigned IPA. See [release scope](RELEASE_SCOPE.md#reduced-zip-mac-regression-2026-10-14).
+
 ## Controls and diagnostics
 
 **Refresh** updates Xcode's paired physical-device list without
