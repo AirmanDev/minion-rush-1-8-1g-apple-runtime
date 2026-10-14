@@ -31,6 +31,9 @@ and does not authorize otherwise restricted copying or adaptation. See
   Windows users can sign and install with Sideloadly.
 - Source development and native Apple signing still require the appropriate
   SDK, developer tools and local Python interpreter.
+- The source build supplies `MR_RUNTIME_PROFILE` internally when compiling
+  the native iOS host with its validated game-profile ABI; end users should
+  not set this build definition manually.
 
 The [GitHub Releases](https://github.com/AirmanDev/minion-rush-1-8-1g-apple-runtime/releases)
 page provides the initial public distribution of **Unofficial IPA Builder v1.2.8**.

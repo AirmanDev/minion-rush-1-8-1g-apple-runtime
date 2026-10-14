@@ -18,7 +18,8 @@ owner-supplied original archive.
 | Game symbol names, interfaces, and technical references | `src/native/game_symbols.def`, shim/compatibility source | Interface names can be functional and may fall outside protection as expression under CJEU C-406/10, but their precise provenance, degree of copying, associated contracts and exceptions have **not** been individually legally cleared. They cannot be marked cleared merely because they are identifiers. |
 | UI references to Minion Rush, Gameloft and Minions | Original ZIP selection, game compatibility identifiers and technical documentation | The desktop display title is now "Unofficial IPA Builder"; the supported game name is referential only. The independent icon is created from source shapes, not game art. The marks are not granted under the project's Apache license. |
 
-The 1.2.3 binary inventory was reviewed directly, not inferred solely from
+The bundled binary inventory was reviewed directly during development,
+not inferred solely from
 build scripts. The Mac ZIP includes Python reporting OpenSSL 3.5.9,
 SQLite 3.53.1 and mpdecimal 4.0.0. The Windows onefile embedded kit includes
 libcrypto-3.dll, libssl-3.dll,
@@ -40,8 +41,8 @@ code. The unmodified upstream GCC COPYING3 and COPYING.RUNTIME texts are now
 packaged and pinned, alongside MinGW-w64 copyright notices. The Windows Python
 3.14.7 embeddable archive also brings its own vcruntime140 DLLs and native
 extensions; the Builder does not independently bundle a compiler toolchain or
-Microsoft runtime installer. These findings cover the inspected 1.2.3 inputs;
-new dependencies require a new inventory.
+Microsoft runtime installer. These findings cover the inventoried
+runtime components; new dependencies require a new inventory.
 
 The game symbol list contains JNI and C++ lookup names but no original binary.
 The desktop UI now uses an unofficial product name and refers to Minion Rush
@@ -59,7 +60,7 @@ license audit or actual redistribution rights.
 - [x] Both Builders generate user-specific native ARM64 code locally, no on-device JIT.
 - [x] Mac/Windows bundle-integrity tests and source checks; bundled Python and project license notices present.
 - [x] iOS 18.6 and iOS 27 simulator rendering tests for the profile-based runtime.
-- [x] Windows 11 ARM/x64-emulation EXE self-test and native GUI Create IPA on both 1.2.2 and 1.2.3; 1,369 entries and validated native v3 profile.
+- [x] Windows 11 ARM/x64-emulation EXE self-test and native GUI Create IPA; validated native v3 profile. The release EXE was retested in a Windows VM.
 - [x] Require a user-supplied original ZIP and document the user's responsibility for lawful possession; never distribute the original game or a finished IPA.
 - [x] Document the narrower tool-only redistribution scope and the limits of Article 5/6 lawful-use and interoperability exceptions; no claim is made that every local AOT adaptation is authorized. The original 1.8.1g acquisition contract is not verified.
 - [x] Replace desktop product-facing branding with "Unofficial IPA Builder"; keep the game name only as a compatibility reference. Project-generated icon contains no original character art. No blanket trademark clearance is claimed.
@@ -67,7 +68,7 @@ license audit or actual redistribution rights.
 - [x] Inventory the shipped Windows/Mac runtime libraries, review compiler-linked system imports and GCC runtime exception, and bundle the additional pinned notices. Recheck if any dependency changes.
 - [x] Distribution is direct GitHub Releases download, not an App Store submission.
 - [x] Publisher chose an ad hoc-signed Mac Builder and unsigned Windows EXE, without Developer ID, notarization or Authenticode. No further desktop signing work is planned. The iOS IPA still needs signing for installation.
-- [x] Verified delivery limitations: macOS Gatekeeper rejected the ad hoc-signed Builder until the user makes an explicit trust decision; Windows Get-AuthenticodeSignature reported NotSigned for the 1.2.3 EXE.
+- [x] Verified delivery limitations: macOS Gatekeeper can require an explicit per-app trust decision for the ad hoc-signed Builder; the Windows EXE has no Authenticode publisher signature.
 - [x] Document checksum validation, unaffiliated product branding, and normal first-launch approval. Game-specific symbols are retained as necessary lookup keys; legal use depends on context.
 - [x] Owner confirmed physical iPhone installation, gameplay, audio and preservation of saves through the Mac Builder's direct-install workflow.
 - [ ] Wider device/OS, accessibility, unusual failure handling and clean-machine trust-prompt checks are desirable. A physical iPhone install, launch, audio and save continuity have been verified; do not reset those saves.

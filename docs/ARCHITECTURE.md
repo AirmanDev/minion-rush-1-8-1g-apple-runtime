@@ -50,9 +50,12 @@ version so two releases in one family cannot overwrite each other's artifacts.
 
 ## Native IPA Builders
 
-The Windows Win32 GUI and the macOS SwiftUI Builder are separate native
-presentations of the same user workflow: original ZIP, unsigned IPA
-destination, progress, and diagnostics; the UI supports English and Hungarian.
+The Windows Win32 GUI and macOS SwiftUI Builder are native desktop
+interfaces over the same host AOT compilation and IPA assembly tools.
+Windows creates an unsigned IPA at a selected destination. Mac offers
+direct native installation using an already configured local Xcode signing
+profile, plus optional Save IPA export. Both show build progress and logs,
+with English and Magyar desktop interfaces.
 Both use `prepare_native_aot.py` and `native_ipa.py` for translation and
 archive assembly, and `native_ipa_output.py` for destination validation,
 temporary construction, and atomic final replacement. The Mac path is
@@ -77,13 +80,13 @@ The separately compiled UTM test build retains SPICE/WebDAV handling; the
 release build has none. The private Mac .app similarly embeds a pinned
 arm64 Python runtime, native translator and generic unsigned template;
 its bundle is ad-hoc signed. Neither includes the original game ZIP or
-signing credentials. The optional Mac Xcode signing/device installation
-path remains separate from unsigned IPA creation. Neither private
-artifact is cleared for public redistribution.
+signing credentials. Mac Install Game and optional unsigned IPA export
+use the same native conversion stage. The distributed tool does not grant
+original-game transformation or translation rights.
 
 ## Generic portable IPA profile
 
-The 1.2.1 portable Builder compiles the iOS host runtime once, without
+The generic portable Builder compiles the iOS host runtime once, without
 the original game ZIP. Its fixed-size executable `__MRCODE/__text` slot is
 zeroed (192 MiB). The iOS runtime contains no game-specific block table,
 engine address constants, or original machine instructions.
@@ -416,7 +419,7 @@ by the application.
 | iOS device | `./tools/deploy_ios.sh` | Installation on paired physical devices |
 | Windows GUI | Native Win32 x64 EXE | Browse or drop input, Save As, progress, cancellation and log |
 | Windows runtime kit | Python kit builder | Asset-free iOS template, verified translator, portable interpreter |
-| Windows ZIP candidate | Local package builder | Reproducible inventory and SHA-256; no automatic publication |
+| Windows portable release | Local package builder | Reproducible inventory and SHA-256; publication is an explicit action |
 
 ### Simulator compatibility
 

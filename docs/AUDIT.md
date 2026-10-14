@@ -1,7 +1,9 @@
 # Code audit
 
-This document records historical findings. For the current 1.2.2 candidate,
-see [release scope](RELEASE_SCOPE.md).
+This document preserves historical engineering audit findings. For the
+initial public Builder v1.2.8, see [release scope](RELEASE_SCOPE.md).
+Historical intermediate build numbers below are internal test references,
+not separate downloads.
 
 Historical review: 2026-09-27. Scope: the maintained public source, native runtime,
 Apple platform layers, installer, build and packaging tools, tests, and docs.
@@ -83,7 +85,8 @@ and safe-area adapter retain separate ownership. Both platform builds consume
 the same portable source list. Engine addresses stay in generated bindings;
 release fingerprints reject a different engine image.
 
-The Mac installer delegates asset import and deployment to the existing tools.
+The portable Mac Builder delegates native compilation, local signing and
+device installation to the existing shared Python tools.
 The separate Windows GUI in `src/windows/ipa_builder.c` delegates ZIP validation,
 AOT compilation and IPA assembly to `tools/windows_native_package.py`; it does
 not duplicate those operations. Sideloadly remains an external signing and
